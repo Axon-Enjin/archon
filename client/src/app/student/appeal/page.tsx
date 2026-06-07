@@ -4,7 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { LayoutDashboard, MessageCircle, FileText, UploadCloud, File, CheckCircle2 } from "lucide-react";
+import { LayoutDashboard, MessageCircle, FileText, UploadCloud, File, CheckCircle2, ArrowRight, Check, FolderOpen, X, AlertTriangle } from "lucide-react";
 
 export default function SAPAppealWizard() {
   const { data: session, status } = useSession();
@@ -171,11 +171,11 @@ export default function SAPAppealWizard() {
         {/* Wizard Steps indicator */}
         <section className="flex items-center justify-between border-b border-zinc-100 pb-4 text-xs font-semibold text-brand-muted">
           <span className={step === 1 ? "text-brand-primary" : ""}>1. Eligibility & Checklist</span>
-          <span className="text-zinc-300">➔</span>
+          <ArrowRight className="w-3.5 h-3.5 text-zinc-300" />
           <span className={step === 2 ? "text-brand-primary" : ""}>2. Narrative Builder</span>
-          <span className="text-zinc-300">➔</span>
+          <ArrowRight className="w-3.5 h-3.5 text-zinc-300" />
           <span className={step === 3 ? "text-brand-primary" : ""}>3. Upload Documents</span>
-          <span className="text-zinc-300">➔</span>
+          <ArrowRight className="w-3.5 h-3.5 text-zinc-300" />
           <span className={step === 4 ? "text-brand-primary" : ""}>4. Confirmation</span>
         </section>
 
@@ -189,9 +189,9 @@ export default function SAPAppealWizard() {
             <div className="rounded-lg bg-zinc-50 p-4 border border-zinc-100 space-y-3">
               <p className="text-xs font-bold text-brand-text uppercase tracking-wide">Required appeal document checklist:</p>
               <ul className="text-xs text-brand-muted space-y-2">
-                <li className="flex items-center gap-2">✓ Certified True Copy of Grades (GWA 2.65)</li>
-                <li className="flex items-center gap-2">✓ Written Appeal Narrative Letter</li>
-                <li className="flex items-center gap-2">✓ Supporting Documentation (medical cert, billing, or scholarship slip)</li>
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-brand-primary shrink-0" /> Certified True Copy of Grades (GWA 2.65)</li>
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-brand-primary shrink-0" /> Written Appeal Narrative Letter</li>
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-brand-primary shrink-0" /> Supporting Documentation (medical cert, billing, or scholarship slip)</li>
               </ul>
             </div>
             <div className="flex justify-end">
@@ -290,7 +290,7 @@ export default function SAPAppealWizard() {
                 onChange={handleFileChange}
                 className="hidden"
               />
-              <span className="text-4xl block mb-3">📁</span>
+              <FolderOpen className="w-10 h-10 text-zinc-400 mx-auto mb-3" />
               
               {!selectedFile ? (
                 <>
@@ -325,7 +325,7 @@ export default function SAPAppealWizard() {
                     </div>
                   ) : (
                     <div className="flex items-center justify-between text-xs text-green-600 font-semibold bg-green-50 rounded-lg py-2 px-3 mx-4">
-                      <span className="flex items-center gap-1.5">✓ Uploaded successfully</span>
+                      <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-green-600 shrink-0" /> Uploaded successfully</span>
                       <button
                         type="button"
                         onClick={() => {
@@ -333,9 +333,9 @@ export default function SAPAppealWizard() {
                           setFileUploaded(false);
                           setUploadProgress(0);
                         }}
-                        className="text-red-500 hover:text-red-700 ml-2 font-bold text-sm"
+                        className="text-red-500 hover:text-red-700 ml-2 flex items-center justify-center"
                       >
-                        ✕
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
                   )}
@@ -344,8 +344,8 @@ export default function SAPAppealWizard() {
             </div>
 
             {uploadError && (
-              <p className="text-xs font-semibold text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">
-                ⚠️ {uploadError}
+              <p className="text-xs font-semibold text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100 flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" /> {uploadError}
               </p>
             )}
 
@@ -371,8 +371,8 @@ export default function SAPAppealWizard() {
         {/* Step 4: Confirmation */}
         {step === 4 && (
           <div className="rounded-xl bg-white p-8 border border-zinc-200 shadow-sm text-center space-y-6">
-            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-700 text-3xl mx-auto shadow-sm">
-              ✓
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-700 mx-auto shadow-sm">
+              <Check className="w-8 h-8 text-green-700" />
             </span>
             <div className="space-y-2">
               <h2 className="text-2xl font-extrabold text-brand-text">Appeal Package Submitted</h2>

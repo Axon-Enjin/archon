@@ -25,14 +25,20 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ## Authentication Notes
 
 - Provider id for Entra sign-in is `azure-ad`.
-- Entra roles are mapped to app roles:
-  - `Admin` -> `Admin`
-  - `Agent` -> `Agent`
-  - all other users -> `Student`
+- Entra RBAC mapping is dynamic via env configuration:
+  - `ARCHON_ENTRA_ROLE_CLAIMS` (default: `roles,groups,wids`)
+  - `ARCHON_ENTRA_ADMIN_ROLE_KEYS` (default: `Admin`)
+  - `ARCHON_ENTRA_AGENT_ROLE_KEYS` (default: `Agent`)
+  - `ARCHON_ENTRA_STUDENT_ROLE_KEYS` (default: `Student`)
+  - `ARCHON_ENTRA_DEFAULT_ROLE` (default: `Student`)
 - `/student`, `/agent`, and `/admin` are protected by middleware and redirect unauthenticated users to `/auth/signin`.
 - The shared NextAuth configuration lives in `src/lib/auth.ts` and is reused by the route handler, server helpers, and the home page redirect.
 - Optional tenant allowlist can be configured with `ARCHON_ALLOWED_TENANT_IDS`.
 - Local persona logins are available only when `ARCHON_ENABLE_MOCK_AUTH=true` or Entra credentials are missing.
+- Entra role setup guide: `ENTRA_RBAC_SETUP.md`.
+- Runtime rollback flags:
+  - `ARCHON_AI_ENABLED=false` routes chat traffic directly to human queue.
+  - `ARCHON_M365_ENABLED=false` disables Microsoft Graph calendar integration.
 
 ## Deploy
 

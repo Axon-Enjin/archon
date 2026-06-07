@@ -1,10 +1,10 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
+import { useSession, signOut, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, MessageCircle, FileText, LogOut, AlertOctagon, Calendar, Clock } from "lucide-react";
+import { LayoutDashboard, MessageCircle, FileText, LogOut, AlertOctagon, Calendar, Clock, ChevronLeft, ChevronRight, RefreshCw, Bell } from "lucide-react";
 
 interface StudentProfile {
   student_id: string;
@@ -40,6 +40,14 @@ interface TicketItem {
   created_at: string;
 }
 
+function toDateKey(dateInput: string | Date): string {
+  const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function StudentDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -50,45 +58,22 @@ export default function StudentDashboard() {
   const [tickets, setTickets] = useState<TicketItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [creatingTicket, setCreatingTicket] = useState(false);
+  const [calendarError, setCalendarError] = useState<string | null>(null);
+  const [calendarErrorCode, setCalendarErrorCode] = useState<string | null>(null);
+  const [calendarRefreshing, setCalendarRefreshing] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [selectedDateKey, setSelectedDateKey] = useState(() => toDateKey(new Date()));
 
-  // M365 Consent Simulation States
-  const [m365Connected, setM365Connected] = useState(false);
-  const [connecting, setConnecting] = useState(false);
-
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin");
-      return;
-    }
-
-    if (session?.user) {
-      if (session.user.role !== "Student") {
-        router.push("/auth/signin");
-        return;
-      }
-      
-      // Load M365 consent state from localStorage
-      const savedConsent = localStorage.getItem(`m365_consent:${session.user.entra_oid}`);
-      setM365Connected(savedConsent === "true");
-
-      fetchDashboardData(session.user.entra_oid);
-
-      // Implement periodic sync polling every 4 seconds
-      const interval = setInterval(() => {
-        fetchDashboardDataSilently(session.user.entra_oid);
-      }, 4000);
-
-      return () => clearInterval(interval);
-    }
-  }, [session, status]);
-
-  const fetchDashboardData = async (studentOid: string) => {
+  async function fetchDashboardData(studentOid: string) {
     try {
       setLoading(true);
       const [profileRes, holdsRes, calendarRes, ticketsRes] = await Promise.all([
         fetch(`/api/v1/student/${studentOid}/profile`),
         fetch(`/api/v1/student/${studentOid}/holds`),
-        fetch(`/api/v1/student/${studentOid}/calendar`),
+        fetch(`/api/v1/student/${studentOid}/calendar?refresh=1`),
         fetch(`/api/v1/tickets?studentId=${studentOid}`),
       ]);
 
@@ -101,16 +86,24 @@ export default function StudentDashboard() {
 
       if (profileData.success) setProfile(profileData.data);
       if (holdsData.success) setHolds(holdsData.data);
-      if (calendarData.success) setEvents(calendarData.data);
+      if (calendarData.success) {
+        setEvents(calendarData.data);
+        setCalendarError(null);
+        setCalendarErrorCode(null);
+      } else {
+        setEvents([]);
+        setCalendarError(calendarData.error || "Calendar temporarily unavailable.");
+        setCalendarErrorCode(calendarData.errorCode || null);
+      }
       if (ticketsData.success) setTickets(ticketsData.data);
     } catch (err) {
       console.error("Error fetching student dashboard data:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const fetchDashboardDataSilently = async (studentOid: string) => {
+  async function fetchDashboardDataSilently(studentOid: string) {
     try {
       const [holdsRes, ticketsRes] = await Promise.all([
         fetch(`/api/v1/student/${studentOid}/holds`),
@@ -125,7 +118,35 @@ export default function StudentDashboard() {
     } catch (err) {
       console.warn("Silent sync failed", err);
     }
-  };
+  }
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/signin");
+      return;
+    }
+
+    if (session?.user) {
+      if (session.user.role !== "Student") {
+        router.push("/auth/signin");
+        return;
+      }
+
+      const initialFetchTimer = setTimeout(() => {
+        void fetchDashboardData(session.user.entra_oid);
+      }, 0);
+
+      // Implement periodic sync polling every 4 seconds
+      const interval = setInterval(() => {
+        fetchDashboardDataSilently(session.user.entra_oid);
+      }, 4000);
+
+      return () => {
+        clearInterval(interval);
+        clearTimeout(initialFetchTimer);
+      };
+    }
+  }, [session, status, router]);
 
   const handleStartNewChat = async () => {
     if (!session?.user) return;
@@ -147,20 +168,35 @@ export default function StudentDashboard() {
     }
   };
 
-  const handleConnectM365 = () => {
+  const handleRefreshCalendar = async () => {
     if (!session?.user) return;
-    setConnecting(true);
-    setTimeout(() => {
-      setConnecting(false);
-      setM365Connected(true);
-      localStorage.setItem(`m365_consent:${session.user.entra_oid}`, "true");
-    }, 1200); // 1.2 second mock Entra authorization code grant loop
+    try {
+      setCalendarRefreshing(true);
+      const res = await fetch(`/api/v1/student/${session.user.entra_oid}/calendar?refresh=1`);
+      const data = await res.json();
+      if (data.success) {
+        setEvents(data.data);
+        setCalendarError(null);
+        setCalendarErrorCode(null);
+      } else {
+        setEvents([]);
+        setCalendarError(data.error || "Calendar temporarily unavailable.");
+        setCalendarErrorCode(data.errorCode || null);
+      }
+    } catch (err) {
+      console.error("Error refreshing calendar:", err);
+      setCalendarError("Calendar temporarily unavailable.");
+      setCalendarErrorCode("GRAPH_UPSTREAM_ERROR");
+    } finally {
+      setCalendarRefreshing(false);
+    }
   };
 
-  const handleDisconnectM365 = () => {
-    if (!session?.user) return;
-    setM365Connected(false);
-    localStorage.removeItem(`m365_consent:${session.user.entra_oid}`);
+  const handleReconnectM365 = async () => {
+    await signIn("azure-ad", {
+      callbackUrl: "/student",
+      prompt: "consent",
+    });
   };
 
   if (loading || status === "loading") {
@@ -168,13 +204,33 @@ export default function StudentDashboard() {
       <div className="flex min-h-screen items-center justify-center bg-brand-surface">
         <div className="text-center">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-sm text-brand-muted font-sans">Kargang muli ang iyong dashboard...</p>
+          <p className="mt-4 text-sm text-brand-muted font-sans">Loading your dashboard...</p>
         </div>
       </div>
     );
   }
 
   const activeHolds = holds.filter((h) => h.status !== "Resolved");
+  const eventsByDate = events.reduce<Record<string, CalendarEvent[]>>((acc, evt) => {
+    const key = toDateKey(evt.start);
+    acc[key] = acc[key] || [];
+    acc[key].push(evt);
+    return acc;
+  }, {});
+
+  const selectedDateEvents = (eventsByDate[selectedDateKey] || []).sort(
+    (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
+  );
+
+  const monthStart = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+  const monthEnd = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0);
+  const gridStart = new Date(monthStart);
+  gridStart.setDate(monthStart.getDate() - monthStart.getDay());
+  const gridDays: Date[] = Array.from({ length: 42 }, (_, idx) => {
+    const d = new Date(gridStart);
+    d.setDate(gridStart.getDate() + idx);
+    return d;
+  });
 
   return (
     <div className="flex min-h-screen bg-brand-surface font-sans">
@@ -195,6 +251,12 @@ export default function StudentDashboard() {
             >
               <LayoutDashboard className="w-4 h-4" /> Dashboard
             </Link>
+            <Link
+              href="/student/alerts"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 transition"
+            >
+              <Bell className="w-4 h-4" /> Alert Center
+            </Link>
             <button
               onClick={handleStartNewChat}
               disabled={creatingTicket}
@@ -212,14 +274,6 @@ export default function StudentDashboard() {
         </div>
 
         <div className="space-y-4">
-          {m365Connected && (
-            <button
-              onClick={handleDisconnectM365}
-              className="w-full text-center text-[10px] font-semibold text-brand-muted hover:underline"
-            >
-              Disconnect M365 (Demo Reset)
-            </button>
-          )}
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-error hover:bg-red-50 transition"
@@ -234,7 +288,7 @@ export default function StudentDashboard() {
         {/* Welcome Header */}
         <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-200 pb-6">
           <div>
-            <h1 className="text-3xl font-bold font-display text-brand-text">Maligayang pagdating, {profile?.name}!</h1>
+            <h1 className="text-3xl font-bold font-display text-brand-text">Welcome, {profile?.name}!</h1>
             <p className="text-brand-muted text-sm mt-1">
               {profile?.major} · {profile?.year} · ID: {profile?.student_id}
             </p>
@@ -253,7 +307,7 @@ export default function StudentDashboard() {
           <section className="rounded-xl border border-brand-error/20 bg-red-50/30 p-6 space-y-4">
             <div className="flex items-center gap-2 text-brand-error font-bold font-display">
               <AlertOctagon className="w-5 h-5" />
-              <h2>Mayroon kang ({activeHolds.length}) na aktibong hold sa iyong account</h2>
+              <h2>You have ({activeHolds.length}) active holds on your account</h2>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {activeHolds.map((hold) => (
@@ -295,72 +349,162 @@ export default function StudentDashboard() {
             <span className="text-brand-success text-xl">✓</span>
             <div>
               <p className="text-sm font-semibold text-green-800">Clear Account Status</p>
-              <p className="text-xs text-brand-muted">Wala kang aktibong holds. Ikaw ay kwalipikadong mag-enroll at kumuha ng klase.</p>
-            </div>
+              <p className="text-xs text-brand-muted">You have no active holds. You are cleared to enroll and register for classes.</p>            </div>
           </section>
         )}
 
         {/* Two Column Section: Calendar & Active Tickets */}
         <div className="grid gap-8 lg:grid-cols-12">
-          {/* Calendar Card (Graph API simulation / Consent Gate) */}
+          {/* Calendar Card (Microsoft Graph Outlook Calendar) */}
           <section className="lg:col-span-7 rounded-xl bg-white p-6 border border-zinc-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+            <div className="flex items-center justify-between border-b border-zinc-100 pb-3 gap-3">
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded bg-brand-m365 text-white font-bold text-[10px]">
                   M
                 </span>
-                <h2 className="text-lg font-bold font-display text-brand-text">Your Week</h2>
+                <h2 className="text-lg font-bold font-display text-brand-text">Outlook Calendar</h2>
               </div>
-              <span className="text-xs text-brand-muted">Sync: 15m TTL</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-brand-muted">Sync: 15m TTL</span>
+                <button
+                  onClick={handleRefreshCalendar}
+                  disabled={calendarRefreshing}
+                  className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-2 py-1 text-[11px] font-semibold text-brand-text hover:bg-zinc-50 disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3 h-3 ${calendarRefreshing ? "animate-spin" : ""}`} />
+                  Refresh
+                </button>
+              </div>
             </div>
-
-            {connecting ? (
-              <div className="py-12 text-center">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-m365 border-t-transparent mx-auto"></div>
-                <p className="mt-2 text-xs text-brand-muted font-mono">Authenticating with Entra ID...</p>
+            {calendarError ? (
+              <div className="py-8 text-center space-y-2">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 mx-auto">
+                  <Calendar className="w-6 h-6" />
+                </div>
+                <p className="text-sm font-bold text-brand-text font-display">Calendar temporarily unavailable</p>
+                <p className="text-xs text-brand-muted">{calendarError}</p>
+                {calendarErrorCode === "GRAPH_CONSENT_REQUIRED" && (
+                  <button
+                    onClick={handleReconnectM365}
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-brand-m365 px-4 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition mt-2"
+                  >
+                    Connect your M365 Calendar
+                  </button>
+                )}
               </div>
-            ) : m365Connected ? (
+            ) : events.length > 0 ? (
               <div className="space-y-4 animate-fade-in">
-                {events.map((evt) => {
-                  const startDate = new Date(evt.start);
-                  const formatTime = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                  const formatDate = startDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
-                  
-                  const isDeadline = evt.title.toLowerCase().includes("deadline") || evt.title.toLowerCase().includes("renewal");
-                  const borderClass = isDeadline ? "border-brand-warning" : "border-brand-primary";
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() =>
+                      setCalendarMonth(
+                        (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)
+                      )
+                    }
+                    className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-2 py-1 text-xs font-semibold text-brand-text hover:bg-zinc-50"
+                  >
+                    <ChevronLeft className="w-3 h-3" />
+                    Prev
+                  </button>
+                  <p className="text-sm font-bold text-brand-text font-display">
+                    {calendarMonth.toLocaleDateString([], { month: "long", year: "numeric" })}
+                  </p>
+                  <button
+                    onClick={() =>
+                      setCalendarMonth(
+                        (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1)
+                      )
+                    }
+                    className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-2 py-1 text-xs font-semibold text-brand-text hover:bg-zinc-50"
+                  >
+                    Next
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
 
-                  return (
-                    <div key={evt.id} className={`py-1 pl-4 border-l-4 ${borderClass} flex items-start justify-between gap-4 transition-all duration-300`}>
-                      <div className="space-y-1">
-                        <p className="text-sm font-semibold text-brand-text font-display">{evt.title}</p>
-                        <p className="text-xs text-brand-muted flex items-center gap-1.5">
-                          <Calendar className="w-3 h-3 inline" /> {formatDate} &middot; <Clock className="w-3 h-3 inline" /> {formatTime}
-                        </p>
-                      </div>
-                      <span className="rounded bg-teal-50 px-2 py-0.5 text-[9px] font-bold text-brand-primary shrink-0 uppercase tracking-wider">
-                        {evt.source}
-                      </span>
+                <div className="grid grid-cols-7 gap-1 text-[10px] font-semibold text-brand-muted">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                    <div key={day} className="px-2 py-1 text-center">{day}</div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-7 gap-1">
+                  {gridDays.map((day) => {
+                    const key = toDateKey(day);
+                    const inMonth = day >= monthStart && day <= monthEnd;
+                    const isSelected = selectedDateKey === key;
+                    const count = (eventsByDate[key] || []).length;
+                    const isToday = key === toDateKey(new Date());
+
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => setSelectedDateKey(key)}
+                        className={`relative rounded-lg border px-2 py-2 text-left transition min-h-[64px] ${
+                          isSelected
+                            ? "border-brand-primary bg-brand-primary-light/20"
+                            : "border-zinc-100 hover:border-zinc-200 hover:bg-zinc-50"
+                        } ${!inMonth ? "opacity-45" : ""}`}
+                      >
+                        <span className={`text-[11px] font-semibold ${isToday ? "text-brand-primary" : "text-brand-text"}`}>
+                          {day.getDate()}
+                        </span>
+                        {count > 0 && (
+                          <span className="absolute bottom-1 right-1 rounded-full bg-brand-m365 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                            {count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="rounded-lg border border-zinc-100 bg-zinc-50/60 p-3 space-y-2">
+                  <p className="text-xs font-bold text-brand-text font-display">
+                    {new Date(selectedDateKey).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                  </p>
+                  {selectedDateEvents.length === 0 ? (
+                    <p className="text-xs text-brand-muted">No events for this date.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedDateEvents.map((evt) => {
+                        const startDate = new Date(evt.start);
+                        const formatTime = evt.isAllDay
+                          ? "All-day"
+                          : startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                        const isDeadline =
+                          evt.title.toLowerCase().includes("deadline") ||
+                          evt.title.toLowerCase().includes("renewal");
+                        const borderClass = isDeadline ? "border-brand-warning" : "border-brand-primary";
+
+                        return (
+                          <div
+                            key={evt.id}
+                            className={`py-1 pl-3 border-l-4 ${borderClass} flex items-start justify-between gap-3 transition-all duration-300`}
+                          >
+                            <div className="space-y-1">
+                              <p className="text-sm font-semibold text-brand-text font-display">{evt.title}</p>
+                              <p className="text-xs text-brand-muted flex items-center gap-1.5">
+                                <Clock className="w-3 h-3 inline" /> {formatTime}
+                              </p>
+                            </div>
+                            <span className="rounded bg-teal-50 px-2 py-0.5 text-[9px] font-bold text-brand-primary shrink-0 uppercase tracking-wider">
+                              {evt.source}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  )}
+                </div>
               </div>
             ) : (
-              <div className="py-8 text-center space-y-4">
+              <div className="py-8 text-center space-y-2">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-m365/10 text-brand-m365 mx-auto">
                   <Calendar className="w-6 h-6" />
                 </div>
-                <div className="space-y-1 max-w-sm mx-auto">
-                  <p className="text-sm font-bold text-brand-text font-display">Connect your Microsoft 365 Calendar</p>
-                  <p className="text-xs text-brand-muted">
-                    Sync your academic classes, exam schedules, and scholarship deadlines alongside your support desk alerts.
-                  </p>
-                </div>
-                <button
-                  onClick={handleConnectM365}
-                  className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-brand-m365 px-4 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition"
-                >
-                  Connect Microsoft 365
-                </button>
+                <p className="text-sm font-bold text-brand-text font-display">No upcoming events</p>
+                <p className="text-xs text-brand-muted">No Outlook Calendar events found in the next 14 days.</p>
               </div>
             )}
           </section>
@@ -368,7 +512,7 @@ export default function StudentDashboard() {
           {/* Active Support Tickets */}
           <section className="lg:col-span-5 rounded-xl bg-white p-6 border border-zinc-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
-              <h2 className="text-lg font-bold font-display text-brand-text">Aktibong Tickets</h2>
+              <h2 className="text-lg font-bold font-display text-brand-text">Active Tickets</h2>
               <span className="text-xs font-semibold bg-brand-primary-light text-brand-primary rounded-full px-2.5 py-0.5">
                 {tickets.length} Total
               </span>
@@ -385,7 +529,7 @@ export default function StudentDashboard() {
                       <p className="text-xs text-brand-muted font-mono">{ticket.ticket_id}</p>
                       <p className="text-sm font-bold font-display text-brand-text">Support Chat Session</p>
                       <p className="text-[10px] text-brand-muted">
-                        Binuksan noong {new Date(ticket.created_at).toLocaleDateString()}
+                        Opened on {new Date(ticket.created_at).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
@@ -404,7 +548,7 @@ export default function StudentDashboard() {
                         href={`/student/chat?ticketId=${ticket.id}`}
                         className="text-xs font-semibold text-brand-primary hover:underline font-display"
                       >
-                        Buksan ➔
+                        Open ➔
                       </Link>
                     </div>
                   </div>
@@ -412,7 +556,7 @@ export default function StudentDashboard() {
               </div>
             ) : (
               <div className="text-center py-10 space-y-3">
-                <p className="text-sm text-brand-muted">Wala kang aktibong ticket sa ngayon.</p>
+                <p className="text-sm text-brand-muted">You have no active tickets at this time.</p>
                 <button
                   onClick={handleStartNewChat}
                   disabled={creatingTicket}

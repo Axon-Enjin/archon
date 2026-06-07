@@ -1,11 +1,226 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, verifyStudentAccess, unauthorizedResponse, forbiddenResponse } from "@/lib/auth-helper";
 import { cosmosDbService } from "@/lib/db/cosmos";
+import { isM365Enabled } from "@/lib/feature-flags";
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  isAllDay: boolean;
+  source: "M365";
+}
+
+interface GraphCalendarViewResponse {
+  value?: Array<{
+    id?: string;
+    subject?: string;
+    isCancelled?: boolean;
+    isAllDay?: boolean;
+    start?: {
+      dateTime?: string;
+      timeZone?: string;
+    };
+    end?: {
+      dateTime?: string;
+      timeZone?: string;
+    };
+  }>;
+}
+
+type GraphErrorCode =
+  | "GRAPH_THROTTLED"
+  | "GRAPH_CONSENT_REQUIRED"
+  | "GRAPH_UNAUTHORIZED"
+  | "GRAPH_UPSTREAM_ERROR";
+
+class GraphIntegrationError extends Error {
+  code: GraphErrorCode;
+  status: number;
+
+  constructor(code: GraphErrorCode, status: number, message: string) {
+    super(message);
+    this.code = code;
+    this.status = status;
+  }
+}
+
+function toIsoOrNow(value?: string): string {
+  if (!value) return new Date().toISOString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+}
+
+function normalizeGraphEvents(items: GraphCalendarViewResponse["value"]): CalendarEvent[] {
+  const raw = items || [];
+  return raw
+    .filter((evt) => !evt.isCancelled)
+    .map((evt) => ({
+      id: evt.id || crypto.randomUUID(),
+      title: evt.subject || "Untitled Event",
+      start: toIsoOrNow(evt.start?.dateTime),
+      end: toIsoOrNow(evt.end?.dateTime),
+      isAllDay: Boolean(evt.isAllDay),
+      source: "M365" as const,
+    }))
+    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+}
+
+function logGraphEvent(eventName: string, details: Record<string, unknown>) {
+  console.warn(`[${eventName}]`, JSON.stringify(details));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRetryAfterMs(value: string | null): number | null {
+  if (!value) return null;
+  const asSeconds = Number(value);
+  if (!Number.isNaN(asSeconds)) return asSeconds * 1000;
+
+  const retryDate = new Date(value);
+  if (Number.isNaN(retryDate.getTime())) return null;
+  return Math.max(0, retryDate.getTime() - Date.now());
+}
+
+async function graphGetWithRetry(url: string, accessToken: string): Promise<Response> {
+  const maxRetries = 3;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Prefer: 'outlook.timezone="UTC"',
+      },
+      cache: "no-store",
+    });
+
+    if (response.status === 429) {
+      const retryAfterMs = parseRetryAfterMs(response.headers.get("retry-after"));
+      const backoffMs = retryAfterMs ?? Math.min(1000 * 2 ** attempt, 8000);
+
+      logGraphEvent("graph_api_throttle", {
+        status: response.status,
+        attempt,
+        backoff_ms: backoffMs,
+        url,
+      });
+
+      if (attempt === maxRetries) {
+        return response;
+      }
+
+      await sleep(backoffMs);
+      continue;
+    }
+
+    // Retry transient Graph upstream failures.
+    if (response.status >= 500 && response.status <= 599 && attempt < maxRetries) {
+      const backoffMs = Math.min(1000 * 2 ** attempt, 8000);
+      await sleep(backoffMs);
+      continue;
+    }
+
+    return response;
+  }
+
+  throw new GraphIntegrationError("GRAPH_UPSTREAM_ERROR", 502, "Graph request exhausted retry attempts.");
+}
+
+async function fetchOutlookCalendarEvents(accessToken: string): Promise<CalendarEvent[]> {
+  // Broaden window to reduce false "no events" cases.
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - 7);
+  const startDateTime = startDate.toISOString();
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() + 45);
+  const endDateTime = endDate.toISOString();
+
+  const calendarViewUrl =
+    `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${encodeURIComponent(startDateTime)}&endDateTime=${encodeURIComponent(endDateTime)}&$orderby=start/dateTime&$top=20`;
+
+  const response = await graphGetWithRetry(
+    calendarViewUrl,
+    accessToken
+  );
+
+  if (!response.ok) {
+    const body = await response.text();
+    if (response.status === 401) {
+      throw new GraphIntegrationError("GRAPH_UNAUTHORIZED", 401, "Graph token expired or invalid.");
+    }
+    if (response.status === 403) {
+      throw new GraphIntegrationError("GRAPH_CONSENT_REQUIRED", 403, "Calendars.Read consent not granted.");
+    }
+    if (response.status === 429) {
+      throw new GraphIntegrationError("GRAPH_THROTTLED", 429, "Graph API throttled.");
+    }
+    throw new GraphIntegrationError(
+      "GRAPH_UPSTREAM_ERROR",
+      response.status,
+      `Graph calendarView failed (${response.status}): ${body}`
+    );
+  }
+
+  const payload = (await response.json()) as GraphCalendarViewResponse;
+  const normalizedFromCalendarView = normalizeGraphEvents(payload.value);
+  if (normalizedFromCalendarView.length > 0) {
+    return normalizedFromCalendarView;
+  }
+
+  // Fallback: query events endpoint (some tenants/users expose better results here).
+  const eventsUrl =
+    "https://graph.microsoft.com/v1.0/me/events?$select=id,subject,start,end,isAllDay,isCancelled&$orderby=start/dateTime&$top=50";
+  const eventsResponse = await graphGetWithRetry(eventsUrl, accessToken);
+
+  if (!eventsResponse.ok) {
+    if (eventsResponse.status === 401) {
+      throw new GraphIntegrationError("GRAPH_UNAUTHORIZED", 401, "Graph token expired or invalid.");
+    }
+    if (eventsResponse.status === 403) {
+      throw new GraphIntegrationError("GRAPH_CONSENT_REQUIRED", 403, "Calendars.Read consent not granted.");
+    }
+    if (eventsResponse.status === 429) {
+      throw new GraphIntegrationError("GRAPH_THROTTLED", 429, "Graph API throttled.");
+    }
+    const body = await response.text();
+    throw new GraphIntegrationError(
+      "GRAPH_UPSTREAM_ERROR",
+      eventsResponse.status,
+      `Graph events failed (${eventsResponse.status}): ${body}`
+    );
+  }
+
+  const eventsPayload = (await eventsResponse.json()) as GraphCalendarViewResponse;
+  const normalizedEvents = normalizeGraphEvents(eventsPayload.value);
+
+  // Keep only events between (now - 7d) and (now + 45d) to match dashboard intent.
+  const minTs = new Date(startDateTime).getTime();
+  const maxTs = new Date(endDateTime).getTime();
+  return normalizedEvents.filter((evt) => {
+    const ts = new Date(evt.start).getTime();
+    return ts >= minTs && ts <= maxTs;
+  });
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!isM365Enabled()) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "M365 calendar integration is currently disabled by configuration.",
+        data: [],
+      },
+      { status: 503 }
+    );
+  }
+
   const authUser = await getAuthenticatedUser();
   if (!authUser) return unauthorizedResponse();
 
@@ -15,57 +230,50 @@ export async function GET(
   }
 
   const cacheKey = `calendar:${studentOid}`;
-  let calendarEvents = await cosmosDbService.getCacheData(cacheKey, authUser.institution_id);
-
-  if (!calendarEvents) {
-    const today = new Date();
-    const getRelativeDate = (offsetDays: number, hour: number) => {
-      const date = new Date(today);
-      date.setDate(today.getDate() + offsetDays);
-      date.setHours(hour, 0, 0, 0);
-      return date.toISOString();
-    };
-
-    calendarEvents = [
-      {
-        id: "evt-midterm-it312",
-        title: "Midterm Exam: IT 312 (Systems Integration)",
-        start: getRelativeDate(2, 9),
-        end: getRelativeDate(2, 11),
-        isAllDay: false,
-        source: "M365",
-      },
-      {
-        id: "evt-appeal-deadline",
-        title: "SAP Academic Appeal Submission Deadline",
-        start: getRelativeDate(4, 17),
-        end: getRelativeDate(4, 18),
-        isAllDay: false,
-        source: "M365",
-      },
-      {
-        id: "evt-unifast-renewal",
-        title: "CHED UniFAST Scholarship Renewal Portal Opens",
-        start: getRelativeDate(7, 8),
-        end: getRelativeDate(7, 17),
-        isAllDay: false,
-        source: "M365",
-      },
-      {
-        id: "evt-enrollment-hold-check",
-        title: "Registrar Enrollment Hold Review Date",
-        start: getRelativeDate(10, 10),
-        end: getRelativeDate(10, 12),
-        isAllDay: false,
-        source: "M365",
-      },
-    ];
-
-    await cosmosDbService.setCacheData(cacheKey, calendarEvents, authUser.institution_id);
+  const forceRefresh = request.nextUrl.searchParams.get("refresh") === "1";
+  if (!forceRefresh) {
+    const cachedEvents = await cosmosDbService.getCacheData<CalendarEvent[]>(cacheKey, authUser.institution_id);
+    if (cachedEvents) {
+      return NextResponse.json({
+        success: true,
+        data: cachedEvents,
+      });
+    }
   }
 
-  return NextResponse.json({
-    success: true,
-    data: calendarEvents,
-  });
+  if (!authUser.accessToken) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Missing Microsoft Graph access token. Re-authenticate and grant Calendars.Read.",
+        errorCode: "GRAPH_UNAUTHORIZED",
+        data: [],
+      },
+      { status: 401 }
+    );
+  }
+
+  try {
+    const calendarEvents = await fetchOutlookCalendarEvents(authUser.accessToken);
+    await cosmosDbService.setCacheData(cacheKey, calendarEvents, authUser.institution_id);
+
+    return NextResponse.json({
+      success: true,
+      data: calendarEvents,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch Outlook calendar events.";
+    const code = error instanceof GraphIntegrationError ? error.code : "GRAPH_UPSTREAM_ERROR";
+    const status = error instanceof GraphIntegrationError ? error.status : 502;
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: message,
+        errorCode: code,
+        data: [],
+      },
+      { status }
+    );
+  }
 }

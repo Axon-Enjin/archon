@@ -4,14 +4,22 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DollarSign, Bot, Hourglass, Star, Target, Bell } from "lucide-react";
+import { DollarSign, Bot, Hourglass, Star, Target, Bell, Inbox, BarChart3, LogOut } from "lucide-react";
+
+interface SavingsPoint {
+  x: number;
+  y: number;
+  val: string;
+  def: string;
+  month: string;
+}
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
   // Chart hover interactivity states
-  const [hoveredPoint, setHoveredPoint] = useState<any>(null);
+  const [hoveredPoint, setHoveredPoint] = useState<SavingsPoint | null>(null);
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
 
   useEffect(() => {
@@ -26,14 +34,14 @@ export default function AdminDashboard() {
         return;
       }
     }
-  }, [session, status]);
+  }, [session, status, router]);
 
   if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-brand-surface">
         <div className="text-center">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-sm text-brand-muted">Kargang muli ang Admin Analytics...</p>
+          <p className="mt-4 text-sm text-brand-muted">Loading Admin Analytics...</p>
         </div>
       </div>
     );
@@ -114,13 +122,19 @@ export default function AdminDashboard() {
               href="/agent"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 font-display"
             >
-              📥 Active Queue
+              <Inbox className="w-4 h-4" /> Active Queue
             </Link>
             <Link
               href="/admin"
               className="flex items-center gap-3 rounded-lg bg-brand-primary-light/50 px-3 py-2 text-sm font-semibold text-brand-primary font-display"
             >
-              📊 Analytics
+              <BarChart3 className="w-4 h-4" /> Analytics
+            </Link>
+            <Link
+              href="/admin/notifications"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 font-display"
+            >
+              🔔 Notification Ops
             </Link>
           </nav>
         </div>
@@ -130,7 +144,7 @@ export default function AdminDashboard() {
             onClick={() => signOut({ callbackUrl: "/" })}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-error hover:bg-red-50"
           >
-            🚪 Sign Out
+            <LogOut className="w-4 h-4" /> Sign Out
           </button>
         </div>
       </aside>
@@ -215,12 +229,12 @@ export default function AdminDashboard() {
 
                 {/* Data Points / Interactivity circles */}
                 {[
-                  { x: 50, y: 165, val: "₱15,000", def: "10.0%", month: "Ene" },
-                  { x: 130, y: 139, val: "₱38,000", def: "25.0%", month: "Peb" },
+                  { x: 50, y: 165, val: "₱15,000", def: "10.0%", month: "Jan" },
+                  { x: 130, y: 139, val: "₱38,000", def: "25.0%", month: "Feb" },
                   { x: 210, y: 111, val: "₱65,000", def: "45.0%", month: "Mar" },
-                  { x: 290, y: 79, val: "₱92,000", def: "60.0%", month: "Abr" },
+                  { x: 290, y: 79, val: "₱92,000", def: "60.0%", month: "Apr" },
                   { x: 370, y: 61, val: "₱110,000", def: "70.0%", month: "May" },
-                  { x: 450, y: 38, val: "₱124,500", def: "73.5%", month: "Hun" },
+                  { x: 450, y: 38, val: "₱124,500", def: "73.5%", month: "Jun" },
                 ].map((pt, idx) => (
                   <g key={idx}>
                     {/* Tick label */}
@@ -283,12 +297,12 @@ export default function AdminDashboard() {
 
                 {/* Bars */}
                 {[
-                  { label: "Buwan 1", csat: 3.2, y: 98, h: 82, color: "#F59E0B" },
-                  { label: "Buwan 2", csat: 3.5, y: 90, h: 90, color: "#F59E0B" },
-                  { label: "Buwan 3", csat: 3.9, y: 80, h: 100, color: "#0D9488" },
-                  { label: "Buwan 4", csat: 4.2, y: 72, h: 108, color: "#0D9488" },
-                  { label: "Buwan 5", csat: 4.6, y: 62, h: 118, color: "#10B981" },
-                  { label: "Buwan 6", csat: 4.8, y: 57, h: 123, color: "#10B981" },
+                  { label: "Month 1", csat: 3.2, y: 98, h: 82, color: "#F59E0B" },
+                  { label: "Month 2", csat: 3.5, y: 90, h: 90, color: "#F59E0B" },
+                  { label: "Month 3", csat: 3.9, y: 80, h: 100, color: "#0D9488" },
+                  { label: "Month 4", csat: 4.2, y: 72, h: 108, color: "#0D9488" },
+                  { label: "Month 5", csat: 4.6, y: 62, h: 118, color: "#10B981" },
+                  { label: "Month 6", csat: 4.8, y: 57, h: 123, color: "#10B981" },
                 ].map((bar, idx) => {
                   const barWidth = 32;
                   const x = 70 + idx * 65;
