@@ -1,0 +1,23 @@
+{
+  "short_name": "Archon",
+  "name": "Archon Student Desk",
+  "description": "Agentic AI-Powered Service Desk for Higher Education",
+  "start_url": "/student",
+  "background_color": "#FAFAF9",
+  "theme_color": "#0D9488",
+  "display": "standalone",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

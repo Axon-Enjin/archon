@@ -5,7 +5,7 @@
 **Version:** 0.2
 **Owner:** Regalia Council
 **Status:** Draft
-**Last reconciled:** N/A — not yet reconciled with code
+**Last reconciled:** 2026-06-08 — reconciled landing page layout, animations, and flows
 **BRD:** [brd-archon.md](brd-archon.md)
 
 ---

@@ -367,7 +367,7 @@ function StudentChatContent() {
             e.preventDefault();
             void handleSendMessage();
           }}
-          className="max-w-3xl mx-auto flex items-center bg-brand-surface rounded-full border border-zinc-200 px-4 py-1 shadow-sm focus-within:ring-2 focus-within:ring-brand-primary/20"
+          className="max-w-3xl mx-auto flex items-center bg-white rounded-full border border-zinc-100 px-6 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-brand-primary/20"
         >
           <input
             type="text"

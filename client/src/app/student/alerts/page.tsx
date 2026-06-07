@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { LayoutDashboard, MessageCircle, FileText, LogOut, Bell } from "lucide-react";
+import { LayoutDashboard, MessageCircle, FileText, LogOut, Bell, Mail, MessageSquare } from "lucide-react";
 
 interface NotificationItem {
   id: string;
@@ -87,8 +87,8 @@ export default function AlertCenterPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-brand-surface font-sans">
-      <aside className="w-64 border-r border-zinc-200 bg-white p-6 hidden md:flex flex-col justify-between">
+    <div className="flex h-screen overflow-hidden bg-brand-surface font-sans">
+      <aside className="w-64 h-full border-r border-zinc-200 bg-white p-6 hidden md:flex flex-col justify-between shrink-0">
         <div className="space-y-8">
           <div className="flex items-center gap-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary text-white font-extrabold text-lg font-display">
@@ -150,7 +150,21 @@ export default function AlertCenterPage() {
                         {notif.status}
                       </span>
                       <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-blue-50 text-blue-700 uppercase">{notif.type}</span>
-                      <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-zinc-100 text-zinc-600 uppercase">{notif.channel}</span>
+                      {notif.channel === "teams" && (
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-[#6264A7] text-white flex items-center gap-1">
+                          <MessageSquare className="w-3 h-3" /> Teams
+                        </span>
+                      )}
+                      {notif.channel === "outlook" && (
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-[#0078D4] text-white flex items-center gap-1">
+                          <Mail className="w-3 h-3" /> Outlook
+                        </span>
+                      )}
+                      {notif.channel === "in_app" && (
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-brand-primary text-white flex items-center gap-1">
+                          <Bell className="w-3 h-3" /> In-App
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm font-semibold text-brand-text">{notif.title}</p>
                     <p className="text-xs text-brand-muted">{notif.message}</p>

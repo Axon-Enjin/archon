@@ -15,9 +15,46 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   weight: ["400", "500"],
 });
 
+import type { Viewport } from "next";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#0D9488",
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://archon.axonenjin.com"),
   title: "Archon Student Desk",
-  description: "Agentic AI-Powered Service Desk",
+  description: "Archon is an autonomous, agentic AI service desk resolving student inquiries across university departments (Registrar, Bursar, Financial Aid) instantly.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Archon",
+  },
+  openGraph: {
+    type: "website",
+    siteName: "Archon",
+    title: "Archon Student Desk — Agentic AI Service Desk",
+    description: "Resolve registrar holds, check tuition balances, and sync academic deadlines instantly.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Archon Student Support Desk Banner",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Archon Student Desk",
+    description: "Autonomous, agentic AI service desk for higher education.",
+    images: ["/og-image.png"],
+  },
 };
 
 export default function RootLayout({

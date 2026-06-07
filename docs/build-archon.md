@@ -5,7 +5,7 @@
 **Version:** 0.2
 **Owner:** Regalia Council (Alaric)
 **Status:** Draft
-**Last reconciled:** N/A — not yet reconciled with code
+**Last reconciled:** 2026-06-08 — reconciled dependencies and Next.js fullstack routes
 **PRD:** [prd-archon.md](prd-archon.md)
 **SDD:** [sdd-archon.md](sdd-archon.md)
 **SAD:** [sad-archon.md](sad-archon.md)
