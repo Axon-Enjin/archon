@@ -211,11 +211,11 @@ await graphClient.api(`/users/${agentUserId}/teamwork/sendActivityNotification`)
 - Validate all external input at the API Route boundary using `Zod` before passing to AI Foundry or adapters.
 - Scrub PII (names, specific IDs) from chat transcripts before writing to Cosmos DB `messages` collection.
 - Require explicit boolean confirmation (Human-in-the-Loop) before executing any write operations (hold lifts, Graph API `Mail.Send`, Teams notifications on behalf of users).
-- Retrieve all secrets from Azure App Service Environment Variables. Do not hardcode them.
+- Retrieve all secrets from Vercel Environment Variables. Do not hardcode them.
 - Validate Entra ID JWT `iss`, `aud`, and `tid` claims on every backend request.
 
 **Never:**
-- Commit API keys, connection strings, or client secrets. Use `.env` files locally and Azure App Service App Settings in production.
+- Commit API keys, connection strings, or client secrets. Use `.env.local` files locally and Vercel Environment Variables in production.
 - Modify the AI system prompt dynamically based on user input (Prompt Injection risk).
 - Call Microsoft Graph API directly from the Next.js client components — all Graph calls are proxied through the Next.js API Routes for RBAC enforcement and audit logging.
 - Store raw Graph API calendar responses permanently in Cosmos DB — only the normalized `CalendarEvent[]` schema with a 15-minute TTL.

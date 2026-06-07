@@ -15,7 +15,7 @@
 
 Archon operations revolve around **Azure Monitor + Application Insights**, integrated with **Azure AI Foundry Tracing**. This provides a unified observability pane across all system layers — no separate Datadog or Grafana instance required.
 
-### 1.1 Next.js Application Health (Node.js on Azure App Service)
+### 1.1 Next.js Application Health (Vercel Serverless)
 - **Adapter Latency:** Time taken to fetch data from legacy university systems (Target: P95 < 2s). Tracked via Application Insights custom metrics.
 - **Adapter Error Rates:** Frequency of `ARCHON_SYSTEM_UNAVAILABLE` errors per adapter.
 - **Cosmos DB Latency:** P95 read/write latency on `conversations`, `messages`, and `handoffs` collections (Target: P95 < 50ms for point reads).
@@ -42,11 +42,11 @@ Archon operations revolve around **Azure Monitor + Application Insights**, integ
 ### Severity 1 (Critical) — Azure Monitor Action Group: Immediate Page
 *Definition: Core system down; students cannot access service or human agents.*
 - **Triggers:**
-  - Next.js App 502/503 > 5% for 2 mins (App Service health check)
+  - Next.js App 502/503 > 5% for 2 mins (Vercel Web Analytics / Runtime Logs)
   - Azure AI Foundry quota exhausted (token limit reached)
   - Cosmos DB connection failures (> 1% error rate on reads)
 - **Immediate Action:**
-  1. Scale App Service horizontally (add instances via Azure portal or auto-scale rule).
+  1. Vercel auto-scales; check Vercel limits or contact Vercel support if concurrency limits are hit.
   2. Check Azure Status page (status.azure.com) for regional incidents.
   3. If AI Foundry is down: flip `ARCHON_AI_ENABLED = false` feature flag in Cosmos DB config → Next.js backend auto-routes to human agent queue.
   4. If Cosmos DB is down: flip `ARCHON_MAINTENANCE_MODE = true` → display maintenance page with direct contact info.
@@ -79,7 +79,7 @@ Archon operations revolve around **Azure Monitor + Application Insights**, integ
 | **Adapter Audit** | Monthly | Backend Engineer | Review Application Insights adapter error logs. Catch silent API deprecations on the university's side. |
 | **Token Cost Analysis** | Monthly | FinOps | Analyze GPT-4o vs. Phi-4 token spend per intent in Application Insights. Look for optimization opportunities (expand Phi-4 routing). |
 | **Graph API Scope Review** | Quarterly | Compliance Officer | Verify that only the documented Graph API scopes (RFC-004 §4.2) are in use. Confirm no scope creep in app registration. |
-| **Entra ID Token Rotation** | As per institutional policy | Platform Engineer | Rotate Archon client secret in Entra ID app registration. Update Azure App Service Environment Variables. |
+| **Entra ID Token Rotation** | As per institutional policy | Platform Engineer | Rotate Archon client secret in Entra ID app registration. Update Vercel Environment Variables. |
 
 ---
 
@@ -89,7 +89,7 @@ Archon operations revolve around **Azure Monitor + Application Insights**, integ
 - **RPO (Recovery Point Objective):** 1 Hour
 - **Procedure:**
   1. Failover Cosmos DB to secondary region (Azure Cosmos DB multi-region writes enabled — SE Asia primary, East Asia secondary).
-  2. Redeploy Next.js Application via GitHub Actions tagged release to secondary App Service slot.
+  2. Rollback the Next.js Application using Vercel Instant Rollback to a previous known good deployment.
   4. Confirm Power Automate Cloud Flows are correctly imported or exist in the target region.
   5. Update DNS (Azure Traffic Manager) to point to secondary region.
   6. AI Foundry and Microsoft Graph are Microsoft-managed SaaS — rely on Microsoft's internal redundancy. Monitor at status.azure.com and admin.microsoft.com.

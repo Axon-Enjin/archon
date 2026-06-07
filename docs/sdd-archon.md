@@ -177,7 +177,7 @@ const tools = [
 - **Graph API Authorization:** Delegated permissions only (acting on behalf of the authenticated user). No application-level Graph permissions that could bypass per-user consent. Admin consent is required at the tenant level for `Calendars.Read`, `Mail.Send`, and `TeamsActivity.Send`.
 - **Data in Transit:** TLS 1.3 mandated for all connections (HTTPS + WSS).
 - **Data at Rest:** Azure Cosmos DB encryption at rest (AES-256, Microsoft-managed keys).
-- **Secrets Management:** All API keys, adapter credentials, and Graph API secrets are stored as Azure App Service Environment Variables (`.env` locally). The Next.js backend accesses them via `process.env`.
+- **Secrets Management:** All API keys, adapter credentials, and Graph API secrets are stored as Vercel Environment Variables (`.env.local` locally). The Next.js backend accesses them via `process.env`.
 - **PII Redaction:** The Next.js API Routes scrub PII (names, specific IDs) using regex/NLP *before* sending conversation transcripts to Azure AI Foundry for reasoning, unless the specific AI operation explicitly requires that data.
 
 ---
@@ -235,12 +235,12 @@ Archon Notification Scheduler (daily recurrence via Power Automate)
 
 | Component | Azure Service | Notes |
 |---|---|---|
-| Next.js Application (Full-Stack) | Azure App Service (Linux Node.js) | SSR rendering, API Routes, NextAuth endpoint hosting |
+| Next.js Application (Full-Stack) | Vercel (Serverless Functions + Edge) | SSR rendering, API Routes, NextAuth endpoint hosting |
 | Notification Scheduler | Power Automate (Scheduled Cloud Flow) | Cron trigger for daily deadline scans & M365 notifications |
 | AI Platform | Azure AI Foundry | GPT-4o + Phi-4 deployments; AI Foundry Tracing |
 | Database | Azure Cosmos DB for NoSQL (Serverless) | Scales to zero; native vector search |
 | Session Cache | Azure Cache for Redis (C1 Standard) | WebSocket state; JWT blocklist |
-| Secrets | Azure App Service App Settings | Environment variables mapped to `process.env` |
+| Secrets | Vercel Environment Variables | Environment variables mapped to `process.env` |
 | Identity | Microsoft Entra ID | University M365 tenant; Archon app registration |
 | M365 Integration | Microsoft Graph API | Calendar, Teams, Outlook |
 | CI/CD | GitHub Actions | Tagged releases; Terraform for IaC |
@@ -255,7 +255,7 @@ Archon Notification Scheduler (daily recurrence via Power Automate)
 |-----|----------------|--------------|
 | **Latency (Chat)** | Time-to-first-token < 3s (3G network). Full resolution < 15s. | Load testing (k6) simulating 3G latency. |
 | **Availability** | 99.9% uptime (approx 43m downtime/month). | Azure Monitor synthetic transactions. |
-| **Scalability** | Support 500 concurrent chat sessions during peak enrollment weeks. | Load testing (k6). Auto-scaling on App Service. |
+| **Scalability** | Support 500 concurrent chat sessions during peak enrollment weeks. | Load testing (k6). Auto-scaling natively via Vercel Serverless Functions. |
 | **Data Freshness** | University API data cached for max 5 minutes (Cosmos DB TTL). Real-time fetch for transaction checks. | Next.js server logging. |
 | **Graph API Resilience** | Teams/Outlook notifications retried 3× with exponential backoff on throttling. Calendar falls back gracefully if Graph unavailable. | Integration tests + Application Insights alerts. |
 | **Cost (AI)** | Monthly AI compute ≤ $150 for a 12,000-student university. | Azure Cost Management budget alerts. |

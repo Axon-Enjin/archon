@@ -120,7 +120,7 @@ Each institution has a configuration document in Cosmos DB:
 }
 ```
 
-All sensitive credentials (API keys, connection strings) are injected into the Next.js container via Azure App Service Environment Variables using the `env_prefix` (e.g., `UPM_API_KEY`). The Next.js API Routes pass these to the Adapter constructor at startup.
+All sensitive credentials (API keys, connection strings) are injected into the Next.js container via Vercel Environment Variables using the `env_prefix` (e.g., `UPM_API_KEY`). The Next.js API Routes pass these to the Adapter constructor at startup.
 
 ## 6. Security & Rollback
 

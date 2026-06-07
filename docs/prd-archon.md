@@ -326,7 +326,7 @@ The AI operates as an autonomous service desk agent capable of: (1) understandin
 
 **Rollback plan:**
 - *Trigger criteria:* P0 bug affecting >5% of users, any student data breach, or AI generating harmful/incorrect financial guidance in >1% of interactions.
-- *Revert mechanism:* Feature flag `ARCHON_AI_ENABLED` disables all AI processing; app falls back to direct human agent queue. Feature flag `ARCHON_M365_ENABLED` disables all Graph API calls independently. Database migrations are backward-compatible for one release. Revert to previous tagged release via Azure App Service deployment slots (blue-green).
+- *Revert mechanism:* Feature flag `ARCHON_AI_ENABLED` disables all AI processing; app falls back to direct human agent queue. Feature flag `ARCHON_M365_ENABLED` disables all Graph API calls independently. Database migrations are backward-compatible for one release. Revert to previous tagged release via Vercel Instant Rollbacks.
 
 **RFC cross-reference:** Phases with non-obvious technical work:
 - M3 agentic orchestration → see `rfc-archon-agentic-orchestration.md`

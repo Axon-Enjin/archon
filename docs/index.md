@@ -43,6 +43,7 @@ Every material change to a Locked document is recorded as a Change Record. Newes
 | CR-002 | 2026-06-07 | Architecture update: Azure Key Vault removed (switched to App Service Env Vars). Azure Functions Notification Scheduler replaced with Power Automate. | PRD | ALL | All docs v0.2 |
 | CR-003 | 2026-06-07 | Frontend framework migration: Replaced Flutter PWA with Next.js React web application deployed on Azure App Service. Replaced MSAL.js with NextAuth.js (Auth.js) for Entra ID authentication. Replaced Flutter Driver with Playwright. | PRD | ALL | All docs v0.2 |
 | CR-004 | 2026-06-07 | Monolith Migration: Collapsed standalone Node.js API Gateway (Express) into Next.js API Routes, transitioning to a single Next.js Full-Stack App Service deployment. | PRD | ALL | All docs v0.2 |
+| CR-005 | 2026-06-07 | Cloud Hosting Migration: Migrated Next.js hosting from Azure App Service to Vercel (Serverless Functions + Edge). Cosmos DB, Entra ID, and AI Foundry remain in Azure. | PRD | ALL | All docs v0.2 |
 
 ---
 
