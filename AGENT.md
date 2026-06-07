@@ -2,6 +2,9 @@
 
 Welcome, AI Agent. This document is your operating manual and coordination playbook for the Archon repository. Archon is an autonomous, agentic AI service desk for higher education in the Philippines. It is built under a strict design system, native Azure AI Foundry architecture, and Microsoft 365 integration rules.
 
+> [!IMPORTANT]
+> The orchestrator's system prompt, DSD compliance constraints, and slash commands cheatsheet are documented in the root [GEMINI.md](GEMINI.md). Check it regularly to keep your coding execution aligned.
+
 Before executing any commands or editing files, read this document to understand the documentation layout, the relationship between files, and the protocols for maintaining consistency.
 
 ---
