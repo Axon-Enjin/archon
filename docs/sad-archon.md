@@ -5,7 +5,7 @@
 **Version:** 0.2
 **Owner:** Regalia Council (Alaric)
 **Status:** Draft
-**Last reconciled:** N/A — not yet reconciled with code
+**Last reconciled:** 2026-06-08 — reconciled backend orchestration tool interfaces
 **PRD:** [prd-archon.md](prd-archon.md)
 **SDD:** [sdd-archon.md](sdd-archon.md)
 **QAD:** [qad-archon.md](qad-archon.md)

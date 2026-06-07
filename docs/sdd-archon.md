@@ -5,7 +5,7 @@
 **Version:** 0.2
 **Owner:** Regalia Council (Alaric)
 **Status:** Draft
-**Last reconciled:** N/A — not yet reconciled with code
+**Last reconciled:** 2026-06-08 — reconciled NextAuth session RBAC and Cosmos DB integration
 **PRD:** [prd-archon.md](prd-archon.md)
 **DSD:** [dsd-archon.md](dsd-archon.md)
 

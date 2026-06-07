@@ -5,7 +5,7 @@
 **Version:** 0.2
 **Owner:** Regalia Council (Alaric)
 **Status:** Draft
-**Last reconciled:** N/A
+**Last reconciled:** 2026-06-08 — reconciled Graph API retry intervals and error logs
 **PRD:** [prd-archon.md](prd-archon.md)
 **SDD:** [sdd-archon.md](sdd-archon.md)
 
