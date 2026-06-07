@@ -6,12 +6,20 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { DollarSign, Bot, Hourglass, Star, Target, Bell } from "lucide-react";
 
+interface SavingsPoint {
+  x: number;
+  y: number;
+  val: string;
+  def: string;
+  month: string;
+}
+
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
   // Chart hover interactivity states
-  const [hoveredPoint, setHoveredPoint] = useState<any>(null);
+  const [hoveredPoint, setHoveredPoint] = useState<SavingsPoint | null>(null);
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
 
   useEffect(() => {
@@ -26,7 +34,7 @@ export default function AdminDashboard() {
         return;
       }
     }
-  }, [session, status]);
+  }, [session, status, router]);
 
   if (status === "loading") {
     return (
@@ -121,6 +129,12 @@ export default function AdminDashboard() {
               className="flex items-center gap-3 rounded-lg bg-brand-primary-light/50 px-3 py-2 text-sm font-semibold text-brand-primary font-display"
             >
               📊 Analytics
+            </Link>
+            <Link
+              href="/admin/notifications"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 font-display"
+            >
+              🔔 Notification Ops
             </Link>
           </nav>
         </div>

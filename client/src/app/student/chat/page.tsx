@@ -4,13 +4,18 @@ import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef, Suspense } from "react";
 import Link from "next/link";
-import { Search, Zap, AlertTriangle, ArrowLeft, Banknote, Wrench } from "lucide-react";
 
 interface Message {
   id: string;
   role: "user" | "assistant" | "system";
   content_scrubbed: string;
   ts: string;
+}
+
+interface TicketItem {
+  id: string;
+  ticket_id: string;
+  status: "Open" | "Pending Agent" | "Resolved";
 }
 
 function StudentChatContent() {
@@ -23,9 +28,8 @@ function StudentChatContent() {
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [ticketDetails, setTicketDetails] = useState<any>(null);
+  const [ticketDetails, setTicketDetails] = useState<TicketItem | null>(null);
 
-  // Streaming & Tool Call Simulation States
   const [streamedMessages, setStreamedMessages] = useState<Record<string, string>>({});
   const [activeStreamingId, setActiveStreamingId] = useState<string | null>(null);
   const [currentExecutingTool, setCurrentExecutingTool] = useState<string | null>(null);
@@ -33,29 +37,32 @@ function StudentChatContent() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (status === "unauthenticated" || !ticketId) {
-      router.push("/student");
-      return;
-    }
-    if (session?.user) {
-      fetchTicketAndMessages();
-    }
-  }, [session, status, ticketId]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, streamedMessages]);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const parseMessageContent = (content: string): { text: string; toolCalls: string[] } => {
+    try {
+      const parsed = JSON.parse(content) as { text?: string; toolCalls?: string[] };
+      if (parsed && typeof parsed === "object" && typeof parsed.text === "string") {
+        return {
+          text: parsed.text,
+          toolCalls: parsed.toolCalls || [],
+        };
+      }
+    } catch {
+      // no-op
+    }
+    return { text: content, toolCalls: [] };
+  };
+
   const fetchTicketAndMessages = async () => {
+    if (!ticketId || !session?.user?.entra_oid) return;
+
     try {
       setLoading(true);
       const [ticketRes, messagesRes] = await Promise.all([
-        fetch(`/api/v1/tickets?studentId=${session?.user?.entra_oid}`),
+        fetch(`/api/v1/tickets?studentId=${session.user.entra_oid}`),
         fetch(`/api/v1/tickets/${ticketId}/messages`),
       ]);
 
@@ -65,11 +72,11 @@ function StudentChatContent() {
       ]);
 
       if (ticketData.success) {
-        const found = ticketData.data.find((t: any) => t.id === ticketId);
+        const found = (ticketData.data as TicketItem[]).find((t) => t.id === ticketId);
         setTicketDetails(found || null);
       }
       if (messagesData.success) {
-        setMessages(messagesData.data);
+        setMessages(messagesData.data as Message[]);
       }
     } catch (err) {
       console.error("Error loading chat messages:", err);
@@ -81,51 +88,45 @@ function StudentChatContent() {
   const animateStreaming = async (msg: Message) => {
     const { text, toolCalls } = parseMessageContent(msg.content_scrubbed);
     setActiveStreamingId(msg.id);
-    setSending(false); // Hide the global typing indicator since we have the message bubble now
+    setSending(false);
 
-    // 1. Simulate tool executions sequentially
-    if (toolCalls && toolCalls.length > 0) {
+    if (toolCalls.length > 0) {
       for (const tool of toolCalls) {
         setCurrentExecutingTool(tool);
         setVisibleToolCalls((prev) => [...prev, tool]);
-        // Wait 1 second to simulate tool query
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
       setCurrentExecutingTool(null);
     }
 
-    // 2. Stream the text word-by-word
     const words = text.split(" ");
-    let currentText = "";
-    
     for (let i = 0; i < words.length; i++) {
-      currentText += (i === 0 ? "" : " ") + words[i];
+      const currentText = words.slice(0, i + 1).join(" ");
       setStreamedMessages((prev) => ({
         ...prev,
         [msg.id]: currentText,
       }));
       scrollToBottom();
-      // Wait a short time (e.g. 50ms-80ms per word)
       await new Promise((resolve) => setTimeout(resolve, 50 + Math.random() * 30));
     }
 
-    // 3. Complete streaming
     setActiveStreamingId(null);
     setVisibleToolCalls([]);
   };
 
   const handleSendMessage = async (textToSend?: string) => {
     const messageText = textToSend || inputValue;
-    if (!messageText.trim() || sending || activeStreamingId) return;
+    if (!messageText.trim() || sending || activeStreamingId || !ticketId) return;
 
     setSending(true);
     if (!textToSend) setInputValue("");
 
+    const now = Date.now();
     const tempUserMsg: Message = {
-      id: `temp-${Date.now()}`,
+      id: `temp-${now}`,
       role: "user",
       content_scrubbed: messageText,
-      ts: new Date().toISOString(),
+      ts: new Date(now).toISOString(),
     };
     setMessages((prev) => [...prev, tempUserMsg]);
 
@@ -145,7 +146,6 @@ function StudentChatContent() {
           const newAssistantMsg = newMessages.find((m) => m.role === "assistant" && !existingIds.has(m.id));
 
           if (newAssistantMsg) {
-            // First put the list into state, but since newAssistantMsg is activeStreamingId, it will stream
             setMessages(newMessages);
             await animateStreaming(newAssistantMsg);
           } else {
@@ -157,49 +157,55 @@ function StudentChatContent() {
       console.error("Failed to send message:", err);
       setSending(false);
     } finally {
-      const ticketRes = await fetch(`/api/v1/tickets?studentId=${session?.user?.entra_oid}`);
-      const ticketData = await ticketRes.json();
-      if (ticketData.success) {
-        const found = ticketData.data.find((t: any) => t.id === ticketId);
-        setTicketDetails(found || null);
+      if (session?.user?.entra_oid) {
+        const ticketRes = await fetch(`/api/v1/tickets?studentId=${session.user.entra_oid}`);
+        const ticketData = await ticketRes.json();
+        if (ticketData.success) {
+          const found = (ticketData.data as TicketItem[]).find((t) => t.id === ticketId);
+          setTicketDetails(found || null);
+        }
       }
     }
-  };
-
-  const parseMessageContent = (content: string) => {
-    try {
-      const parsed = JSON.parse(content);
-      if (parsed && typeof parsed === "object" && "text" in parsed) {
-        return {
-          text: parsed.text as string,
-          toolCalls: (parsed.toolCalls as string[]) || [],
-        };
-      }
-    } catch {}
-    return { text: content, toolCalls: [] };
   };
 
   const getToolCallLabel = (tool: string) => {
     switch (tool) {
       case "CheckStudentHolds":
-        return <span className="flex items-center gap-1.5"><Search className="w-3.5 h-3.5" /> Sinusuri ang iyong account holds sa Registrar...</span>;
+        return "🔍 Checking your registrar hold records...";
       case "CheckFinancialAidStatus":
-        return <span className="flex items-center gap-1.5"><Banknote className="w-3.5 h-3.5" /> Sinusuri ang iyong CHED UniFAST grant status...</span>;
+        return "💵 Checking your CHED UniFAST grant status...";
       case "requestHoldLift":
-        return <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> Sending a request to lift the Financial Hold...</span>;
+        return "⚡ Submitting request for temporary financial hold lift...";
       case "EscalateToHuman":
-        return <span className="flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> Transferring chat session to support staff (Jay)...</span>;
+        return "🚨 Routing your chat to the support queue...";
       default:
-        return <span className="flex items-center gap-1.5"><Wrench className="w-3.5 h-3.5" /> Tool executing: {tool}...</span>;
+        return `🛠️ Running tool: ${tool}...`;
     }
   };
+
+  useEffect(() => {
+    if (status === "unauthenticated" || !ticketId) {
+      router.push("/student");
+      return;
+    }
+    if (session?.user) {
+      const timer = setTimeout(() => {
+        void fetchTicketAndMessages();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [session, status, ticketId, router]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, streamedMessages]);
 
   if (loading || status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-brand-surface">
         <div className="text-center">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-sm text-brand-muted">Connecting to Archon Desk...</p>
+          <p className="mt-4 text-sm text-brand-muted">Connecting you to Archon Desk...</p>
         </div>
       </div>
     );
@@ -207,7 +213,6 @@ function StudentChatContent() {
 
   return (
     <div className="flex flex-col h-screen bg-brand-surface font-sans">
-      {/* Chat Header */}
       <header className="bg-white border-b border-zinc-200 px-6 py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <Link
@@ -245,7 +250,6 @@ function StudentChatContent() {
         </div>
       </header>
 
-      {/* Messages Stream */}
       <main className="flex-1 overflow-y-auto p-6 space-y-6 max-w-3xl w-full mx-auto">
         {messages.map((msg) => {
           const isUser = msg.role === "user";
@@ -262,14 +266,13 @@ function StudentChatContent() {
                 </div>
               )}
               <div className="space-y-2 max-w-[80%]">
-                {/* Render Tool Logs */}
                 {displayToolCalls.length > 0 && (
                   <div className="space-y-1">
                     {displayToolCalls.map((tool, idx) => {
                       const isToolExecuting = isStreaming && tool === currentExecutingTool;
                       return (
                         <div
-                          key={idx}
+                          key={`${tool}-${idx}`}
                           className={`rounded-lg bg-brand-primary-light/40 border border-brand-primary-light px-3 py-1.5 text-xs text-brand-primary font-medium flex items-center justify-between gap-2 ${
                             isToolExecuting ? "animate-pulse ring-1 ring-brand-primary/30" : ""
                           }`}
@@ -283,7 +286,7 @@ function StudentChatContent() {
                     })}
                   </div>
                 )}
-                {/* Message Bubble conforming to DSD specs */}
+
                 {displayText || !isStreaming ? (
                   <div
                     className={`p-4 leading-relaxed text-sm shadow-sm ${
@@ -315,6 +318,7 @@ function StudentChatContent() {
             </div>
           );
         })}
+
         {sending && (
           <div className="flex justify-start gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-primary text-white font-extrabold text-sm shadow-sm">
@@ -327,41 +331,40 @@ function StudentChatContent() {
             </div>
           </div>
         )}
+
         <div ref={messagesEndRef} />
       </main>
 
-      {/* Quick Actions Panel */}
       {messages.length > 0 && !sending && !activeStreamingId && ticketDetails?.status === "Open" && (
         <section className="shrink-0 bg-zinc-50 border-t border-zinc-100 py-3 px-6 overflow-x-auto">
           <div className="max-w-3xl mx-auto flex gap-2 whitespace-nowrap">
             <button
               onClick={() => handleSendMessage("Why do I have an enrollment hold?")}
-              className="flex items-center gap-1.5 rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
+              className="rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
             >
-              <Search className="w-3.5 h-3.5" /> Why do I have a hold?
+              🔍 Why do I have a hold?
             </button>
             <button
               onClick={() => handleSendMessage("Please lift my financial hold.")}
-              className="flex items-center gap-1.5 rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
+              className="rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
             >
-              <Zap className="w-3.5 h-3.5" /> Please lift my hold
+              ⚡ Request hold lift
             </button>
             <button
-              onClick={() => handleSendMessage("I'd like to speak with a support agent.")}
-              className="flex items-center gap-1.5 rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
+              onClick={() => handleSendMessage("I want to talk to a support agent.")}
+              className="rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
             >
-              <AlertTriangle className="w-3.5 h-3.5" /> Speak to support
+              🚨 Talk to support
             </button>
           </div>
         </section>
       )}
 
-      {/* Input Form Footer conforming to DSD Pill Shape */}
       <footer className="bg-white border-t border-zinc-200 p-4 shrink-0">
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            handleSendMessage();
+            void handleSendMessage();
           }}
           className="max-w-3xl mx-auto flex items-center bg-brand-surface rounded-full border border-zinc-200 px-4 py-1 shadow-sm focus-within:ring-2 focus-within:ring-brand-primary/20"
         >
@@ -373,7 +376,7 @@ function StudentChatContent() {
             placeholder={
               ticketDetails?.status === "Resolved"
                 ? "This ticket is closed."
-                : "Ask about your holds or balance..."
+                : "Ask about holds, balances, or deadlines..."
             }
             className="flex-1 bg-transparent px-2 py-3 text-sm focus:outline-none disabled:opacity-50 font-sans"
           />
@@ -392,12 +395,14 @@ function StudentChatContent() {
 
 export default function StudentChat() {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center bg-brand-surface">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-primary border-t-transparent mx-auto"></div>
-        <p className="mt-4 text-sm text-brand-muted">Loading AI Chat Desk...</p>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-brand-surface">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-primary border-t-transparent mx-auto"></div>
+          <p className="mt-4 text-sm text-brand-muted">Reloading AI Chat Desk...</p>
+        </div>
+      }
+    >
       <StudentChatContent />
     </Suspense>
   );

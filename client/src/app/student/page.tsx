@@ -1,10 +1,10 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
+import { useSession, signOut, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, MessageCircle, FileText, LogOut, AlertOctagon, Calendar, Clock, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { LayoutDashboard, MessageCircle, FileText, LogOut, AlertOctagon, Calendar, Clock, ChevronLeft, ChevronRight, RefreshCw, Bell } from "lucide-react";
 
 interface StudentProfile {
   student_id: string;
@@ -59,6 +59,7 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [creatingTicket, setCreatingTicket] = useState(false);
   const [calendarError, setCalendarError] = useState<string | null>(null);
+  const [calendarErrorCode, setCalendarErrorCode] = useState<string | null>(null);
   const [calendarRefreshing, setCalendarRefreshing] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
@@ -88,9 +89,11 @@ export default function StudentDashboard() {
       if (calendarData.success) {
         setEvents(calendarData.data);
         setCalendarError(null);
+        setCalendarErrorCode(null);
       } else {
         setEvents([]);
         setCalendarError(calendarData.error || "Calendar temporarily unavailable.");
+        setCalendarErrorCode(calendarData.errorCode || null);
       }
       if (ticketsData.success) setTickets(ticketsData.data);
     } catch (err) {
@@ -129,14 +132,19 @@ export default function StudentDashboard() {
         return;
       }
 
-      fetchDashboardData(session.user.entra_oid);
+      const initialFetchTimer = setTimeout(() => {
+        void fetchDashboardData(session.user.entra_oid);
+      }, 0);
 
       // Implement periodic sync polling every 4 seconds
       const interval = setInterval(() => {
         fetchDashboardDataSilently(session.user.entra_oid);
       }, 4000);
 
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        clearTimeout(initialFetchTimer);
+      };
     }
   }, [session, status, router]);
 
@@ -169,16 +177,26 @@ export default function StudentDashboard() {
       if (data.success) {
         setEvents(data.data);
         setCalendarError(null);
+        setCalendarErrorCode(null);
       } else {
         setEvents([]);
         setCalendarError(data.error || "Calendar temporarily unavailable.");
+        setCalendarErrorCode(data.errorCode || null);
       }
     } catch (err) {
       console.error("Error refreshing calendar:", err);
       setCalendarError("Calendar temporarily unavailable.");
+      setCalendarErrorCode("GRAPH_UPSTREAM_ERROR");
     } finally {
       setCalendarRefreshing(false);
     }
+  };
+
+  const handleReconnectM365 = async () => {
+    await signIn("azure-ad", {
+      callbackUrl: "/student",
+      prompt: "consent",
+    });
   };
 
   if (loading || status === "loading") {
@@ -232,6 +250,12 @@ export default function StudentDashboard() {
               className="flex items-center gap-3 rounded-lg bg-brand-primary-light/50 px-3 py-2 text-sm font-semibold text-brand-primary animate-fade-in"
             >
               <LayoutDashboard className="w-4 h-4" /> Dashboard
+            </Link>
+            <Link
+              href="/student/alerts"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 transition"
+            >
+              <Bell className="w-4 h-4" /> Alert Center
             </Link>
             <button
               onClick={handleStartNewChat}
@@ -359,6 +383,14 @@ export default function StudentDashboard() {
                 </div>
                 <p className="text-sm font-bold text-brand-text font-display">Calendar temporarily unavailable</p>
                 <p className="text-xs text-brand-muted">{calendarError}</p>
+                {calendarErrorCode === "GRAPH_CONSENT_REQUIRED" && (
+                  <button
+                    onClick={handleReconnectM365}
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-brand-m365 px-4 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition mt-2"
+                  >
+                    Connect your M365 Calendar
+                  </button>
+                )}
               </div>
             ) : events.length > 0 ? (
               <div className="space-y-4 animate-fade-in">

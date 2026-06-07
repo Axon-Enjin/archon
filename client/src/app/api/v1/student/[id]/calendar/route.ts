@@ -29,6 +29,23 @@ interface GraphCalendarViewResponse {
   }>;
 }
 
+type GraphErrorCode =
+  | "GRAPH_THROTTLED"
+  | "GRAPH_CONSENT_REQUIRED"
+  | "GRAPH_UNAUTHORIZED"
+  | "GRAPH_UPSTREAM_ERROR";
+
+class GraphIntegrationError extends Error {
+  code: GraphErrorCode;
+  status: number;
+
+  constructor(code: GraphErrorCode, status: number, message: string) {
+    super(message);
+    this.code = code;
+    this.status = status;
+  }
+}
+
 function toIsoOrNow(value?: string): string {
   if (!value) return new Date().toISOString();
   const parsed = new Date(value);
@@ -50,6 +67,69 @@ function normalizeGraphEvents(items: GraphCalendarViewResponse["value"]): Calend
     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 }
 
+function logGraphEvent(eventName: string, details: Record<string, unknown>) {
+  console.warn(`[${eventName}]`, JSON.stringify(details));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRetryAfterMs(value: string | null): number | null {
+  if (!value) return null;
+  const asSeconds = Number(value);
+  if (!Number.isNaN(asSeconds)) return asSeconds * 1000;
+
+  const retryDate = new Date(value);
+  if (Number.isNaN(retryDate.getTime())) return null;
+  return Math.max(0, retryDate.getTime() - Date.now());
+}
+
+async function graphGetWithRetry(url: string, accessToken: string): Promise<Response> {
+  const maxRetries = 3;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Prefer: 'outlook.timezone="UTC"',
+      },
+      cache: "no-store",
+    });
+
+    if (response.status === 429) {
+      const retryAfterMs = parseRetryAfterMs(response.headers.get("retry-after"));
+      const backoffMs = retryAfterMs ?? Math.min(1000 * 2 ** attempt, 8000);
+
+      logGraphEvent("graph_api_throttle", {
+        status: response.status,
+        attempt,
+        backoff_ms: backoffMs,
+        url,
+      });
+
+      if (attempt === maxRetries) {
+        return response;
+      }
+
+      await sleep(backoffMs);
+      continue;
+    }
+
+    // Retry transient Graph upstream failures.
+    if (response.status >= 500 && response.status <= 599 && attempt < maxRetries) {
+      const backoffMs = Math.min(1000 * 2 ** attempt, 8000);
+      await sleep(backoffMs);
+      continue;
+    }
+
+    return response;
+  }
+
+  throw new GraphIntegrationError("GRAPH_UPSTREAM_ERROR", 502, "Graph request exhausted retry attempts.");
+}
+
 async function fetchOutlookCalendarEvents(accessToken: string): Promise<CalendarEvent[]> {
   // Broaden window to reduce false "no events" cases.
   const startDate = new Date();
@@ -59,21 +139,30 @@ async function fetchOutlookCalendarEvents(accessToken: string): Promise<Calendar
   endDate.setDate(endDate.getDate() + 45);
   const endDateTime = endDate.toISOString();
 
-  const response = await fetch(
-    `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${encodeURIComponent(startDateTime)}&endDateTime=${encodeURIComponent(endDateTime)}&$orderby=start/dateTime&$top=20`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Prefer: 'outlook.timezone="UTC"',
-      },
-      cache: "no-store",
-    }
+  const calendarViewUrl =
+    `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${encodeURIComponent(startDateTime)}&endDateTime=${encodeURIComponent(endDateTime)}&$orderby=start/dateTime&$top=20`;
+
+  const response = await graphGetWithRetry(
+    calendarViewUrl,
+    accessToken
   );
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`Graph calendar request failed (${response.status}): ${body}`);
+    if (response.status === 401) {
+      throw new GraphIntegrationError("GRAPH_UNAUTHORIZED", 401, "Graph token expired or invalid.");
+    }
+    if (response.status === 403) {
+      throw new GraphIntegrationError("GRAPH_CONSENT_REQUIRED", 403, "Calendars.Read consent not granted.");
+    }
+    if (response.status === 429) {
+      throw new GraphIntegrationError("GRAPH_THROTTLED", 429, "Graph API throttled.");
+    }
+    throw new GraphIntegrationError(
+      "GRAPH_UPSTREAM_ERROR",
+      response.status,
+      `Graph calendarView failed (${response.status}): ${body}`
+    );
   }
 
   const payload = (await response.json()) as GraphCalendarViewResponse;
@@ -83,20 +172,26 @@ async function fetchOutlookCalendarEvents(accessToken: string): Promise<Calendar
   }
 
   // Fallback: query events endpoint (some tenants/users expose better results here).
-  const eventsResponse = await fetch(
-    "https://graph.microsoft.com/v1.0/me/events?$select=id,subject,start,end,isAllDay,isCancelled&$orderby=start/dateTime&$top=50",
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Prefer: 'outlook.timezone="UTC"',
-      },
-      cache: "no-store",
-    }
-  );
+  const eventsUrl =
+    "https://graph.microsoft.com/v1.0/me/events?$select=id,subject,start,end,isAllDay,isCancelled&$orderby=start/dateTime&$top=50";
+  const eventsResponse = await graphGetWithRetry(eventsUrl, accessToken);
 
   if (!eventsResponse.ok) {
-    return [];
+    if (eventsResponse.status === 401) {
+      throw new GraphIntegrationError("GRAPH_UNAUTHORIZED", 401, "Graph token expired or invalid.");
+    }
+    if (eventsResponse.status === 403) {
+      throw new GraphIntegrationError("GRAPH_CONSENT_REQUIRED", 403, "Calendars.Read consent not granted.");
+    }
+    if (eventsResponse.status === 429) {
+      throw new GraphIntegrationError("GRAPH_THROTTLED", 429, "Graph API throttled.");
+    }
+    const body = await response.text();
+    throw new GraphIntegrationError(
+      "GRAPH_UPSTREAM_ERROR",
+      eventsResponse.status,
+      `Graph events failed (${eventsResponse.status}): ${body}`
+    );
   }
 
   const eventsPayload = (await eventsResponse.json()) as GraphCalendarViewResponse;
@@ -147,11 +242,15 @@ export async function GET(
   }
 
   if (!authUser.accessToken) {
-    return NextResponse.json({
-      success: false,
-      error: "Missing Microsoft Graph access token. Re-authenticate and grant Calendars.Read.",
-      data: [],
-    });
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Missing Microsoft Graph access token. Re-authenticate and grant Calendars.Read.",
+        errorCode: "GRAPH_UNAUTHORIZED",
+        data: [],
+      },
+      { status: 401 }
+    );
   }
 
   try {
@@ -164,13 +263,17 @@ export async function GET(
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to fetch Outlook calendar events.";
+    const code = error instanceof GraphIntegrationError ? error.code : "GRAPH_UPSTREAM_ERROR";
+    const status = error instanceof GraphIntegrationError ? error.status : 502;
+
     return NextResponse.json(
       {
         success: false,
         error: message,
+        errorCode: code,
         data: [],
       },
-      { status: 502 }
+      { status }
     );
   }
 }

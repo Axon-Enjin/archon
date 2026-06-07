@@ -58,3 +58,37 @@ export interface CacheUniversityDataDoc extends BaseCosmosDocument {
   fetched_at: number; // epoch timestamp
   ttl?: number; // 300 seconds
 }
+
+export interface NotificationDoc extends BaseCosmosDocument {
+  user_id: string; // Entra object id
+  type: "deadline" | "hold" | "ticket" | "system";
+  channel: "in_app" | "teams" | "outlook";
+  status: "unread" | "read";
+  title: string;
+  message: string;
+  action_url?: string;
+  created_at: string;
+  ttl?: number; // 30 days
+}
+
+export interface NotificationJobDoc extends BaseCosmosDocument {
+  channel: "teams" | "outlook";
+  recipient_entra_oid: string;
+  recipient_email?: string;
+  status: "pending" | "processing" | "sent" | "failed";
+  attempts: number;
+  payload: {
+    title?: string;
+    message?: string;
+    action_url?: string;
+    subject?: string;
+    text_body?: string;
+    html_body?: string;
+    ticket_id?: string;
+  };
+  provider_message_id?: string;
+  error_message?: string;
+  created_at: string;
+  updated_at: string;
+  ttl?: number; // 30 days
+}

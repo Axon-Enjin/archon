@@ -49,22 +49,7 @@ export default function AgentDashboard() {
   const [ticketLoading, setTicketLoading] = useState(false);
   const [resolving, setResolving] = useState(false);
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin");
-      return;
-    }
-
-    if (session?.user) {
-      if (session.user.role !== "Agent" && session.user.role !== "Admin") {
-        router.push("/auth/signin");
-        return;
-      }
-      fetchQueue();
-    }
-  }, [session, status]);
-
-  const fetchQueue = async () => {
+  async function fetchQueue() {
     try {
       setLoading(true);
       const res = await fetch("/api/v1/tickets?type=queue");
@@ -77,7 +62,25 @@ export default function AgentDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/signin");
+      return;
+    }
+
+    if (session?.user) {
+      if (session.user.role !== "Agent" && session.user.role !== "Admin") {
+        router.push("/auth/signin");
+        return;
+      }
+      const initialTimer = setTimeout(() => {
+        void fetchQueue();
+      }, 0);
+      return () => clearTimeout(initialTimer);
+    }
+  }, [session, status, router]);
 
   const handleSelectTicket = async (ticket: TicketItem) => {
     setSelectedTicket(ticket);

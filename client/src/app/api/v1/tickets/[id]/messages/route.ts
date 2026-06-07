@@ -3,6 +3,7 @@ import { getAuthenticatedUser, unauthorizedResponse } from "@/lib/auth-helper";
 import { cosmosDbService } from "@/lib/db/cosmos";
 import { MessageDoc, HandoffDoc } from "@/lib/db/types";
 import { isAiEnabled } from "@/lib/feature-flags";
+import { enqueueOutlookNotification, enqueueTeamsNotification } from "@/lib/notification-jobs";
 
 interface HoldItem {
   id: string;
@@ -34,6 +35,42 @@ export async function POST(
   try {
     const { id: conversationId } = await params;
     const { content } = await request.json();
+    const normalizedContent = String(content || "").toLowerCase();
+
+    // Staff updates should not run through AI. Treat as human resolution activity.
+    if ((authUser.role === "Agent" || authUser.role === "Admin") && content) {
+      const staffMsg: MessageDoc = {
+        id: `msg-${Date.now()}-staff`,
+        institution_id: authUser.institution_id,
+        conversation_id: conversationId,
+        role: "system",
+        content_scrubbed: content,
+        ts: new Date().toISOString(),
+      };
+      await cosmosDbService.createMessage(staffMsg);
+
+      const conversation = await cosmosDbService.getConversation(conversationId, authUser.institution_id);
+      if (conversation) {
+        await cosmosDbService.updateConversationStatus(
+          conversationId,
+          authUser.institution_id,
+          "Resolved",
+          authUser.entra_oid
+        );
+
+        await enqueueOutlookNotification({
+          institutionId: authUser.institution_id,
+          recipientEntraOid: conversation.student_id,
+          subject: `Ticket ${conversation.ticket_id} has been resolved`,
+          textBody:
+            `Your support ticket ${conversation.ticket_id} has been marked as resolved by ${authUser.name || "Student Support"}. ` +
+            "If you still need help, you can open a new ticket from your student dashboard.",
+          ticketId: conversationId,
+        });
+      }
+
+      return NextResponse.json({ success: true, data: staffMsg });
+    }
 
     // 1. Save the user's message
     const userMsg: MessageDoc = {
@@ -77,8 +114,6 @@ export async function POST(
     // 3. Mock AI agent response generation loop
     let aiContent = "";
     const toolCalls: string[] = [];
-
-    const normalizedContent = content.toLowerCase();
 
     if (normalizedContent.includes("hold") || normalizedContent.includes("why") || normalizedContent.includes("block")) {
       toolCalls.push("CheckStudentHolds");
@@ -134,6 +169,15 @@ export async function POST(
         resolved_at: undefined,
       };
       await cosmosDbService.createHandoff(handoffDoc);
+
+      await enqueueTeamsNotification({
+        institutionId: authUser.institution_id,
+        recipientEntraOid: authUser.entra_oid,
+        title: "Ticket escalated to support queue",
+        message: "Your ticket has been escalated. A support staff member will assist you shortly.",
+        actionUrl: `/student/chat?ticketId=${conversationId}`,
+        ticketId: conversationId,
+      });
 
       aiContent = "I understand. I have escalated this conversation to our student services support queue. I've included a summary of your holds and the actions I took so you won't have to repeat your story. \n\nPlease hold on a moment while I connect you to the next available support staff.";
     } else {

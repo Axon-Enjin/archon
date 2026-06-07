@@ -8,6 +8,8 @@ import {
   HandoffDoc,
   PolicyEmbeddingDoc,
   CacheUniversityDataDoc,
+  NotificationDoc,
+  NotificationJobDoc,
 } from "./types";
 
 interface MockDBStore {
@@ -17,6 +19,8 @@ interface MockDBStore {
   handoffs: HandoffDoc[];
   policyEmbeddings: PolicyEmbeddingDoc[];
   cacheUniversityData: CacheUniversityDataDoc[];
+  notifications: NotificationDoc[];
+  notificationJobs: NotificationJobDoc[];
 }
 
 interface CosmosContainerConfig {
@@ -87,6 +91,8 @@ class CosmosDBService {
       { id: "handoffs", defaultTtl: -1 },
       { id: "policy_embeddings" },
       { id: "cache_university_data", defaultTtl: 300 },
+      { id: "notifications", defaultTtl: -1 },
+      { id: "notification_jobs", defaultTtl: -1 },
     ];
   }
 
@@ -242,6 +248,8 @@ class CosmosDBService {
         },
       ],
       cacheUniversityData: [],
+      notifications: [],
+      notificationJobs: [],
     };
   }
 
@@ -289,6 +297,76 @@ class CosmosDBService {
     const container = await this.getContainer("users");
     const { resource } = await container.items.create(user);
     return resource as UserDoc;
+  }
+
+  async getStudentIdentifiers(institutionId: string): Promise<string[]> {
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      const ids = new Set<string>();
+
+      for (const user of db.users) {
+        if (user.institution_id === institutionId && user.role === "Student" && user.entra_oid) {
+          ids.add(user.entra_oid);
+        }
+      }
+
+      for (const convo of db.conversations) {
+        if (convo.institution_id === institutionId && convo.student_id) {
+          ids.add(convo.student_id);
+        }
+      }
+
+      for (const cacheDoc of db.cacheUniversityData) {
+        if (cacheDoc.institution_id !== institutionId) continue;
+        const key = cacheDoc.cache_key || "";
+        if (key.startsWith("holds:") || key.startsWith("calendar:") || key.startsWith("financial:")) {
+          const studentId = key.split(":")[1];
+          if (studentId) ids.add(studentId);
+        }
+      }
+
+      return Array.from(ids);
+    }
+
+    const ids = new Set<string>();
+
+    const usersContainer = await this.getContainer("users");
+    const usersQuery = {
+      query: "SELECT c.entra_oid FROM c WHERE c.role = 'Student' AND IS_DEFINED(c.entra_oid)",
+    };
+    const { resources: userResources } = await usersContainer.items
+      .query<{ entra_oid?: string }>(usersQuery, { partitionKey: institutionId })
+      .fetchAll();
+    for (const resource of userResources) {
+      if (resource.entra_oid) ids.add(resource.entra_oid);
+    }
+
+    const conversationsContainer = await this.getContainer("conversations");
+    const convoQuery = {
+      query: "SELECT c.student_id FROM c WHERE IS_DEFINED(c.student_id)",
+    };
+    const { resources: convoResources } = await conversationsContainer.items
+      .query<{ student_id?: string }>(convoQuery, { partitionKey: institutionId })
+      .fetchAll();
+    for (const resource of convoResources) {
+      if (resource.student_id) ids.add(resource.student_id);
+    }
+
+    const cacheContainer = await this.getContainer("cache_university_data");
+    const cacheQuery = {
+      query:
+        "SELECT c.cache_key FROM c WHERE STARTSWITH(c.cache_key, 'holds:') OR STARTSWITH(c.cache_key, 'calendar:') OR STARTSWITH(c.cache_key, 'financial:')",
+    };
+    const { resources: cacheResources } = await cacheContainer.items
+      .query<{ cache_key?: string }>(cacheQuery, { partitionKey: institutionId })
+      .fetchAll();
+    for (const resource of cacheResources) {
+      if (!resource.cache_key) continue;
+      const studentId = resource.cache_key.split(":")[1];
+      if (studentId) ids.add(studentId);
+    }
+
+    return Array.from(ids);
   }
 
   // CONVERSATIONS
@@ -530,6 +608,177 @@ class CosmosDBService {
 
     const container = await this.getContainer("cache_university_data");
     await container.items.upsert(doc);
+  }
+
+  // NOTIFICATIONS
+  async getNotifications(userId: string, institutionId: string): Promise<NotificationDoc[]> {
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      return db.notifications
+        .filter((n) => n.user_id === userId && n.institution_id === institutionId)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+
+    const container = await this.getContainer("notifications");
+    const querySpec = {
+      query: "SELECT * FROM c WHERE c.user_id = @userId ORDER BY c.created_at DESC",
+      parameters: [{ name: "@userId", value: userId }],
+    };
+    const { resources } = await container.items
+      .query<NotificationDoc>(querySpec, { partitionKey: institutionId })
+      .fetchAll();
+    return resources;
+  }
+
+  async upsertNotification(notification: NotificationDoc): Promise<NotificationDoc> {
+    const doc: NotificationDoc = {
+      ...notification,
+      ttl: 30 * 24 * 60 * 60,
+    };
+
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      db.notifications = db.notifications.filter(
+        (n) => !(n.id === doc.id && n.institution_id === doc.institution_id)
+      );
+      db.notifications.push(doc);
+      this.writeMockDB(db);
+      return doc;
+    }
+
+    const container = await this.getContainer("notifications");
+    const { resource } = await container.items.upsert<NotificationDoc>(doc);
+    return resource || doc;
+  }
+
+  async markNotificationRead(id: string, institutionId: string): Promise<NotificationDoc | null> {
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      const idx = db.notifications.findIndex((n) => n.id === id && n.institution_id === institutionId);
+      if (idx === -1) return null;
+      db.notifications[idx].status = "read";
+      this.writeMockDB(db);
+      return db.notifications[idx];
+    }
+
+    const container = await this.getContainer("notifications");
+    try {
+      const { resource } = await container.item(id, institutionId).read<NotificationDoc>();
+      if (!resource) return null;
+      const updated: NotificationDoc = { ...resource, status: "read" };
+      const { resource: replaced } = await container.item(id, institutionId).replace<NotificationDoc>(updated);
+      return replaced || updated;
+    } catch {
+      return null;
+    }
+  }
+
+  // NOTIFICATION JOBS (Power Automate handoff)
+  async createNotificationJob(job: NotificationJobDoc): Promise<NotificationJobDoc> {
+    const doc: NotificationJobDoc = {
+      ...job,
+      ttl: 30 * 24 * 60 * 60,
+    };
+
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      db.notificationJobs = db.notificationJobs.filter(
+        (j) => !(j.id === doc.id && j.institution_id === doc.institution_id)
+      );
+      db.notificationJobs.push(doc);
+      this.writeMockDB(db);
+      return doc;
+    }
+
+    const container = await this.getContainer("notification_jobs");
+    const { resource } = await container.items.upsert<NotificationJobDoc>(doc);
+    return resource || doc;
+  }
+
+  async getNotificationJobs(
+    institutionId: string,
+    options?: {
+      status?: NotificationJobDoc["status"];
+      channel?: NotificationJobDoc["channel"];
+      limit?: number;
+    }
+  ): Promise<NotificationJobDoc[]> {
+    const status = options?.status;
+    const channel = options?.channel;
+    const limit = options?.limit ?? 50;
+
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      let jobs = db.notificationJobs.filter((j) => j.institution_id === institutionId);
+      if (status) jobs = jobs.filter((j) => j.status === status);
+      if (channel) jobs = jobs.filter((j) => j.channel === channel);
+      return jobs
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        .slice(0, limit);
+    }
+
+    const container = await this.getContainer("notification_jobs");
+    const filters: string[] = [];
+    const parameters: Array<{ name: string; value: string | number }> = [];
+
+    if (status) {
+      filters.push("c.status = @status");
+      parameters.push({ name: "@status", value: status });
+    }
+    if (channel) {
+      filters.push("c.channel = @channel");
+      parameters.push({ name: "@channel", value: channel });
+    }
+
+    const whereClause = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+    const querySpec = {
+      query: `SELECT TOP @limit * FROM c ${whereClause} ORDER BY c.created_at ASC`,
+      parameters: [{ name: "@limit", value: limit }, ...parameters],
+    };
+
+    const { resources } = await container.items
+      .query<NotificationJobDoc>(querySpec, { partitionKey: institutionId })
+      .fetchAll();
+    return resources;
+  }
+
+  async updateNotificationJobStatus(
+    id: string,
+    institutionId: string,
+    update: {
+      status: NotificationJobDoc["status"];
+      provider_message_id?: string;
+      error_message?: string;
+      attempts?: number;
+    }
+  ): Promise<NotificationJobDoc | null> {
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      const idx = db.notificationJobs.findIndex((j) => j.id === id && j.institution_id === institutionId);
+      if (idx === -1) return null;
+      db.notificationJobs[idx] = {
+        ...db.notificationJobs[idx],
+        ...update,
+        updated_at: new Date().toISOString(),
+      };
+      this.writeMockDB(db);
+      return db.notificationJobs[idx];
+    }
+
+    const container = await this.getContainer("notification_jobs");
+    try {
+      const { resource } = await container.item(id, institutionId).read<NotificationJobDoc>();
+      if (!resource) return null;
+      const updated: NotificationJobDoc = {
+        ...resource,
+        ...update,
+        updated_at: new Date().toISOString(),
+      };
+      const { resource: replaced } = await container.item(id, institutionId).replace<NotificationJobDoc>(updated);
+      return replaced || updated;
+    } catch {
+      return null;
+    }
   }
 
   private async getContainer(containerId: string): Promise<Container> {

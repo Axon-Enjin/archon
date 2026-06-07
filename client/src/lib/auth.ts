@@ -2,6 +2,8 @@ import type { NextAuthOptions } from "next-auth";
 import AzureADProvider from "next-auth/providers/azure-ad";
 import CredentialsProvider from "next-auth/providers/credentials";
 
+type AppRole = "Student" | "Agent" | "Admin";
+
 const hasEntraCredentials = Boolean(process.env.ARCHON_CLIENT_ID && process.env.ARCHON_CLIENT_SECRET);
 const mockAuthEnabled = process.env.ARCHON_ENABLE_MOCK_AUTH === "true";
 const allowedTenantIds = (process.env.ARCHON_ALLOWED_TENANT_IDS || "")
@@ -9,15 +11,71 @@ const allowedTenantIds = (process.env.ARCHON_ALLOWED_TENANT_IDS || "")
   .map((tenant) => tenant.trim())
   .filter(Boolean);
 
-function mapEntraRole(profile: Record<string, unknown>): "Student" | "Agent" | "Admin" {
-  const roles = Array.isArray(profile.roles) ? profile.roles : [];
-  if (roles.includes("Admin")) return "Admin";
-  if (roles.includes("Agent")) return "Agent";
-  return "Student";
+const roleClaimKeys = (process.env.ARCHON_ENTRA_ROLE_CLAIMS || "roles,groups,wids")
+  .split(",")
+  .map((claim) => claim.trim())
+  .filter(Boolean);
+
+function parseCsv(value: string | undefined): string[] {
+  return (value || "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+const adminRoleKeys = parseCsv(process.env.ARCHON_ENTRA_ADMIN_ROLE_KEYS || "Admin");
+const agentRoleKeys = parseCsv(process.env.ARCHON_ENTRA_AGENT_ROLE_KEYS || "Agent");
+const studentRoleKeys = parseCsv(process.env.ARCHON_ENTRA_STUDENT_ROLE_KEYS || "Student");
+const defaultRoleInput = process.env.ARCHON_ENTRA_DEFAULT_ROLE;
+const defaultRole: AppRole =
+  defaultRoleInput === "Admin" || defaultRoleInput === "Agent" || defaultRoleInput === "Student"
+    ? defaultRoleInput
+    : "Student";
+
+function getClaimValues(profile: Record<string, unknown>, claimKey: string): string[] {
+  const value = profile[claimKey];
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string");
+  }
+  if (typeof value === "string") {
+    return [value];
+  }
+  return [];
+}
+
+function mapEntraRole(profile: Record<string, unknown>): AppRole {
+  const claimValues = new Set<string>();
+  for (const claimKey of roleClaimKeys) {
+    for (const claimValue of getClaimValues(profile, claimKey)) {
+      claimValues.add(claimValue);
+    }
+  }
+
+  const hasAny = (keys: string[]) => keys.some((key) => claimValues.has(key));
+  if (hasAny(adminRoleKeys)) return "Admin";
+  if (hasAny(agentRoleKeys)) return "Agent";
+  if (studentRoleKeys.length > 0 && hasAny(studentRoleKeys)) return "Student";
+  return defaultRole;
+}
+
+function decodeJwtClaims(token: string | undefined): Record<string, unknown> | null {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+
+  try {
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const normalized = payload.padEnd(Math.ceil(payload.length / 4) * 4, "=");
+    const decoded = Buffer.from(normalized, "base64").toString("utf8");
+    const parsed = JSON.parse(decoded) as Record<string, unknown>;
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 interface SessionClaims {
-  role?: "Student" | "Agent" | "Admin";
+  role?: AppRole;
   institution_id?: string;
   entra_oid?: string;
 }
@@ -100,19 +158,36 @@ export const authOptions: NextAuthOptions = {
 
       if (account?.provider === "azure-ad") {
         const entraProfile = profile as Record<string, unknown> | undefined;
-        token.id = typeof entraProfile?.oid === "string" ? entraProfile.oid : token.sub || "";
-        token.entra_oid = typeof entraProfile?.oid === "string" ? entraProfile.oid : token.sub || "";
+        const idTokenClaims = decodeJwtClaims(account.id_token);
+        const roleSource = {
+          ...(idTokenClaims || {}),
+          ...(entraProfile || {}),
+        };
+
+        const entraOid =
+          (typeof entraProfile?.oid === "string" ? entraProfile.oid : undefined) ||
+          (typeof idTokenClaims?.oid === "string" ? idTokenClaims.oid : undefined) ||
+          token.sub ||
+          "";
+        const tenantId =
+          (typeof entraProfile?.tid === "string" ? entraProfile.tid : undefined) ||
+          (typeof idTokenClaims?.tid === "string" ? idTokenClaims.tid : undefined) ||
+          token.institution_id ||
+          "unknown-tenant";
+
+        token.id = entraOid;
+        token.entra_oid = entraOid;
         token.institution_id =
-          typeof entraProfile?.tid === "string" ? entraProfile.tid : token.institution_id || "unknown-tenant";
-        token.role = entraProfile ? mapEntraRole(entraProfile) : token.role || "Student";
+          tenantId;
+        token.role = mapEntraRole(roleSource);
       }
 
       if (user) {
         const sessionUser = user as typeof user & SessionClaims;
-        token.id = user.id;
-        token.role = sessionUser.role || "Student";
-        token.institution_id = sessionUser.institution_id || "inst-up";
-        token.entra_oid = sessionUser.entra_oid || token.sub || "";
+        token.id = user.id || token.id;
+        token.role = sessionUser.role || token.role || "Student";
+        token.institution_id = sessionUser.institution_id || token.institution_id || "inst-up";
+        token.entra_oid = sessionUser.entra_oid || token.entra_oid || token.sub || "";
       }
       return token;
     },
