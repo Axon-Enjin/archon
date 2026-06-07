@@ -50,6 +50,10 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [creatingTicket, setCreatingTicket] = useState(false);
 
+  // M365 Consent Simulation States
+  const [m365Connected, setM365Connected] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/signin");
@@ -61,7 +65,19 @@ export default function StudentDashboard() {
         router.push("/auth/signin");
         return;
       }
+      
+      // Load M365 consent state from localStorage
+      const savedConsent = localStorage.getItem(`m365_consent:${session.user.entra_oid}`);
+      setM365Connected(savedConsent === "true");
+
       fetchDashboardData(session.user.entra_oid);
+
+      // Implement periodic sync polling every 4 seconds
+      const interval = setInterval(() => {
+        fetchDashboardDataSilently(session.user.entra_oid);
+      }, 4000);
+
+      return () => clearInterval(interval);
     }
   }, [session, status]);
 
@@ -93,6 +109,23 @@ export default function StudentDashboard() {
     }
   };
 
+  const fetchDashboardDataSilently = async (studentOid: string) => {
+    try {
+      const [holdsRes, ticketsRes] = await Promise.all([
+        fetch(`/api/v1/student/${studentOid}/holds`),
+        fetch(`/api/v1/tickets?studentId=${studentOid}`),
+      ]);
+      const [holdsData, ticketsData] = await Promise.all([
+        holdsRes.json(),
+        ticketsRes.json(),
+      ]);
+      if (holdsData.success) setHolds(holdsData.data);
+      if (ticketsData.success) setTickets(ticketsData.data);
+    } catch (err) {
+      console.warn("Silent sync failed", err);
+    }
+  };
+
   const handleStartNewChat = async () => {
     if (!session?.user) return;
     try {
@@ -111,6 +144,22 @@ export default function StudentDashboard() {
     } finally {
       setCreatingTicket(false);
     }
+  };
+
+  const handleConnectM365 = () => {
+    if (!session?.user) return;
+    setConnecting(true);
+    setTimeout(() => {
+      setConnecting(false);
+      setM365Connected(true);
+      localStorage.setItem(`m365_consent:${session.user.entra_oid}`, "true");
+    }, 1200); // 1.2 second mock Entra authorization code grant loop
+  };
+
+  const handleDisconnectM365 = () => {
+    if (!session?.user) return;
+    setM365Connected(false);
+    localStorage.removeItem(`m365_consent:${session.user.entra_oid}`);
   };
 
   if (loading || status === "loading") {
@@ -141,14 +190,14 @@ export default function StudentDashboard() {
           <nav className="space-y-1">
             <Link
               href="/student"
-              className="flex items-center gap-3 rounded-lg bg-brand-primary-light/50 px-3 py-2 text-sm font-semibold text-brand-primary"
+              className="flex items-center gap-3 rounded-lg bg-brand-primary-light/50 px-3 py-2 text-sm font-semibold text-brand-primary animate-fade-in"
             >
               📊 Dashboard
             </Link>
             <button
               onClick={handleStartNewChat}
               disabled={creatingTicket}
-              className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50"
+              className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 transition"
             >
               💬 AI Help Desk
             </button>
@@ -161,10 +210,18 @@ export default function StudentDashboard() {
           </nav>
         </div>
 
-        <div>
+        <div className="space-y-4">
+          {m365Connected && (
+            <button
+              onClick={handleDisconnectM365}
+              className="w-full text-center text-[10px] font-semibold text-brand-muted hover:underline"
+            >
+              Disconnect M365 (Demo Reset)
+            </button>
+          )}
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-error hover:bg-red-50"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-error hover:bg-red-50 transition"
           >
             🚪 Sign Out
           </button>
@@ -199,7 +256,7 @@ export default function StudentDashboard() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {activeHolds.map((hold) => (
-                <div key={hold.id} className="rounded-xl bg-white p-4 shadow-sm border border-zinc-100 flex flex-col justify-between">
+                <div key={hold.id} className="rounded-xl bg-white p-4 shadow-sm border border-zinc-100 flex flex-col justify-between transition-all duration-300">
                   <div>
                     <div className="flex items-center justify-between">
                       <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-brand-error">
@@ -244,7 +301,7 @@ export default function StudentDashboard() {
 
         {/* Two Column Section: Calendar & Active Tickets */}
         <div className="grid gap-8 lg:grid-cols-12">
-          {/* Calendar Card (Graph API simulation) */}
+          {/* Calendar Card (Graph API simulation / Consent Gate) */}
           <section className="lg:col-span-7 rounded-xl bg-white p-6 border border-zinc-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
               <div className="flex items-center gap-2">
@@ -256,31 +313,55 @@ export default function StudentDashboard() {
               <span className="text-xs text-brand-muted">Sync: 15m TTL</span>
             </div>
 
-            <div className="space-y-4">
-              {events.map((evt) => {
-                const startDate = new Date(evt.start);
-                const formatTime = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const formatDate = startDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
-                
-                // Decide left border color based on DSD: Teal for academic, Amber for deadlines
-                const isDeadline = evt.title.toLowerCase().includes("deadline") || evt.title.toLowerCase().includes("renewal");
-                const borderClass = isDeadline ? "border-brand-warning" : "border-brand-primary";
+            {connecting ? (
+              <div className="py-12 text-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-m365 border-t-transparent mx-auto"></div>
+                <p className="mt-2 text-xs text-brand-muted font-mono">Authenticating with Entra ID...</p>
+              </div>
+            ) : m365Connected ? (
+              <div className="space-y-4 animate-fade-in">
+                {events.map((evt) => {
+                  const startDate = new Date(evt.start);
+                  const formatTime = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                  const formatDate = startDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                  
+                  const isDeadline = evt.title.toLowerCase().includes("deadline") || evt.title.toLowerCase().includes("renewal");
+                  const borderClass = isDeadline ? "border-brand-warning" : "border-brand-primary";
 
-                return (
-                  <div key={evt.id} className={`py-1 pl-4 border-l-4 ${borderClass} flex items-start justify-between gap-4`}>
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-brand-text font-display">{evt.title}</p>
-                      <p className="text-xs text-brand-muted">
-                        📅 {formatDate} · ⏰ {formatTime}
-                      </p>
+                  return (
+                    <div key={evt.id} className={`py-1 pl-4 border-l-4 ${borderClass} flex items-start justify-between gap-4 transition-all duration-300`}>
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-brand-text font-display">{evt.title}</p>
+                        <p className="text-xs text-brand-muted">
+                          📅 {formatDate} · ⏰ {formatTime}
+                        </p>
+                      </div>
+                      <span className="rounded bg-teal-50 px-2 py-0.5 text-[9px] font-bold text-brand-primary shrink-0 uppercase tracking-wider">
+                        {evt.source}
+                      </span>
                     </div>
-                    <span className="rounded bg-teal-50 px-2 py-0.5 text-[9px] font-bold text-brand-primary shrink-0 uppercase tracking-wider">
-                      {evt.source}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-8 text-center space-y-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-m365/10 text-brand-m365 mx-auto text-xl">
+                  📅
+                </div>
+                <div className="space-y-1 max-w-sm mx-auto">
+                  <p className="text-sm font-bold text-brand-text font-display">Connect your Microsoft 365 Calendar</p>
+                  <p className="text-xs text-brand-muted">
+                    Sync your academic classes, exam schedules, and scholarship deadlines alongside your support desk alerts.
+                  </p>
+                </div>
+                <button
+                  onClick={handleConnectM365}
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-brand-m365 px-4 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition"
+                >
+                  Connect Microsoft 365
+                </button>
+              </div>
+            )}
           </section>
 
           {/* Active Support Tickets */}

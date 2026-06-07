@@ -15,6 +15,13 @@ export default function SAPAppealWizard() {
   const [fileUploaded, setFileUploaded] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Drag & drop file upload states
+  const [isDragging, setIsDragging] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/signin");
@@ -23,6 +30,64 @@ export default function SAPAppealWizard() {
 
   const handleNextStep = () => setStep((prev) => prev + 1);
   const handlePrevStep = () => setStep((prev) => prev - 1);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      processFile(file);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      processFile(file);
+    }
+  };
+
+  const processFile = (file: File) => {
+    setUploadError(null);
+    setUploadProgress(0);
+    setFileUploaded(false);
+
+    if (file.type !== "application/pdf") {
+      setUploadError("Ang pinapayagan lamang ay PDF files (.pdf).");
+      setSelectedFile(null);
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError("Ang sukat ng file ay lampas sa limitasyon na 5MB.");
+      setSelectedFile(null);
+      return;
+    }
+
+    setSelectedFile(file);
+    setUploading(true);
+
+    // Simulate progress upload
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 10;
+      setUploadProgress(progress);
+      if (progress >= 100) {
+        clearInterval(interval);
+        setUploading(false);
+        setFileUploaded(true);
+      }
+    }, 120);
+  };
 
   const handleSubmitAppeal = async () => {
     setLoading(true);
@@ -195,25 +260,105 @@ export default function SAPAppealWizard() {
               Upload files to support your narrative (e.g. certified grades PDF, medical certificate, or employment letter).
             </p>
 
-            <div className="border-2 border-dashed border-zinc-200 rounded-xl p-8 text-center bg-zinc-50/50 hover:bg-zinc-50 hover:border-brand-primary transition cursor-pointer"
-                 onClick={() => setFileUploaded(true)}>
-              <span className="text-3xl block mb-2">📁</span>
-              <p className="text-sm font-semibold text-brand-text">
-                {fileUploaded ? "grades_certified_2026.pdf uploaded" : "Click to select or drop supporting PDF files here"}
-              </p>
-              <p className="text-xs text-brand-muted mt-1">Maximum file size: 5MB</p>
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              role="button"
+              tabIndex={0}
+              aria-label="Upload supporting document PDF"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  document.getElementById("file-input")?.click();
+                }
+              }}
+              className={`border-2 border-dashed rounded-xl p-8 text-center transition cursor-pointer relative focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 ${
+                isDragging
+                  ? "border-brand-primary bg-brand-primary-light/30"
+                  : selectedFile
+                  ? "border-zinc-200 bg-zinc-50/20"
+                  : "border-zinc-200 bg-zinc-50/50 hover:bg-zinc-50 hover:border-brand-primary"
+              }`}
+              onClick={() => document.getElementById("file-input")?.click()}
+            >
+              <input
+                id="file-input"
+                type="file"
+                accept="application/pdf"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <span className="text-4xl block mb-3">📁</span>
+              
+              {!selectedFile ? (
+                <>
+                  <p className="text-sm font-semibold text-brand-text">
+                    Drag & drop your supporting PDF here, or click to browse
+                  </p>
+                  <p className="text-xs text-brand-muted mt-1">Maximum file size: 5MB (PDF only)</p>
+                </>
+              ) : (
+                <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between text-xs px-4">
+                    <span className="font-semibold text-brand-text truncate max-w-[240px]">
+                      {selectedFile.name}
+                    </span>
+                    <span className="text-brand-muted shrink-0">
+                      {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                    </span>
+                  </div>
+                  
+                  {uploading ? (
+                    <div className="space-y-1.5 px-4">
+                      <div className="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-brand-primary transition-all duration-100"
+                          style={{ width: `${uploadProgress}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-brand-muted font-semibold">
+                        <span>Uploading...</span>
+                        <span>{uploadProgress}%</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between text-xs text-green-600 font-semibold bg-green-50 rounded-lg py-2 px-3 mx-4">
+                      <span className="flex items-center gap-1.5">✓ Uploaded successfully</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedFile(null);
+                          setFileUploaded(false);
+                          setUploadProgress(0);
+                        }}
+                        className="text-red-500 hover:text-red-700 ml-2 font-bold text-sm"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
+            {uploadError && (
+              <p className="text-xs font-semibold text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">
+                ⚠️ {uploadError}
+              </p>
+            )}
 
             <div className="flex justify-between">
               <button
                 onClick={handlePrevStep}
-                className="flex h-11 items-center justify-center rounded-xl border border-zinc-200 bg-white px-5 text-sm font-semibold text-brand-text hover:bg-zinc-50"
+                disabled={uploading}
+                className="flex h-11 items-center justify-center rounded-xl border border-zinc-200 bg-white px-5 text-sm font-semibold text-brand-text hover:bg-zinc-50 disabled:opacity-50"
               >
                 Back
               </button>
               <button
                 onClick={handleSubmitAppeal}
-                disabled={!fileUploaded || loading}
+                disabled={!fileUploaded || loading || uploading}
                 className="flex h-11 items-center justify-center rounded-xl bg-brand-primary px-6 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50"
               >
                 {loading ? "Submitting appeal..." : "Submit Appeal Package"}

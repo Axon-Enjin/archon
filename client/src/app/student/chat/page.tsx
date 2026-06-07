@@ -24,6 +24,12 @@ function StudentChatContent() {
   const [sending, setSending] = useState(false);
   const [ticketDetails, setTicketDetails] = useState<any>(null);
 
+  // Streaming & Tool Call Simulation States
+  const [streamedMessages, setStreamedMessages] = useState<Record<string, string>>({});
+  const [activeStreamingId, setActiveStreamingId] = useState<string | null>(null);
+  const [currentExecutingTool, setCurrentExecutingTool] = useState<string | null>(null);
+  const [visibleToolCalls, setVisibleToolCalls] = useState<string[]>([]);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,7 +44,7 @@ function StudentChatContent() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, streamedMessages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -71,9 +77,45 @@ function StudentChatContent() {
     }
   };
 
+  const animateStreaming = async (msg: Message) => {
+    const { text, toolCalls } = parseMessageContent(msg.content_scrubbed);
+    setActiveStreamingId(msg.id);
+    setSending(false); // Hide the global typing indicator since we have the message bubble now
+
+    // 1. Simulate tool executions sequentially
+    if (toolCalls && toolCalls.length > 0) {
+      for (const tool of toolCalls) {
+        setCurrentExecutingTool(tool);
+        setVisibleToolCalls((prev) => [...prev, tool]);
+        // Wait 1 second to simulate tool query
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+      setCurrentExecutingTool(null);
+    }
+
+    // 2. Stream the text word-by-word
+    const words = text.split(" ");
+    let currentText = "";
+    
+    for (let i = 0; i < words.length; i++) {
+      currentText += (i === 0 ? "" : " ") + words[i];
+      setStreamedMessages((prev) => ({
+        ...prev,
+        [msg.id]: currentText,
+      }));
+      scrollToBottom();
+      // Wait a short time (e.g. 50ms-80ms per word)
+      await new Promise((resolve) => setTimeout(resolve, 50 + Math.random() * 30));
+    }
+
+    // 3. Complete streaming
+    setActiveStreamingId(null);
+    setVisibleToolCalls([]);
+  };
+
   const handleSendMessage = async (textToSend?: string) => {
     const messageText = textToSend || inputValue;
-    if (!messageText.trim() || sending) return;
+    if (!messageText.trim() || sending || activeStreamingId) return;
 
     setSending(true);
     if (!textToSend) setInputValue("");
@@ -97,13 +139,23 @@ function StudentChatContent() {
         const msgRes = await fetch(`/api/v1/tickets/${ticketId}/messages`);
         const msgData = await msgRes.json();
         if (msgData.success) {
-          setMessages(msgData.data);
+          const newMessages = msgData.data as Message[];
+          const existingIds = new Set(messages.map((m) => m.id));
+          const newAssistantMsg = newMessages.find((m) => m.role === "assistant" && !existingIds.has(m.id));
+
+          if (newAssistantMsg) {
+            // First put the list into state, but since newAssistantMsg is activeStreamingId, it will stream
+            setMessages(newMessages);
+            await animateStreaming(newAssistantMsg);
+          } else {
+            setMessages(newMessages);
+          }
         }
       }
     } catch (err) {
       console.error("Failed to send message:", err);
-    } finally {
       setSending(false);
+    } finally {
       const ticketRes = await fetch(`/api/v1/tickets?studentId=${session?.user?.entra_oid}`);
       const ticketData = await ticketRes.json();
       if (ticketData.success) {
@@ -197,6 +249,9 @@ function StudentChatContent() {
         {messages.map((msg) => {
           const isUser = msg.role === "user";
           const { text, toolCalls } = parseMessageContent(msg.content_scrubbed);
+          const isStreaming = msg.id === activeStreamingId;
+          const displayText = isStreaming ? (streamedMessages[msg.id] || "") : text;
+          const displayToolCalls = isStreaming ? visibleToolCalls : toolCalls;
 
           return (
             <div key={msg.id} className={`flex ${isUser ? "justify-end" : "justify-start"} gap-3`}>
@@ -207,28 +262,51 @@ function StudentChatContent() {
               )}
               <div className="space-y-2 max-w-[80%]">
                 {/* Render Tool Logs */}
-                {toolCalls.length > 0 && (
+                {displayToolCalls.length > 0 && (
                   <div className="space-y-1">
-                    {toolCalls.map((tool, idx) => (
-                      <div
-                        key={idx}
-                        className="rounded-lg bg-brand-primary-light/40 border border-brand-primary-light px-3 py-1.5 text-xs text-brand-primary font-medium flex items-center gap-2 animate-pulse"
-                      >
-                        {getToolCallLabel(tool)}
-                      </div>
-                    ))}
+                    {displayToolCalls.map((tool, idx) => {
+                      const isToolExecuting = isStreaming && tool === currentExecutingTool;
+                      return (
+                        <div
+                          key={idx}
+                          className={`rounded-lg bg-brand-primary-light/40 border border-brand-primary-light px-3 py-1.5 text-xs text-brand-primary font-medium flex items-center justify-between gap-2 ${
+                            isToolExecuting ? "animate-pulse ring-1 ring-brand-primary/30" : ""
+                          }`}
+                        >
+                          <span>{getToolCallLabel(tool)}</span>
+                          {isToolExecuting && (
+                            <span className="h-3 w-3 rounded-full border-2 border-brand-primary border-t-transparent animate-spin shrink-0"></span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 {/* Message Bubble conforming to DSD specs */}
-                <div
-                  className={`p-4 leading-relaxed text-sm shadow-sm ${
-                    isUser
-                      ? "bg-white text-brand-text border border-zinc-100 rounded-[20px] rounded-br-[4px]"
-                      : "bg-brand-primary-light text-brand-text rounded-[20px] rounded-bl-[4px]"
-                  }`}
-                >
-                  <p className="whitespace-pre-line">{text}</p>
-                </div>
+                {displayText || !isStreaming ? (
+                  <div
+                    className={`p-4 leading-relaxed text-sm shadow-sm ${
+                      isUser
+                        ? "bg-white text-brand-text border border-zinc-100 rounded-[20px] rounded-br-[4px]"
+                        : "bg-brand-primary-light text-brand-text rounded-[20px] rounded-bl-[4px]"
+                    }`}
+                  >
+                    <p className="whitespace-pre-line">
+                      {displayText}
+                      {isStreaming && (
+                        <span className="inline-block w-1.5 h-4 ml-1 bg-brand-primary animate-pulse align-middle"></span>
+                      )}
+                    </p>
+                  </div>
+                ) : (
+                  isStreaming && (
+                    <div className="rounded-[20px] rounded-bl-[4px] bg-brand-primary-light p-4 max-w-[80%] flex items-center gap-1.5 shadow-sm">
+                      <span className="h-2 w-2 rounded-full bg-brand-primary animate-bounce"></span>
+                      <span className="h-2 w-2 rounded-full bg-brand-primary animate-bounce [animation-delay:0.2s]"></span>
+                      <span className="h-2 w-2 rounded-full bg-brand-primary animate-bounce [animation-delay:0.4s]"></span>
+                    </div>
+                  )
+                )}
                 <span className="text-[10px] text-brand-muted block text-right px-1">
                   {new Date(msg.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
@@ -241,7 +319,7 @@ function StudentChatContent() {
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-primary text-white font-extrabold text-sm shadow-sm">
               A
             </div>
-            <div className="rounded-[20px] rounded-bl-[4px] bg-brand-primary-light p-4 max-w-[80%] flex items-center gap-1.5">
+            <div className="rounded-[20px] rounded-bl-[4px] bg-brand-primary-light p-4 max-w-[80%] flex items-center gap-1.5 shadow-sm">
               <span className="h-2 w-2 rounded-full bg-brand-primary animate-bounce"></span>
               <span className="h-2 w-2 rounded-full bg-brand-primary animate-bounce [animation-delay:0.2s]"></span>
               <span className="h-2 w-2 rounded-full bg-brand-primary animate-bounce [animation-delay:0.4s]"></span>
@@ -252,7 +330,7 @@ function StudentChatContent() {
       </main>
 
       {/* Quick Actions Panel */}
-      {messages.length > 0 && !sending && ticketDetails?.status === "Open" && (
+      {messages.length > 0 && !sending && !activeStreamingId && ticketDetails?.status === "Open" && (
         <section className="shrink-0 bg-zinc-50 border-t border-zinc-100 py-3 px-6 overflow-x-auto">
           <div className="max-w-3xl mx-auto flex gap-2 whitespace-nowrap">
             <button
