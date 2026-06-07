@@ -4,6 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Inbox, BarChart3, LogOut, Brain, Check } from "lucide-react";
 
 interface TicketItem {
   id: string;
@@ -178,13 +179,13 @@ export default function AgentDashboard() {
               href="/agent"
               className="flex items-center gap-3 rounded-lg bg-brand-primary-light/50 px-3 py-2 text-sm font-semibold text-brand-primary"
             >
-              📥 Active Queue
+              <Inbox className="w-4 h-4" /> Active Queue
             </Link>
             <Link
               href="/admin"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50"
             >
-              📊 Analytics
+              <BarChart3 className="w-4 h-4" /> Analytics
             </Link>
           </nav>
         </div>
@@ -194,7 +195,7 @@ export default function AgentDashboard() {
             onClick={() => signOut({ callbackUrl: "/" })}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-error hover:bg-red-50"
           >
-            🚪 Sign Out
+            <LogOut className="w-4 h-4" /> Sign Out
           </button>
         </div>
       </aside>
@@ -272,7 +273,7 @@ export default function AgentDashboard() {
                 {handoff && (
                   <div className="rounded-xl border border-brand-primary/20 bg-brand-primary-light/10 p-6 space-y-4">
                     <div className="flex items-center gap-2 text-brand-primary font-bold font-display">
-                      <span>🧠</span>
+                      <Brain className="w-5 h-5 text-brand-primary shrink-0" />
                       <h2>AI-Generated Handoff Packet (PRD-F4)</h2>
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2 text-xs">
@@ -337,9 +338,9 @@ export default function AgentDashboard() {
                     <button
                       onClick={() => handleResolveTicket("approve")}
                       disabled={resolving}
-                      className="flex h-10 items-center justify-center rounded-lg bg-brand-primary px-5 text-xs font-semibold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50 font-display"
+                      className="flex h-10 items-center justify-center rounded-lg bg-brand-primary px-5 text-xs font-semibold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50 font-display items-center gap-1.5"
                     >
-                      {resolving ? "Processing..." : "✓ Approve & Lift Academic Hold"}
+                      {resolving ? "Processing..." : <><Check className="w-4 h-4" /> Approve & Lift Academic Hold</>}
                     </button>
                   </div>
                 </div>
@@ -347,7 +348,7 @@ export default function AgentDashboard() {
             )
           ) : (
             <div className="flex-grow flex flex-col items-center justify-center text-center space-y-3">
-              <span className="text-4xl">📥</span>
+              <Inbox className="w-12 h-12 text-zinc-300 mx-auto" />
               <h3 className="text-lg font-bold text-brand-text font-display">Select a ticket from the queue</h3>
               <p className="text-xs text-brand-muted max-w-sm">
                 Review the student profile, inspect the AI Handoff packet, and approve or reject the appeal in one click.

@@ -4,7 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DollarSign, Bot, Hourglass, Star, Target, Bell } from "lucide-react";
+import { DollarSign, Bot, Hourglass, Star, Target, Bell, Inbox, BarChart3, LogOut } from "lucide-react";
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
@@ -114,13 +114,13 @@ export default function AdminDashboard() {
               href="/agent"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 font-display"
             >
-              📥 Active Queue
+              <Inbox className="w-4 h-4" /> Active Queue
             </Link>
             <Link
               href="/admin"
               className="flex items-center gap-3 rounded-lg bg-brand-primary-light/50 px-3 py-2 text-sm font-semibold text-brand-primary font-display"
             >
-              📊 Analytics
+              <BarChart3 className="w-4 h-4" /> Analytics
             </Link>
           </nav>
         </div>
@@ -130,7 +130,7 @@ export default function AdminDashboard() {
             onClick={() => signOut({ callbackUrl: "/" })}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-error hover:bg-red-50"
           >
-            🚪 Sign Out
+            <LogOut className="w-4 h-4" /> Sign Out
           </button>
         </div>
       </aside>
