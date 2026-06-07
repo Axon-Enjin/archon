@@ -5,7 +5,7 @@
 **Version:** 0.2
 **Owner:** Regalia Council (Thranduil)
 **Status:** Draft
-**Last reconciled:** N/A — not yet reconciled with code
+**Last reconciled:** 2026-06-08 — reconciled landing page UI layout, alignment coordinates, and style standardizations
 **PRD:** [prd-archon.md](prd-archon.md)
 
 ---

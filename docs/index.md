@@ -11,12 +11,12 @@
 | Document | File | Version | Status | Last Updated | Last Reconciled |
 |----------|------|---------|--------|--------------|-----------------|
 | BRD — Business Requirements | [brd-archon.md](brd-archon.md) | 0.2 | Draft | 2026-06-07 | N/A |
-| PRD — Product Requirements | [prd-archon.md](prd-archon.md) | 0.2 | Draft | 2026-06-07 | N/A |
-| DSD — Design System | [dsd-archon.md](dsd-archon.md) | 0.2 | Draft | 2026-06-07 | N/A |
+| PRD — Product Requirements | [prd-archon.md](prd-archon.md) | 0.2 | Draft | 2026-06-07 | 2026-06-08 |
+| DSD — Design System | [dsd-archon.md](dsd-archon.md) | 0.2 | Draft | 2026-06-07 | 2026-06-08 |
 | SDD — System Design | [sdd-archon.md](sdd-archon.md) | 0.2 | Draft | 2026-06-07 | N/A |
 | QAD — QA & Test Plan | [qad-archon.md](qad-archon.md) | 0.2 | Draft | 2026-06-07 | N/A |
 | SAD — Subagents | [sad-archon.md](sad-archon.md) | 0.2 | Draft | 2026-06-07 | N/A |
-| BUILD — Build Guide | [build-archon.md](build-archon.md) | 0.2 | Draft | 2026-06-07 | N/A |
+| BUILD — Build Guide | [build-archon.md](build-archon.md) | 0.2 | Draft | 2026-06-07 | 2026-06-08 |
 | CLR — Compliance & Legal | [clr-archon.md](clr-archon.md) | 0.2 | Draft | 2026-06-07 | N/A |
 | GTM — Go-To-Market | [gtm-archon.md](gtm-archon.md) | 0.2 | Draft | 2026-06-07 | N/A |
 | OPS — Ops & Observability | [ops-archon.md](ops-archon.md) | 0.2 | Draft | 2026-06-07 | N/A |
@@ -38,6 +38,7 @@ Every material change to a Locked document is recorded as a Change Record. Newes
 
 | CR ID | Date | Summary | Trigger doc | Docs touched | File |
 |-------|------|---------|-------------|--------------|------|
+| CR-006 | 2026-06-08 | Align implementation: Reconciled landing page UI, Framer Motion transitions, chat simulation, and connection flow layout diagram with PRD, DSD, and BUILD. Corrected line coordinates and removed inline styles. | USER | PRD, DSD, BUILD, INDEX | All docs v0.2 |
 | CR-005 | 2026-06-07 | CSS Framework standard: Pinned Tailwind CSS v4.x replacing default Vanilla CSS; updated build-archon.md, dsd-archon.md, and index.md. | USER | DSD, BUILD, INDEX | All docs v0.2 |
 | CR-001 | 2026-06-07 | Tech stack modernization: Azure AI Foundry replaces Azure OpenAI service; Microsoft Copilot Studio removed; Cosmos DB replaces PostgreSQL; Entra ID + Microsoft Graph API added for M365 integration (Calendar, Teams, Outlook); new PRD-F11 and RFC-004. | PRD | ALL | All docs v0.2 |
 | CR-002 | 2026-06-07 | Architecture update: Azure Key Vault removed (switched to App Service Env Vars). Azure Functions Notification Scheduler replaced with Power Automate. | PRD | ALL | All docs v0.2 |
