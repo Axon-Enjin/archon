@@ -257,7 +257,15 @@ export default async function Home() {
         {/* Value-Driven Feature Grid */}
         <div className="bg-brand-surface border-t border-zinc-100 py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="text-center max-w-3xl mx-auto mb-12">
+              <h2 className="text-3xl font-bold tracking-tight text-brand-text sm:text-4xl">
+                Engineered for Frictionless Resolution
+              </h2>
+              <p className="mt-4 text-lg text-brand-muted">
+                Delivering immediate value to students while drastically reducing administrative overhead across the university.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {/* Feature 1 */}
               <div className="rounded-xl bg-white p-6 shadow-sm border border-zinc-100">
                 <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-primary text-white mb-4">
