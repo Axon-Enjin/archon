@@ -42,7 +42,7 @@ export default async function Home() {
               {/* Copy */}
               <div className="sm:text-center md:max-w-2xl md:mx-auto lg:col-span-6 lg:text-left">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-primary-light px-3 py-1 text-xs font-semibold text-brand-primary">
-                  🇵🇭 Philippine Higher Education Service Desk
+                  Philippine Higher Education Service Desk
                 </span>
                 <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-brand-text sm:text-5xl lg:text-6xl font-sans leading-tight">
                   Stop making students navigate the org chart.

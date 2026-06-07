@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef, Suspense } from "react";
 import Link from "next/link";
+import { Search, Zap, AlertTriangle, ArrowLeft, ArrowRight, Banknote, Wrench } from "lucide-react";
 
 interface Message {
   id: string;
@@ -219,7 +220,7 @@ function StudentChatContent() {
             href="/student"
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 text-brand-text hover:bg-zinc-50 font-bold"
           >
-            ←
+            <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
             <div className="flex items-center gap-2">
@@ -385,7 +386,7 @@ function StudentChatContent() {
             disabled={!inputValue.trim() || sending || ticketDetails?.status === "Resolved"}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-primary text-white shadow hover:bg-teal-700 disabled:opacity-50 transition shrink-0 font-display"
           >
-            ➔
+            <ArrowRight className="w-4 h-4" />
           </button>
         </form>
       </footer>
