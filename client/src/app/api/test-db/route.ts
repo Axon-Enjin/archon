@@ -10,6 +10,7 @@ export async function GET() {
   }
 
   try {
+    const mode = cosmosDbService.getConnectionMode();
     // Attempt to read data using the Cosmos/Mock service
     const studentUser = await cosmosDbService.getUser("user-mara", "inst-up");
     const conversations = await cosmosDbService.getStudentConversations("student-mara-oid", "inst-up");
@@ -17,7 +18,8 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      message: "Database connection and mock helper verified successfully.",
+      message: `Database service verified successfully in ${mode} mode.`,
+      mode,
       currentUser: authUser,
       data: {
         studentUser,
@@ -25,11 +27,12 @@ export async function GET() {
         policies,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error during database verification.";
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Unknown error during database verification.",
+        error: message,
       },
       { status: 500 }
     );

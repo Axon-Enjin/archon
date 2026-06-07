@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef, Suspense } from "react";
 import Link from "next/link";
+import { Search, Zap, AlertTriangle, ArrowLeft, Banknote, Wrench } from "lucide-react";
 
 interface Message {
   id: string;
@@ -181,15 +182,15 @@ function StudentChatContent() {
   const getToolCallLabel = (tool: string) => {
     switch (tool) {
       case "CheckStudentHolds":
-        return "🔍 Sinusuri ang iyong account holds sa Registrar...";
+        return <span className="flex items-center gap-1.5"><Search className="w-3.5 h-3.5" /> Sinusuri ang iyong account holds sa Registrar...</span>;
       case "CheckFinancialAidStatus":
-        return "💵 Sinusuri ang iyong CHED UniFAST grant status...";
+        return <span className="flex items-center gap-1.5"><Banknote className="w-3.5 h-3.5" /> Sinusuri ang iyong CHED UniFAST grant status...</span>;
       case "requestHoldLift":
-        return "⚡ Nagpapadala ng kahilingan na tanggalin ang Financial Hold...";
+        return <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> Nagpapadala ng kahilingan na tanggalin ang Financial Hold...</span>;
       case "EscalateToHuman":
-        return "🚨 Inililipat ang chat session sa support staff (Jay)...";
+        return <span className="flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> Inililipat ang chat session sa support staff (Jay)...</span>;
       default:
-        return `🛠️ Gumagana ang tool: ${tool}...`;
+        return <span className="flex items-center gap-1.5"><Wrench className="w-3.5 h-3.5" /> Gumagana ang tool: {tool}...</span>;
     }
   };
 
@@ -335,21 +336,21 @@ function StudentChatContent() {
           <div className="max-w-3xl mx-auto flex gap-2 whitespace-nowrap">
             <button
               onClick={() => handleSendMessage("Bakit ako may hold sa enrollment?")}
-              className="rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
+              className="flex items-center gap-1.5 rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
             >
-              🔍 Bakit may hold ako?
+              <Search className="w-3.5 h-3.5" /> Bakit may hold ako?
             </button>
             <button
               onClick={() => handleSendMessage("Paki-lift po ng financial hold ko.")}
-              className="rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
+              className="flex items-center gap-1.5 rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
             >
-              ⚡ Paki-lift ang hold ko
+              <Zap className="w-3.5 h-3.5" /> Paki-lift ang hold ko
             </button>
             <button
-              onClick={() => handleSendMessage("Gusto ko pong makausap si Jay.")}
+              onClick={() => handleSendMessage("Gusto ko pong makausap ang support agent.")}
               className="rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
             >
-              🚨 Makausap si Jay
+              🚨 Makausap ang support agent
             </button>
           </div>
         </section>

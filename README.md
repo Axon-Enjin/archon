@@ -21,6 +21,7 @@ The full architectural blueprint and product requirements are available in the `
 - [Product Requirements Document (PRD)](docs/prd-archon.md)
 - [System Design Document (SDD)](docs/sdd-archon.md)
 - [Design System Document (DSD)](docs/dsd-archon.md)
+- [Cosmos DB Integration Guide](docs/cosmos-db-integration-guide.md)
 
 ### Agent Operations
 - **[AI Agent Playbook (AGENT.md)](AGENT.md)** — Core orchestration and health check playbook for AI agents.

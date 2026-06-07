@@ -13,13 +13,13 @@ export async function GET(
     return forbiddenResponse("Forbidden: You cannot access this student's profile.");
   }
 
-  // Return mock profile data mapping to the primary persona (Mara)
+  // Return profile data derived from authenticated Entra session claims
   return NextResponse.json({
     success: true,
     data: {
-      student_id: "2024-10025",
-      name: "Mara Salvador",
-      email: "mara@archon.edu.ph",
+      student_id: authUser.entra_oid,
+      name: authUser.name || "Student",
+      email: authUser.email || "",
       major: "BS Information Technology",
       year: "3rd Year",
       sap_status: "Warning",

@@ -29,7 +29,7 @@ export async function GET(
     calendarEvents = [
       {
         id: "evt-midterm-it312",
-        title: "📝 Midterm Exam: IT 312 (Systems Integration)",
+        title: "Midterm Exam: IT 312 (Systems Integration)",
         start: getRelativeDate(2, 9),
         end: getRelativeDate(2, 11),
         isAllDay: false,
@@ -37,7 +37,7 @@ export async function GET(
       },
       {
         id: "evt-appeal-deadline",
-        title: "⚠️ SAP Academic Appeal Submission Deadline",
+        title: "SAP Academic Appeal Submission Deadline",
         start: getRelativeDate(4, 17),
         end: getRelativeDate(4, 18),
         isAllDay: false,
@@ -45,7 +45,7 @@ export async function GET(
       },
       {
         id: "evt-unifast-renewal",
-        title: "🎓 CHED UniFAST Scholarship Renewal Portal Opens",
+        title: "CHED UniFAST Scholarship Renewal Portal Opens",
         start: getRelativeDate(7, 8),
         end: getRelativeDate(7, 17),
         isAllDay: false,
@@ -53,7 +53,7 @@ export async function GET(
       },
       {
         id: "evt-enrollment-hold-check",
-        title: "🛑 Registrar Enrollment Hold Review Date",
+        title: "Registrar Enrollment Hold Review Date",
         start: getRelativeDate(10, 10),
         end: getRelativeDate(10, 12),
         isAllDay: false,
