@@ -99,6 +99,8 @@ The documentation suite is the source of truth. Read in this order before writin
 
 *Verified 2026-06-07 against Node.js v20*
 
+> **V1 / Initial Phase Note:** Because we lack actual API/database access to university systems for the initial build, all adapters must be implemented as **Mock/Dummy Data Adapters** returning hardcoded/static JSON that fulfills the `IUniversityAdapter` contract.
+
 ```typescript
 import { IUniversityAdapter, ArchonHold } from '../interfaces';
 import axios from 'axios';

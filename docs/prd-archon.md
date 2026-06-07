@@ -294,7 +294,7 @@ The AI operates as an autonomous service desk agent capable of: (1) understandin
 ## 8. Dependencies & Assumptions
 
 **Dependencies:**
-- University provides API access or database read access to core systems (SIS, bursar, financial aid)
+- For V1/Initial Build, the system will use **Mock/Dummy Data Adapters** instead of requiring actual API/database read access to university core systems (SIS, bursar, financial aid).
 - University has an active **Microsoft 365 tenant with Entra ID** — students and staff have M365 accounts
 - **University M365 tenant admin grants consent** in Entra ID for the Archon app registration (required for `Calendars.Read`, `Mail.Send`, `TeamsActivity.Send`)
 - Azure subscription with Azure AI Foundry (including GPT-4o deployment) and Cosmos DB provisioned

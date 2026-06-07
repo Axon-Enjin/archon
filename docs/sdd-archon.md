@@ -137,7 +137,7 @@ All collections are partitioned by `/{institution_id}` to support future multi-t
 - WebSockets/Server-Sent Events (SSE) for real-time chat streaming between the Flutter client and the AI Foundry Agent.
 
 **External API (Gateway ↔ University Systems) — The "Adapter Pattern":**
-The Node.js Gateway implements an abstract `UniversityAdapter` interface. This allows Archon to connect to disparate systems (Banner, Workday, legacy Oracle DBs) without changing the core AI logic.
+The Node.js Gateway implements an abstract `UniversityAdapter` interface. This allows Archon to connect to disparate systems (Banner, Workday, legacy Oracle DBs) without changing the core AI logic. **For the V1/Initial Build, we will use Mock/Dummy Data Adapters** that return static JSON to simulate these systems since live API access is unavailable.
 
 - `getStudentProfile(studentId)` → Unified JSON (Name, Major, SAP Status)
 - `getHolds(studentId)` → Array of hold objects (Department, Reason, Resolution steps)

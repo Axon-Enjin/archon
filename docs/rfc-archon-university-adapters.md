@@ -60,7 +60,10 @@ export interface IUniversityAdapter {
 }
 ```
 
-**Example Adapter implementation:**
+**V1 / Initial Phase Note (Dummy Data):**
+Because we do not have direct API access to actual university systems during the initial build, we will implement **Mock/Dummy Data Adapters**. These adapters will implement the same `IUniversityAdapter` interface but will return static, hardcoded JSON data (or use a local database) to simulate university responses. This allows us to build and test the AI orchestration engine without waiting for live backend integrations.
+
+**Example Production Adapter implementation:**
 
 ```typescript
 import { IUniversityAdapter, ArchonHold } from '../interfaces';
