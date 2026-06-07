@@ -45,6 +45,14 @@
       "status": "Resolved",
       "assignee_id": "agent-jay-oid",
       "created_at": "2026-06-04T11:23:10.484Z"
+    },
+    {
+      "id": "ticket-1780834115522",
+      "institution_id": "inst-up",
+      "ticket_id": "ARC-T-1003",
+      "student_id": "student-mara-oid",
+      "status": "Open",
+      "created_at": "2026-06-07T12:08:35.522Z"
     }
   ],
   "messages": [
@@ -63,6 +71,30 @@
       "role": "assistant",
       "content_scrubbed": "Sinisiyasat ko po ang Bursar system. Hintayin lamang po ng ilang segundo...",
       "ts": "2026-06-07T09:23:20.485Z"
+    },
+    {
+      "id": "msg-1780834115588",
+      "institution_id": "inst-up",
+      "conversation_id": "ticket-1780834115522",
+      "role": "assistant",
+      "content_scrubbed": "Kumusta! Ako si Archon, ang iyong AI Service Desk Assistant. Paano kita matutulungan ngayon sa iyong mga holds, bayarin, o scholarship?",
+      "ts": "2026-06-07T12:08:35.588Z"
+    },
+    {
+      "id": "msg-1780834136882-user",
+      "institution_id": "inst-up",
+      "conversation_id": "ticket-1780834115522",
+      "role": "user",
+      "content_scrubbed": "Bakit ako may hold sa enrollment?",
+      "ts": "2026-06-07T12:08:56.882Z"
+    },
+    {
+      "id": "msg-1780834136888-assistant",
+      "institution_id": "inst-up",
+      "conversation_id": "ticket-1780834115522",
+      "role": "assistant",
+      "content_scrubbed": "{\"text\":\"Nahanap ko po na mayroon kang **1** na aktibong hold sa iyong account:\\n\\n1. **Financial Hold** (Active): Pending tuition balance of ₱12,500.00\\n   *Lunas:* Pay the remaining balance at the Bursar counter, or submit your CHED UniFAST clearance.\\n\\n2. **Academic Hold** (Lifting): Satisfactory Academic Progress (SAP) GPA deficiency (GWA is 2.65, required is 2.50)\\n   *Lunas:* Submit an SAP Appeal narrative and study plan to the Academic Advisory Panel.\\n\\nPara sa iyong Financial Hold, maaari ko po itong pansamantalang i-lift para makapag-enroll ka kung mayroon kang scholarship na inaasahan. Gusto mo bang gawin natin ito?\",\"toolCalls\":[\"CheckStudentHolds\"]}",
+      "ts": "2026-06-07T12:08:57.888Z"
     }
   ],
   "handoffs": [],
@@ -101,5 +133,70 @@
       ]
     }
   ],
-  "cacheUniversityData": []
+  "cacheUniversityData": [
+    {
+      "id": "calendar:student-mara-oid",
+      "institution_id": "inst-up",
+      "cache_key": "calendar:student-mara-oid",
+      "data": [
+        {
+          "id": "evt-midterm-it312",
+          "title": "📝 Midterm Exam: IT 312 (Systems Integration)",
+          "start": "2026-06-09T01:00:00.000Z",
+          "end": "2026-06-09T03:00:00.000Z",
+          "isAllDay": false,
+          "source": "M365"
+        },
+        {
+          "id": "evt-appeal-deadline",
+          "title": "⚠️ SAP Academic Appeal Submission Deadline",
+          "start": "2026-06-11T09:00:00.000Z",
+          "end": "2026-06-11T10:00:00.000Z",
+          "isAllDay": false,
+          "source": "M365"
+        },
+        {
+          "id": "evt-unifast-renewal",
+          "title": "🎓 CHED UniFAST Scholarship Renewal Portal Opens",
+          "start": "2026-06-14T00:00:00.000Z",
+          "end": "2026-06-14T09:00:00.000Z",
+          "isAllDay": false,
+          "source": "M365"
+        },
+        {
+          "id": "evt-enrollment-hold-check",
+          "title": "🛑 Registrar Enrollment Hold Review Date",
+          "start": "2026-06-17T02:00:00.000Z",
+          "end": "2026-06-17T04:00:00.000Z",
+          "isAllDay": false,
+          "source": "M365"
+        }
+      ],
+      "fetched_at": 1780833995873,
+      "ttl": 300
+    },
+    {
+      "id": "holds:student-mara-oid",
+      "institution_id": "inst-up",
+      "cache_key": "holds:student-mara-oid",
+      "data": [
+        {
+          "id": "hold-financial",
+          "type": "Financial",
+          "reason": "Pending tuition balance of ₱12,500.00",
+          "status": "Active",
+          "resolution_steps": "Pay the remaining balance at the Bursar counter, or submit your CHED UniFAST clearance."
+        },
+        {
+          "id": "hold-academic",
+          "type": "Academic",
+          "reason": "Satisfactory Academic Progress (SAP) GPA deficiency (GWA is 2.65, required is 2.50)",
+          "status": "Lifting",
+          "resolution_steps": "Submit an SAP Appeal narrative and study plan to the Academic Advisory Panel."
+        }
+      ],
+      "fetched_at": 1780834085060,
+      "ttl": 300
+    }
+  ]
 }
