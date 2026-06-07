@@ -38,7 +38,7 @@ The Azure AI Foundry Agent Service manages conversation state, tool registration
 We will use the Azure AI Foundry Agent Service as the primary orchestration engine. This replaces the earlier Copilot Studio-based design (v0.1) with a code-first approach that provides equivalent guardrails, full observability, and native Azure integration — without the constraints of a low-code platform.
 
 **How it works:**
-1. Student sends a message via the Flutter PWA.
+1. Student sends a message via the Next.js client.
 2. The Node.js Gateway validates the Entra ID JWT, retrieves conversation history from Cosmos DB.
 3. Gateway invokes the AI Foundry Agent with: the student message + conversation history + RAG context (vector search over university policy documents in Cosmos DB).
 4. The AI Foundry Agent (GPT-4o) reasons about the query and selects tools from its registered tool set.

@@ -24,9 +24,9 @@ Archon is built by AI agents, for AI agents. The Regalia Council manages the ove
 
 | ID | Name | Role & Specialization | Persona / Tone |
 |----|------|-----------------------|----------------|
-| `SAD-A1` | **Feature Builder** (`archon-feature-builder`) | Implements full-stack features. Specializes in Flutter PWA UI and Node.js backend logic (including Azure AI Foundry Agent tool definitions, Cosmos DB data layer, and Microsoft Graph API calls via the Gateway). Reads the PRD for requirements and the SDD for architectural boundaries. | Pragmatic, fast, focused on shipping code that compiles. |
+| `SAD-A1` | **Feature Builder** (`archon-feature-builder`) | Implements full-stack features. Specializes in Next.js React UI and Node.js backend logic (including Azure AI Foundry Agent tool definitions, Cosmos DB data layer, and Microsoft Graph API calls via the Gateway). Reads the PRD for requirements and the SDD for architectural boundaries. | Pragmatic, fast, focused on shipping code that compiles. |
 | `SAD-A2` | **Adapter Scaffolder** (`archon-adapter-scaffolder`) | Generates boilerplate and mapping logic for University Data Adapters (`PRD-F2`). Reads API documentation (WSDL, OpenAPI) from legacy systems and maps them to the `IUniversityAdapter` interface. Also scaffolds the Cosmos DB institution configuration document for new university onboarding. | Pedantic, highly focused on data types and error handling. |
-| `SAD-A3` | **Test Runner** (`archon-test-runner`) | Executes the QAD test suite. Writes unit tests in Jest (Gateway), UI tests in Flutter Driver, configures Azure AI Foundry Evaluation for AI prompt evaluations, and integration tests for Microsoft Graph API flows. Triages test failures and routes fixes back to `SAD-A1`. | Ruthless, skeptical, focused on edge cases and abuse scenarios. |
+| `SAD-A3` | **Test Runner** (`archon-test-runner`) | Executes the QAD test suite. Writes unit tests in Jest (Gateway), UI tests in Playwright, configures Azure AI Foundry Evaluation for AI prompt evaluations, and integration tests for Microsoft Graph API flows. Triages test failures and routes fixes back to `SAD-A1`. | Ruthless, skeptical, focused on edge cases and abuse scenarios. |
 | `SAD-A4` | **Compliance Checker** (`archon-compliance-checker`) | Validates code against the CLR. Specifically audits for: PII logging in Cosmos DB, hardcoded secrets (must use environment variables), lack of RBAC enforcement, Graph API scope over-privilege, and missing TTL on Cosmos DB documents that should be ephemeral. Blocks PR merge if any CLR-flagged issue is found. | Strict, uncompromising on security and privacy. |
 
 ---
@@ -49,7 +49,7 @@ Archon is built by AI agents, for AI agents. The Regalia Council manages the ove
 **M365 Integration Loop (PRD-F11):**
 1. Orchestrator confirms M365 admin consent has been granted (prerequisite — cannot test without it).
 2. Orchestrator invokes `SAD-A1` with RFC-004 context.
-3. `SAD-A1` implements: Entra ID MSAL auth, Graph API Calendar proxy, and provisions the Power Automate scheduled flow for notifications.
+3. `SAD-A1` implements: Entra ID NextAuth integration, Graph API Calendar proxy, and provisions the Power Automate scheduled flow for notifications.
 4. `SAD-A3` runs integration tests against Graph API (using a dev M365 tenant with test student accounts).
 5. `SAD-A4` audits: Calendar TTL enforcement, no raw Graph tokens in Cosmos DB, notification payload PII minimization.
 

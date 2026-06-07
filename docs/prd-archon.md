@@ -40,7 +40,7 @@ Each feature gets a stable **ID** (`PRD-F1`, `PRD-F2`, …). These IDs are perma
 
 | ID | Feature | Description | Priority |
 |----|---------|-------------|----------|
-| PRD-F1 | **Agentic Chat Interface** | Natural language conversational helpdesk accessible via web and Flutter PWA mobile app. Supports Filipino, English, and Cebuano. Text-based with rich media responses (status cards, document links, progress trackers). Powered by Azure AI Foundry. | Must-Have |
+| PRD-F1 | **Agentic Chat Interface** | Natural language conversational helpdesk accessible via responsive Next.js web application. Supports Filipino, English, and Cebuano. Text-based with rich media responses (status cards, document links, progress trackers). Powered by Azure AI Foundry. | Must-Have |
 | PRD-F2 | **Cross-Department Data Orchestration** | AI agent accesses registrar (enrollment, academic records), bursar (balances, payments), financial aid (scholarships, disbursements), and academic advising (SAP status, degree audit) via a unified adapter layer. Single query can span multiple departments. Orchestrated by the Azure AI Foundry Agent Service. | Must-Have |
 | PRD-F3 | **Autonomous Ticket Resolution** | Zero-touch resolution for Tier 1 inquiries: password resets, balance inquiries, enrollment verification, FAFSA/UniFAST deadline reminders, class schedule lookups, hold explanations. Target: ≥30% of all incoming tickets resolved without human intervention. | Must-Have |
 | PRD-F4 | **Seamless Human Handoff** | Context-preserving escalation to human agents for complex cases. The AI generates a structured handoff packet: student profile summary, issue diagnosis, systems queried, actions taken, recommended resolution. Human agent receives full context — student never repeats their story. Includes Zero-Touch Wrap-Up (AI auto-logs ticket outcome post-resolution). | Must-Have |
@@ -214,7 +214,7 @@ flowchart TD
 - Chat responses must begin streaming within 3 seconds on 3G
 - All text must be readable at default system font size (no tiny disclaimers)
 - Touch targets minimum 48×48px (accommodating older/lower-cost devices)
-- No required app download — Flutter PWA installable but fully functional in mobile browser
+- No required app download — Fully responsive Next.js web application optimized for mobile browsers
 - Microsoft Teams notifications must use adaptive card format (not plain text) to maintain readability on mobile Teams client
 
 ### 5.5 Instrumentation & Event Taxonomy
@@ -233,7 +233,7 @@ flowchart TD
 | `calendar_panel_loaded` | M365 Calendar panel successfully renders on Home Dashboard | `user_id, events_count, date_range` | Internal (adoption) |
 | `calendar_consent_granted` | Student grants Calendars.Read permission | `user_id, ts` | Internal (M365 adoption) |
 | `satisfaction_submitted` | Student rates the interaction (post-resolution CSAT prompt) | `user_id, ticket_id, rating (1-5), nps_score, free_text_feedback` | BRD-M5 (NPS) |
-| `session_started` | User opens the app/PWA | `user_id, device_type, os, connection_type, language, entra_id_tenant` | BRD-M6 (adoption) |
+| `session_started` | User opens the web application | `user_id, device_type, os, connection_type, language, entra_id_tenant` | BRD-M6 (adoption) |
 | `sap_appeal_started` | Student begins SAP appeal wizard | `user_id, current_sap_status, step_reached` | Internal tracking |
 | `sap_appeal_submitted` | Student completes and submits SAP appeal | `user_id, appeal_id, documents_uploaded_count, narrative_word_count` | Internal tracking |
 

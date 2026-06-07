@@ -69,7 +69,7 @@ Universities operate in silos; students experience them as a single entity. Arch
 | "Our systems are too old/custom." | "Our Adapter pattern is specifically built to wrap legacy Oracle, PHP, and SOAP backends without replacing them." |
 | "AI hallucinates." | "Archon uses Azure AI Foundry with strict tool schemas and RBAC-enforced tool calls. The AI is bounded by auditable, deterministic tool definitions — and has zero direct write access to your database." |
 | "We don't want another vendor to manage." | "Archon runs entirely on Microsoft Azure — the same platform you already manage for your M365 and Azure subscription. There's no new cloud vendor to evaluate or contract with." |
-| "Students won't download another app." | "They don't have to. Archon notifications arrive in Teams and Outlook. The web app is a Flutter PWA — installable from the browser, no app store required." |
+| "Students won't download another app." | "They don't have to. Archon notifications arrive in Teams and Outlook. The web app is a responsive Next.js web application — accessible from any mobile browser, no app store required." |
 
 ---
 

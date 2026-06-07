@@ -76,40 +76,41 @@ https://login.microsoftonline.com/{tenant_id}/adminconsent?client_id={archon_cli
 
 This URL is shared with the university's M365 tenant admin as part of the M2 onboarding checklist. Until consent is granted, Archon operates in "reduced mode": Entra ID auth works, but Calendar panel and Teams/Outlook notifications are disabled with a clear user-facing prompt.
 
-### 4.3 MSAL Configuration
+### 4.3 NextAuth.js Configuration
 
-**Client (Flutter PWA) — MSAL.js:**
+**Client (Next.js) — `app/api/auth/[...nextauth]/route.ts`:**
 ```typescript
-import { PublicClientApplication } from '@azure/msal-browser';
+import NextAuth from "next-auth";
+import AzureADProvider from "next-auth/providers/azure-ad";
 
-const msalConfig = {
-  auth: {
-    clientId: process.env.ARCHON_CLIENT_ID,
-    authority: `https://login.microsoftonline.com/${process.env.ENTRA_TENANT_ID}`,
-    redirectUri: 'https://app.archon.edu.ph/auth/callback',
+const handler = NextAuth({
+  providers: [
+    AzureADProvider({
+      clientId: process.env.ARCHON_CLIENT_ID,
+      clientSecret: process.env.ARCHON_CLIENT_SECRET,
+      tenantId: process.env.ENTRA_TENANT_ID,
+      authorization: {
+        params: {
+          scope: "openid profile email User.Read Calendars.Read offline_access",
+        },
+      },
+    }),
+  ],
+  callbacks: {
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token;
+      }
+      return token;
+    },
   },
-  cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false },
-};
+});
 
-const loginRequest = {
-  scopes: ['openid', 'profile', 'email', 'User.Read', 'Calendars.Read'],
-};
+export { handler as GET, handler as POST };
 ```
 
-**Gateway (Node.js) — MSAL Node:**
-```typescript
-import { ConfidentialClientApplication } from '@azure/msal-node';
-
-// Used for background scheduler (Teams/Outlook notifications)
-// Requires Client Credentials flow with admin-consented app permissions
-const ccaConfig = {
-  auth: {
-    clientId: process.env.ARCHON_CLIENT_ID,
-    clientSecret: process.env.ARCHON_CLIENT_SECRET, // Loaded via environment variables
-    authority: `https://login.microsoftonline.com/${universityTenantId}`,
-  },
-};
-```
+**Gateway (Node.js) — Token Validation:**
+The Node.js API Gateway receives the `accessToken` via the Authorization header from the Next.js client and validates the Entra ID JWT claims (`iss`, `aud`, `tid`) before executing business logic or proxying calendar calls to the Microsoft Graph API.
 
 ### 4.4 M365 Calendar Panel — API Contract
 

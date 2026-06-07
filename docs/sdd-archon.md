@@ -24,7 +24,7 @@ This architecture satisfies `PRD-F2` (cross-department data orchestration), `PRD
 ```mermaid
 flowchart TD
     %% Users
-    Student["Student (Web/Mobile PWA)"]
+    Student["Student (Web/Mobile)"]
     Agent["Tier 1 Support Agent"]
     Admin["University Admin"]
 
@@ -36,10 +36,10 @@ flowchart TD
 
     %% Core Archon System on Azure
     subgraph Archon on Azure
-        Client["Flutter PWA Client"]
+        Client["Next.js Web Client"]
         Dashboard["React Agent/Admin Dashboard"]
 
-        Gateway["API Gateway (Node.js/Express)\n+ MSAL Token Validation\n+ University Adapters\n+ Graph API Proxy"]
+        Gateway["API Gateway (Node.js/Express)\n+ JWT Token Validation\n+ University Adapters\n+ Graph API Proxy"]
 
         subgraph AI Layer — Azure AI Foundry
             FoundryAgent["AI Foundry Agent Service\n(Orchestration + Tool Calling)"]
@@ -133,7 +133,7 @@ All collections are partitioned by `/{institution_id}` to support future multi-t
 
 **Internal API (Gateway ↔ Client):**
 - RESTful JSON over HTTPS for standard CRUD operations (Dashboard, Ticket History).
-- WebSockets/Server-Sent Events (SSE) for real-time chat streaming between the Flutter client and the AI Foundry Agent.
+- WebSockets/Server-Sent Events (SSE) for real-time chat streaming between the Next.js client and the AI Foundry Agent.
 
 **External API (Gateway ↔ University Systems) — The "Adapter Pattern":**
 The Node.js Gateway implements an abstract `UniversityAdapter` interface. This allows Archon to connect to disparate systems (Banner, Workday, legacy Oracle DBs) without changing the core AI logic. **For the V1/Initial Build, we will use Mock/Dummy Data Adapters** that return static JSON to simulate these systems since live API access is unavailable.
@@ -171,7 +171,7 @@ const tools = [
 
 ## 5. Security & Authentication
 
-- **Authentication:** Archon relies entirely on **Microsoft Entra ID** (the university's M365 tenant) via OIDC/OAuth 2.0. MSAL.js on the Flutter client. MSAL Node on the Gateway. Archon stores no passwords.
+- **Authentication:** Archon relies entirely on **Microsoft Entra ID** (the university's M365 tenant) via OIDC/OAuth 2.0. NextAuth.js (Auth.js) is used on the Next.js client to securely manage the session. JWT validation is performed on the Gateway. Archon stores no passwords.
 - **Authorization:** Role-Based Access Control (RBAC) enforced at the Gateway layer using Entra ID JWT claims.
   - `Student`: Can only read/write data associated with their specific `entra_oid` / `student_id`.
   - `Agent`: Can read/write data for tickets in their assigned queue.
@@ -237,7 +237,7 @@ Archon Notification Scheduler (daily recurrence via Power Automate)
 
 | Component | Azure Service | Notes |
 |---|---|---|
-| Client (Flutter PWA) | Azure Static Web Apps | CDN-backed, global edge distribution |
+| Client (Next.js Web App) | Azure App Service (Linux Node.js) | SSR rendering and NextAuth endpoint hosting |
 | Agent/Admin Dashboard (React) | Azure Static Web Apps | Same CDN as client |
 | API Gateway (Node.js) | Azure App Service (Linux, P2v3) | Auto-scaling; blue-green deployment slots |
 | Notification Scheduler | Power Automate (Scheduled Cloud Flow) | Cron trigger for daily deadline scans & M365 notifications |
@@ -290,7 +290,7 @@ The AI subsystem handles `PRD-F1` (Chat), `PRD-F2` (Orchestration), `PRD-F4` (Ha
 ### 9.1 AI Safety & Guardrails (OWASP LLM Controls)
 
 1. **LLM01: Prompt Injection:** Gateway validates and sanitizes user input (length, character set, structural injection patterns) before passing to the Agent. System prompt is static and version-controlled — never modified by user input.
-2. **LLM02: Insecure Output Handling:** AI outputs are treated as untrusted markdown. The Flutter client sanitizes all HTML/Markdown before rendering to prevent XSS.
+2. **LLM02: Insecure Output Handling:** AI outputs are treated as untrusted markdown. The Next.js client sanitizes all HTML/Markdown before rendering to prevent XSS.
 3. **LLM06: Sensitive Information Disclosure:** System prompt explicitly forbids discussing other students' data. RBAC at the Gateway ensures the Agent *cannot* call a tool with a `student_id` different from the authenticated user's ID.
 4. **Scope Containment:** The Agent is given read-only tool access by default. Write actions (e.g., lifting a hold, sending a Teams message) require either explicit student confirmation in chat or staff approval in the Agent Dashboard before the Gateway executes the Graph API or adapter write call.
 5. **Graph API Least Privilege:** Only delegated (user-context) permissions are used. The Gateway never holds application-level Graph permissions that could act across all students.
@@ -299,7 +299,7 @@ The AI subsystem handles `PRD-F1` (Chat), `PRD-F2` (Orchestration), `PRD-F4` (Ha
 
 ## Self-Check
 
-- [x] Specifies the exact stack (Node.js, Cosmos DB, Redis, Flutter, React, Azure AI Foundry, Microsoft Graph).
+- [x] Specifies the exact stack (Node.js, Next.js, Cosmos DB, Redis, React, Azure AI Foundry, Microsoft Graph).
 - [x] System diagram maps how all components communicate, including M365 integration.
 - [x] Explains how `PRD-F2` (Data Orchestration) works without storing the university's data long-term.
 - [x] Explains how `PRD-F11` (M365 Integration) works — Entra ID auth, Graph Calendar, Teams, Outlook.

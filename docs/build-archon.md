@@ -51,12 +51,11 @@ The documentation suite is the source of truth. Read in this order before writin
 
 | Layer | Technology | Pinned version | Convention verified |
 |-------|------------|----------------|---------------------|
-| Client Language | Dart | 3.4.x | 2026-06-07 |
-| Client Framework | Flutter | 3.22.x | 2026-06-07 |
-| Client Auth | MSAL.js (`@azure/msal-browser`) | 3.x | 2026-06-07 |
+| Client Framework | Next.js (React) | 14.x | 2026-06-07 |
+| Client Auth | NextAuth.js (Auth.js) | 4.x | 2026-06-07 |
 | Backend Language | TypeScript | 5.4.x | 2026-06-07 |
 | Backend Framework | Node.js + Express | v20 LTS / 4.19.x | 2026-06-07 |
-| Backend Auth | MSAL Node (`@azure/msal-node`) | 2.x | 2026-06-07 |
+| Backend Auth | `jsonwebtoken` (or similar JWT validator) | 9.x | 2026-06-07 |
 | Database | Azure Cosmos DB for NoSQL SDK | `@azure/cosmos` 4.x | 2026-06-07 |
 | AI Platform | Azure AI Foundry SDK | `@azure/ai-projects` 1.x | 2026-06-07 |
 | AI Model | GPT-4o (via AI Foundry deployment) | `2024-11-20` API version | 2026-06-07 |
@@ -73,7 +72,7 @@ The documentation suite is the source of truth. Read in this order before writin
 | Azure OpenAI SDK (`openai` npm package direct) | Use `@azure/ai-projects` (AI Foundry SDK) for all model calls. | CR-001 (v0.2) |
 | PostgreSQL + Prisma | **Removed.** Use `@azure/cosmos` SDK for all data operations. | CR-001 (v0.2) |
 | Redis as primary cache | Redis retained for WebSocket session state and JWT blocklist only. Cosmos DB TTL used for all other caching. | CR-001 (v0.2) |
-| Generic SAML / OAuth SSO | Use Microsoft Entra ID via MSAL. No custom auth flows. | CR-001 (v0.2) |
+| Generic SAML / OAuth SSO | Use Microsoft Entra ID via NextAuth. No custom auth flows. | CR-001 (v0.2) |
 | Copilot Studio solution exports (`/copilot-studio/` folder) | **Removed.** No Copilot Studio artifacts in the repo. | CR-001 (v0.2) |
 | Raw SQL for simple queries | **Not applicable.** Cosmos DB uses SDK point reads and queries. Use `container.item(id).read()` for point reads; `container.items.query()` for queries. | Project start |
 
@@ -82,7 +81,7 @@ The documentation suite is the source of truth. Read in this order before writin
 ## 3. Repo Layout
 
 ```
-/client          — Flutter PWA application.
+/client          — Next.js web application.
 /gateway         — Node.js Express server, Cosmos DB data layer, University Adapters, Graph API proxy.
 /scheduler       — Power Automate Cloud Flow definitions (JSON/ZIP exports).
 /docs            — FMD documentation suite.
@@ -217,7 +216,7 @@ await graphClient.api(`/users/${agentUserId}/teamwork/sendActivityNotification`)
 **Never:**
 - Commit API keys, connection strings, or client secrets. Use `.env` files locally and Azure App Service App Settings in production.
 - Modify the AI system prompt dynamically based on user input (Prompt Injection risk).
-- Call Microsoft Graph API directly from the Flutter client — all Graph calls are proxied through the Gateway for RBAC enforcement and audit logging.
+- Call Microsoft Graph API directly from the Next.js client — all Graph calls are proxied through the Gateway for RBAC enforcement and audit logging.
 - Store raw Graph API calendar responses permanently in Cosmos DB — only the normalized `CalendarEvent[]` schema with a 15-minute TTL.
 - Reference Microsoft Copilot Studio in any code, configuration, or comment. It is not part of this stack.
 

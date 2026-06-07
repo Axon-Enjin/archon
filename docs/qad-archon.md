@@ -14,7 +14,7 @@
 ## 1. Test Strategy
 
 Archon requires a hybrid testing approach:
-1. **Deterministic Testing:** Standard unit/integration tests for the Node.js Gateway, University Adapters, Cosmos DB data layer, Microsoft Graph API proxy, and Flutter client.
+1. **Deterministic Testing:** Standard unit/integration tests for the Node.js Gateway, University Adapters, Cosmos DB data layer, Microsoft Graph API proxy, and Next.js client.
 2. **Non-Deterministic (AI) Testing:** Specialized prompt evaluations using **Azure AI Foundry Evaluation** to ensure GPT-4o and Phi-4 remain within guardrails, don't hallucinate policies, and gracefully escalate.
 3. **Integration Testing (M365):** End-to-end tests against a dev M365 tenant with test student accounts to validate Graph API Calendar reads, Teams notifications, and Outlook email delivery.
 
@@ -22,7 +22,7 @@ Archon requires a hybrid testing approach:
 
 | Layer | Framework/Tool | What's Tested | Executed By |
 |-------|----------------|---------------|-------------|
-| Client (Flutter) | Flutter Driver | UI rendering, state management, a11y compliance, M365 Calendar panel render | CI/CD |
+| Client (Next.js) | Playwright | E2E UI rendering, state management, a11y compliance, M365 Calendar panel render | CI/CD |
 | Gateway (Node.js) | Jest + Supertest | Entra ID JWT validation, RBAC, Data Adapters, Cosmos DB operations, Graph API proxy contracts | CI/CD |
 | M365 Integration | Jest + MS Graph SDK (dev tenant) | Calendar fetch, Teams notification delivery, Outlook email delivery, admin consent flow | Developer / CI (dev M365 tenant) |
 | AI Orchestration | Azure AI Foundry Evaluation | Intent routing, factuality, tone, tool call accuracy, hallucination rate | Daily batch |

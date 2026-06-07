@@ -60,7 +60,7 @@ Archon directly addresses three convergent strategic imperatives:
 **In Scope:**
 
 - Agentic AI service desk for university student support (enrollment, financial aid, registration, academic advising, IT support)
-- Web-based and mobile (Flutter PWA) student-facing chat interface
+- Web-based and mobile-optimized Next.js student-facing chat interface
 - AI-powered cross-department data orchestration (registrar, bursar, financial aid, academic records) via Azure AI Foundry Agent Service
 - Seamless human handoff with full context preservation
 - Proactive alert system for deadlines, holds, and balance changes
