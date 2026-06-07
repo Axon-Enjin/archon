@@ -116,7 +116,7 @@ export default function AgentDashboard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          content: `[Staff Reply - Jay] ${replyText}`,
+          content: `[Staff Reply - ${session?.user?.name || "Support Agent"}] ${replyText}`,
         }),
       });
 
@@ -228,7 +228,7 @@ export default function AgentDashboard() {
                     {ticket.status}
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-brand-text font-display">Mara Salvador</p>
+                <p className="text-sm font-semibold text-brand-text font-display">{ticket.student_id}</p>
                 <p className="text-[10px] text-brand-muted">
                   Created {new Date(ticket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
@@ -258,7 +258,7 @@ export default function AgentDashboard() {
                       Ticket {selectedTicket.ticket_id} Details
                     </h2>
                     <p className="text-xs text-brand-muted mt-1">
-                      Assigned to Support Desk Agent · Jay
+                      Assigned to Support Desk Queue
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

@@ -141,7 +141,7 @@ export default function AdminDashboard() {
           <div>
             <h1 className="text-3xl font-bold font-display text-brand-text">Administration & Analytics</h1>
             <p className="text-brand-muted text-sm mt-1">
-              VP Student Affairs: Dr. Reyes · University of the Philippines System (Mock)
+              {`Administrator: ${session?.user?.name || "Admin"} · Tenant: ${session?.user?.institution_id || "N/A"}`}
             </p>
           </div>
           <div className="flex items-center gap-2">

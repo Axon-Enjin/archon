@@ -56,13 +56,13 @@ export default async function Home() {
                     href="/auth/signin"
                     className="flex h-12 items-center justify-center rounded-xl bg-brand-primary px-6 text-base font-semibold text-white transition hover:bg-teal-700 shadow-md"
                   >
-                    Get Started as Mara (Student)
+                    Get Started
                   </Link>
                   <Link
                     href="/auth/signin"
                     className="flex h-12 items-center justify-center rounded-xl border border-zinc-200 bg-white px-6 text-base font-semibold text-brand-text transition hover:bg-zinc-50"
                   >
-                    Sign in as Jay (Agent)
+                    Sign in with Entra ID
                   </Link>
                 </div>
               </div>

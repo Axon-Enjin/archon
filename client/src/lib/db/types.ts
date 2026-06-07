@@ -54,7 +54,7 @@ export interface PolicyEmbeddingDoc extends BaseCosmosDocument {
 
 export interface CacheUniversityDataDoc extends BaseCosmosDocument {
   cache_key: string; // e.g., holds:studentId or balance:studentId
-  data: any;
+  data: unknown;
   fetched_at: number; // epoch timestamp
   ttl?: number; // 300 seconds
 }

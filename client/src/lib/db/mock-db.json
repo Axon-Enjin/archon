@@ -53,6 +53,30 @@
       "student_id": "student-mara-oid",
       "status": "Open",
       "created_at": "2026-06-07T12:08:35.522Z"
+    },
+    {
+      "id": "ticket-1780839181597",
+      "institution_id": "inst-up",
+      "ticket_id": "ARC-T-1001",
+      "student_id": "QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
+      "status": "Open",
+      "created_at": "2026-06-07T13:33:01.597Z"
+    },
+    {
+      "id": "ticket-1780839687951",
+      "institution_id": "inst-up",
+      "ticket_id": "ARC-T-1002",
+      "student_id": "QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
+      "status": "Open",
+      "created_at": "2026-06-07T13:41:27.951Z"
+    },
+    {
+      "id": "ticket-1780839688008",
+      "institution_id": "inst-up",
+      "ticket_id": "ARC-T-1003",
+      "student_id": "QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
+      "status": "Open",
+      "created_at": "2026-06-07T13:41:28.008Z"
     }
   ],
   "messages": [
@@ -95,6 +119,30 @@
       "role": "assistant",
       "content_scrubbed": "{\"text\":\"Nahanap ko po na mayroon kang **1** na aktibong hold sa iyong account:\\n\\n1. **Financial Hold** (Active): Pending tuition balance of ₱12,500.00\\n   *Lunas:* Pay the remaining balance at the Bursar counter, or submit your CHED UniFAST clearance.\\n\\n2. **Academic Hold** (Lifting): Satisfactory Academic Progress (SAP) GPA deficiency (GWA is 2.65, required is 2.50)\\n   *Lunas:* Submit an SAP Appeal narrative and study plan to the Academic Advisory Panel.\\n\\nPara sa iyong Financial Hold, maaari ko po itong pansamantalang i-lift para makapag-enroll ka kung mayroon kang scholarship na inaasahan. Gusto mo bang gawin natin ito?\",\"toolCalls\":[\"CheckStudentHolds\"]}",
       "ts": "2026-06-07T12:08:57.888Z"
+    },
+    {
+      "id": "msg-1780839181598",
+      "institution_id": "inst-up",
+      "conversation_id": "ticket-1780839181597",
+      "role": "assistant",
+      "content_scrubbed": "Kumusta! Ako si Archon, ang iyong AI Service Desk Assistant. Paano kita matutulungan ngayon sa iyong mga holds, bayarin, o scholarship?",
+      "ts": "2026-06-07T13:33:01.598Z"
+    },
+    {
+      "id": "msg-1780839687952",
+      "institution_id": "inst-up",
+      "conversation_id": "ticket-1780839687951",
+      "role": "assistant",
+      "content_scrubbed": "Kumusta! Ako si Archon, ang iyong AI Service Desk Assistant. Paano kita matutulungan ngayon sa iyong mga holds, bayarin, o scholarship?",
+      "ts": "2026-06-07T13:41:27.952Z"
+    },
+    {
+      "id": "msg-1780839688008",
+      "institution_id": "inst-up",
+      "conversation_id": "ticket-1780839688008",
+      "role": "assistant",
+      "content_scrubbed": "Kumusta! Ako si Archon, ang iyong AI Service Desk Assistant. Paano kita matutulungan ngayon sa iyong mga holds, bayarin, o scholarship?",
+      "ts": "2026-06-07T13:41:28.008Z"
     }
   ],
   "handoffs": [],
@@ -199,29 +247,6 @@
       "ttl": 300
     },
     {
-      "id": "holds:QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
-      "institution_id": "inst-up",
-      "cache_key": "holds:QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
-      "data": [
-        {
-          "id": "hold-financial",
-          "type": "Financial",
-          "reason": "Pending tuition balance of ₱12,500.00",
-          "status": "Active",
-          "resolution_steps": "Pay the remaining balance at the Bursar counter, or submit your CHED UniFAST clearance."
-        },
-        {
-          "id": "hold-academic",
-          "type": "Academic",
-          "reason": "Satisfactory Academic Progress (SAP) GPA deficiency (GWA is 2.65, required is 2.50)",
-          "status": "Active",
-          "resolution_steps": "Submit an SAP Appeal narrative and study plan to the Academic Advisory Panel."
-        }
-      ],
-      "fetched_at": 1780837284642,
-      "ttl": 300
-    },
-    {
       "id": "calendar:QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
       "institution_id": "inst-up",
       "cache_key": "calendar:QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
@@ -259,7 +284,30 @@
           "source": "M365"
         }
       ],
-      "fetched_at": 1780837284721,
+      "fetched_at": 1780840333313,
+      "ttl": 300
+    },
+    {
+      "id": "holds:QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
+      "institution_id": "inst-up",
+      "cache_key": "holds:QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
+      "data": [
+        {
+          "id": "hold-financial",
+          "type": "Financial",
+          "reason": "Pending tuition balance of ₱12,500.00",
+          "status": "Active",
+          "resolution_steps": "Pay the remaining balance at the Bursar counter, or submit your CHED UniFAST clearance."
+        },
+        {
+          "id": "hold-academic",
+          "type": "Academic",
+          "reason": "Satisfactory Academic Progress (SAP) GPA deficiency (GWA is 2.65, required is 2.50)",
+          "status": "Active",
+          "resolution_steps": "Submit an SAP Appeal narrative and study plan to the Academic Advisory Panel."
+        }
+      ],
+      "fetched_at": 1780840333522,
       "ttl": 300
     }
   ]

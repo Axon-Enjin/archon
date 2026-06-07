@@ -187,7 +187,7 @@ function StudentChatContent() {
       case "requestHoldLift":
         return "⚡ Nagpapadala ng kahilingan na tanggalin ang Financial Hold...";
       case "EscalateToHuman":
-        return "🚨 Inililipat ang chat session sa support staff (Jay)...";
+        return "🚨 Inililipat ang chat session sa support queue...";
       default:
         return `🛠️ Gumagana ang tool: ${tool}...`;
     }
@@ -346,10 +346,10 @@ function StudentChatContent() {
               ⚡ Paki-lift ang hold ko
             </button>
             <button
-              onClick={() => handleSendMessage("Gusto ko pong makausap si Jay.")}
+              onClick={() => handleSendMessage("Gusto ko pong makausap ang support agent.")}
               className="rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
             >
-              🚨 Makausap si Jay
+              🚨 Makausap ang support agent
             </button>
           </div>
         </section>

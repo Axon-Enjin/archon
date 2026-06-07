@@ -78,8 +78,8 @@ function SignInContent() {
                 className="group relative flex w-full justify-between items-center rounded-xl border border-zinc-200 bg-white px-5 py-4 text-left transition hover:border-brand-primary hover:bg-brand-primary-light/10 disabled:opacity-50"
               >
                 <div>
-                  <p className="text-base font-semibold text-brand-text">Mara Salvador</p>
-                  <p className="text-xs text-brand-muted">Primary Student Persona (CHED Scholar)</p>
+                  <p className="text-base font-semibold text-brand-text">Mock Student Login</p>
+                  <p className="text-xs text-brand-muted">Development-only fallback account</p>
                 </div>
                 <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-brand-primary group-hover:bg-brand-primary group-hover:text-white">
                   {loading === "mara" ? "Signing in..." : "Student"}
@@ -92,8 +92,8 @@ function SignInContent() {
                 className="group relative flex w-full justify-between items-center rounded-xl border border-zinc-200 bg-white px-5 py-4 text-left transition hover:border-brand-primary hover:bg-brand-primary-light/10 disabled:opacity-50"
               >
                 <div>
-                  <p className="text-base font-semibold text-brand-text">Jay (Support Staff)</p>
-                  <p className="text-xs text-brand-muted">Tier 1 Desk Agent (Queue Management)</p>
+                  <p className="text-base font-semibold text-brand-text">Mock Agent Login</p>
+                  <p className="text-xs text-brand-muted">Development-only fallback account</p>
                 </div>
                 <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-600 group-hover:bg-brand-m365 group-hover:text-white">
                   {loading === "jay" ? "Signing in..." : "Agent"}
@@ -106,8 +106,8 @@ function SignInContent() {
                 className="group relative flex w-full justify-between items-center rounded-xl border border-zinc-200 bg-white px-5 py-4 text-left transition hover:border-brand-primary hover:bg-brand-primary-light/10 disabled:opacity-50"
               >
                 <div>
-                  <p className="text-base font-semibold text-brand-text">Dr. Reyes</p>
-                  <p className="text-xs text-brand-muted">VP Student Affairs (Analytics & CSAT)</p>
+                  <p className="text-base font-semibold text-brand-text">Mock Admin Login</p>
+                  <p className="text-xs text-brand-muted">Development-only fallback account</p>
                 </div>
                 <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700 group-hover:bg-brand-warning group-hover:text-white">
                   {loading === "reyes" ? "Signing in..." : "Admin"}

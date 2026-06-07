@@ -2,10 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, verifyStudentAccess, unauthorizedResponse, forbiddenResponse } from "@/lib/auth-helper";
 import { cosmosDbService } from "@/lib/db/cosmos";
 
+interface HoldItem {
+  id: string;
+  type: string;
+  reason: string;
+  status: "Active" | "Lifting" | "Resolved";
+  resolution_steps: string;
+}
+
 // Helper to get holds from the cache or return initial mock list
-async function getHoldsList(studentOid: string, institutionId: string) {
+async function getHoldsList(studentOid: string, institutionId: string): Promise<HoldItem[]> {
   const cacheKey = `holds:${studentOid}`;
-  let holds = await cosmosDbService.getCacheData(cacheKey, institutionId);
+  let holds = await cosmosDbService.getCacheData<HoldItem[]>(cacheKey, institutionId);
   if (!holds) {
     holds = [
       {
@@ -65,7 +73,7 @@ export async function POST(
     const cacheKey = `holds:${studentOid}`;
     const holds = await getHoldsList(studentOid, authUser.institution_id);
 
-    const holdIndex = holds.findIndex((h: any) => h.id === holdId);
+    const holdIndex = holds.findIndex((h) => h.id === holdId);
     if (holdIndex === -1) {
       return NextResponse.json({ success: false, error: "Hold not found." }, { status: 404 });
     }
@@ -83,7 +91,8 @@ export async function POST(
       message: `Hold action '${action}' processed successfully.`,
       data: holds,
     });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error while processing hold action.";
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

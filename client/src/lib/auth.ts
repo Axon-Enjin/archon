@@ -50,7 +50,7 @@ export const authOptions: NextAuthOptions = {
               if (username === "mara") {
                 return {
                   id: "user-mara",
-                  name: "Mara (Student)",
+                  name: "Mock Student",
                   email: "mara@archon.edu.ph",
                   role: "Student",
                   institution_id: "inst-up",
@@ -60,7 +60,7 @@ export const authOptions: NextAuthOptions = {
               if (username === "jay") {
                 return {
                   id: "user-jay",
-                  name: "Jay (Agent)",
+                  name: "Mock Agent",
                   email: "jay@archon.edu.ph",
                   role: "Agent",
                   institution_id: "inst-up",
@@ -70,7 +70,7 @@ export const authOptions: NextAuthOptions = {
               if (username === "reyes") {
                 return {
                   id: "user-reyes",
-                  name: "Dr. Reyes (Admin)",
+                  name: "Mock Admin",
                   email: "reyes@archon.edu.ph",
                   role: "Admin",
                   institution_id: "inst-up",
