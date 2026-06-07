@@ -166,9 +166,9 @@ export default function AgentDashboard() {
   }
 
   return (
-    <div className="flex min-h-screen bg-brand-surface font-sans">
+    <div className="flex h-screen overflow-hidden bg-brand-surface font-sans">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-zinc-200 bg-white p-6 hidden md:flex flex-col justify-between shrink-0">
+      <aside className="w-64 h-full border-r border-zinc-200 bg-white p-6 hidden md:flex flex-col justify-between shrink-0">
         <div className="space-y-8">
           <div className="flex items-center gap-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary text-white font-extrabold text-lg font-display">
