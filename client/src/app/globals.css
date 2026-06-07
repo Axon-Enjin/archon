@@ -38,3 +38,27 @@ body {
   color: var(--color-text-primary);
   min-height: 100vh;
 }
+
+@keyframes laserPulse {
+  0% {
+    stroke-dashoffset: 80;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.laser-path-1 {
+  stroke-dasharray: 15, 45;
+  animation: laserPulse 2s linear infinite;
+}
+
+.laser-path-2 {
+  stroke-dasharray: 20, 60;
+  animation: laserPulse 1.8s linear infinite;
+}
+
+.laser-path-3 {
+  stroke-dasharray: 10, 50;
+  animation: laserPulse 2.2s linear infinite;
+}
