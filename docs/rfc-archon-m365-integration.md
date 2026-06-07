@@ -48,7 +48,7 @@ Archon is registered as a **multi-tenant application** in Archon's Azure tenant.
 App name:           Archon Student Services
 Application type:   Multi-tenant web application
 Auth flows:         Authorization Code with PKCE (students), Client Credentials (background scheduler)
-Token validation:   Gateway validates: iss (Entra ID), aud (Archon client ID), tid (university tenant ID)
+Token validation:   Next.js API Routes validate: iss (Entra ID), aud (Archon client ID), tid (university tenant ID)
 ```
 
 **Redirect URIs:**
@@ -109,14 +109,14 @@ const handler = NextAuth({
 export { handler as GET, handler as POST };
 ```
 
-**Gateway (Node.js) — Token Validation:**
-The Node.js API Gateway receives the `accessToken` via the Authorization header from the Next.js client and validates the Entra ID JWT claims (`iss`, `aud`, `tid`) before executing business logic or proxying calendar calls to the Microsoft Graph API.
+**Next.js API Routes — Token Validation:**
+Because NextAuth is managing the session, the Next.js API Routes (`app/api/...`) inherently have access to the server-side session and the Entra ID JWT claims (`iss`, `aud`, `tid`). The API route validates these before executing business logic or proxying calendar calls to the Microsoft Graph API.
 
 ### 4.4 M365 Calendar Panel — API Contract
 
-The Gateway proxies the Graph Calendar call and normalizes it to Archon's internal schema:
+The Next.js backend proxies the Graph Calendar call and normalizes it to Archon's internal schema:
 
-**Gateway endpoint:** `GET /api/v1/student/{id}/calendar?days=7`
+**API Route endpoint:** `GET /api/v1/student/{id}/calendar?days=7`
 
 **Response schema (`CalendarEvent[]`):**
 ```typescript
@@ -191,7 +191,7 @@ Actions:
      d. HTTP Connector (Optional): Send event telemetry to Azure Application Insights
 ```
 
-This bypasses the need to write custom Graph API calls in the Node.js Gateway for notifications, offloading the scheduling and reliable delivery to native Power Automate M365 connectors.
+This bypasses the need to write custom Graph API calls in the Next.js backend for notifications, offloading the scheduling and reliable delivery to native Power Automate M365 connectors.
 
 ## 5. Reduced Mode (Admin Consent Not Yet Granted)
 
@@ -209,6 +209,6 @@ The `ARCHON_M365_ENABLED` feature flag (per-institution in Cosmos DB config) con
 ## 6. Security & Rollback
 
 - **Least Privilege:** Only delegated permissions are requested. The app never holds application-level permissions that would allow querying all students' data without their session context. The background scheduler uses Client Credentials only for sending notifications — not for reading any student data.
-- **Data Minimization:** Calendar events are cached in Cosmos DB for 15 minutes for performance. They are never stored permanently or used for AI training. The Gateway normalizes events before caching — raw Graph API responses are not persisted.
+- **Data Minimization:** Calendar events are cached in Cosmos DB for 15 minutes for performance. They are never stored permanently or used for AI training. The Next.js API Route normalizes events before caching — raw Graph API responses are not persisted.
 - **Throttling:** Microsoft Graph API enforces per-tenant throttling limits. The notification scheduler respects `Retry-After` headers. If throttled, notifications are queued and retried with exponential backoff (max 3 retries, max 1 hour delay).
 - **Rollback:** If Graph API integration causes issues, the `ARCHON_M365_ENABLED` flag is set to `false` in Cosmos DB. All M365 features are disabled immediately (within 1 Cosmos DB TTL cycle) without a code deployment. Auth (Entra ID) remains unaffected by this flag.

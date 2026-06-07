@@ -39,11 +39,11 @@ We will use the Azure AI Foundry Agent Service as the primary orchestration engi
 
 **How it works:**
 1. Student sends a message via the Next.js client.
-2. The Node.js Gateway validates the Entra ID JWT, retrieves conversation history from Cosmos DB.
-3. Gateway invokes the AI Foundry Agent with: the student message + conversation history + RAG context (vector search over university policy documents in Cosmos DB).
+2. The Next.js API Route validates the Entra ID session, retrieves conversation history from Cosmos DB.
+3. The Next.js Backend invokes the AI Foundry Agent with: the student message + conversation history + RAG context (vector search over university policy documents in Cosmos DB).
 4. The AI Foundry Agent (GPT-4o) reasons about the query and selects tools from its registered tool set.
-5. For a hold inquiry, it calls `CheckStudentHolds` → Gateway → Registrar Adapter, and `CheckFinancialAidStatus` → Gateway → FA Adapter.
-6. Gateway returns the aggregated JSON to the Agent.
+5. For a hold inquiry, it calls `CheckStudentHolds` → Next.js Backend → Registrar Adapter, and `CheckFinancialAidStatus` → Next.js Backend → FA Adapter.
+6. The Next.js Backend returns the aggregated JSON to the Agent.
 7. Agent synthesizes the multi-department data into a clear Filipino/English response.
 8. Response streams back via SSE. The entire tool-call chain is traced in AI Foundry Tracing.
 
@@ -52,7 +52,7 @@ Simple intents ("What is my balance?", "When does enrollment open?") are pre-cla
 
 ## 4. Contracts & Interfaces
 
-The Node.js API Gateway must expose a universal status aggregate endpoint that the AI Agent tools call:
+The Next.js API Routes must expose internal services that the AI Agent tools call:
 
 **Contract `GET /api/v1/student/{id}/status-aggregate`**
 Returns:
@@ -94,5 +94,5 @@ Traces are forwarded to Azure Application Insights and surfaced in the OPS runbo
 
 ## 6. Security & Rollback
 
-- **Safety Check:** Tool schemas explicitly define allowed parameter types. The Gateway validates all tool call parameters against the authenticated user's claims — preventing a student from calling a tool on behalf of another student even if the Agent were manipulated via prompt injection.
-- **Rollback:** If AI Foundry Agent latency exceeds 8 seconds, the Gateway falls back to direct Cosmos DB vector search FAQ mode and returns the top 3 policy articles. If AI Foundry is entirely unavailable, the Gateway auto-escalates to the human agent queue with a context packet built from the cached conversation state.
+- **Safety Check:** Tool schemas explicitly define allowed parameter types. The Next.js Backend validates all tool call parameters against the authenticated user's claims — preventing a student from calling a tool on behalf of another student even if the Agent were manipulated via prompt injection.
+- **Rollback:** If AI Foundry Agent latency exceeds 8 seconds, the backend falls back to direct Cosmos DB vector search FAQ mode and returns the top 3 policy articles. If AI Foundry is entirely unavailable, the backend auto-escalates to the human agent queue with a context packet built from the cached conversation state.

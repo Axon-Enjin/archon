@@ -38,7 +38,7 @@ The AI Foundry Agent reads the transcript and internal API responses, generates 
 When the AI Foundry Agent determines an escalation is necessary (after 2 failed resolution attempts or a "talk to human" intent), it:
 1. Generates a `HandoffPacket` (GPT-4o call synthesizing the conversation + API data).
 2. Persists the `HandoffPacket` to the `handoffs` Cosmos DB collection.
-3. Triggers the `EscalateToHuman` tool → Gateway → queues the ticket in the Agent Dashboard.
+3. Triggers the `EscalateToHuman` tool → Next.js Backend → queues the ticket in the Agent Dashboard.
 4. Cosmos DB write triggers a **Power Automate Cloud Flow** → Power Automate native connector → agent receives a Teams adaptive card.
 
 The student sees: *"Let me connect you with a specialist. I'm summarizing our conversation for them right now…"*
@@ -50,7 +50,7 @@ The human agent receives a Teams adaptive card with:
 4. **Recommended Next Step:** What the human should do (e.g., "Verify SAP status manually and lift registrar hold").
 5. **Deep link:** "Open in Agent Dashboard" button in the Teams card.
 
-After the agent resolves the ticket and marks it resolved, the Gateway calls `SendOutlookEmail` → Microsoft Graph `/me/sendMail` to notify the student of the resolution. Zero-Touch Wrap-Up logs the outcome to Cosmos DB automatically.
+After the agent resolves the ticket and marks it resolved, the Next.js Backend calls `SendOutlookEmail` → Microsoft Graph `/me/sendMail` to notify the student of the resolution. Zero-Touch Wrap-Up logs the outcome to Cosmos DB automatically.
 
 ## 4. Contracts & Interfaces
 

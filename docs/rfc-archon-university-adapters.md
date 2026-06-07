@@ -27,7 +27,7 @@ Dump all university data into Archon's Cosmos DB nightly, and have the AI query 
 - *Cons:* Massive data privacy/compliance risk (CLR nightmare under PH DPA). Data is always stale by up to 24 hours (unacceptable for real-time holds).
 
 ### Option C: The Adapter Middleware Pattern
-Archon's Node.js API Gateway acts as a translation layer. It exposes a single, clean REST API to the AI Foundry Agent tools. Internally, the Gateway loads an institution-specific "Adapter" plugin that knows how to fetch data from the university's systems and map it to Archon's standard schema.
+Archon's Next.js API Routes act as a translation layer. They expose clean internal services to the AI Foundry Agent tools. Internally, the Next.js Backend loads an institution-specific "Adapter" plugin that knows how to fetch data from the university's systems and map it to Archon's standard schema.
 - *Pros:* Core AI Agent logic and tool schemas never change. Highly secure (no data replicated to Cosmos DB long-term). Can handle SOAP, REST, or direct DB queries within the Node.js layer. New universities only require a new Adapter implementation.
 - *Cons:* Requires writing a custom adapter for each new university or system.
 
@@ -35,14 +35,14 @@ Archon's Node.js API Gateway acts as a translation layer. It exposes a single, c
 
 **Selected: Option C (Adapter Middleware Pattern)**
 
-We will implement the Adapter Pattern in the Node.js Gateway.
+We will implement the Adapter Pattern in the Next.js API Routes.
 
 The AI Foundry Agent will *only* know about Archon's standardized internal schema:
 - `Archon.StudentProfile`
 - `Archon.FinancialBalance`
 - `Archon.AcademicHold`
 
-When the Agent calls `CheckFinancialAidStatus`, the Gateway looks up the active institution configuration (loaded from Cosmos DB), instantiates `Adapters.UniversityFA.fetchStatus()`, translates the messy XML/JSON into `Archon.FinancialBalance`, and returns it to the Agent. The Agent never sees university-specific data formats.
+When the Agent calls `CheckFinancialAidStatus`, the backend looks up the active institution configuration (loaded from Cosmos DB), instantiates `Adapters.UniversityFA.fetchStatus()`, translates the messy XML/JSON into `Archon.FinancialBalance`, and returns it to the Agent. The Agent never sees university-specific data formats.
 
 ## 4. Contracts & Interfaces
 
@@ -55,7 +55,7 @@ export interface IUniversityAdapter {
   getAcademicHolds(studentId: string): Promise<ArchonHold[]>;
   getFinancialBalance(studentId: string): Promise<ArchonFinancialBalance>;
 
-  // Write actions (Must be idempotent; Gateway enforces HITL before calling these)
+  // Write actions (Must be idempotent; API Route enforces HITL before calling these)
   requestHoldLift(studentId: string, holdId: string, reason: string): Promise<boolean>;
 }
 ```
@@ -92,7 +92,7 @@ export class ExampleUniversityAdapter implements IUniversityAdapter {
         canAutoLift: false
       }));
     } catch (error) {
-      // Caught by Gateway to trigger graceful AI fallback
+      // Caught by backend to trigger graceful AI fallback
       throw new Error('ARCHON_SYSTEM_UNAVAILABLE');
     }
   }
@@ -120,10 +120,10 @@ Each institution has a configuration document in Cosmos DB:
 }
 ```
 
-All sensitive credentials (API keys, connection strings) are injected into the Gateway container via Azure App Service Environment Variables using the `env_prefix` (e.g., `UPM_API_KEY`). The Gateway passes these to the Adapter constructor at startup.
+All sensitive credentials (API keys, connection strings) are injected into the Next.js container via Azure App Service Environment Variables using the `env_prefix` (e.g., `UPM_API_KEY`). The Next.js API Routes pass these to the Adapter constructor at startup.
 
 ## 6. Security & Rollback
 
 - **Security:** Adapters run with least-privilege credentials provided by the university. All credentials are provided securely via environment variables. All adapter egress traffic is logged to Application Insights for auditability.
-- **Circuit Breaker:** If a university backend goes down or times out (>5s), the Adapter throws `ARCHON_SYSTEM_UNAVAILABLE`. The Gateway catches this and instructs the AI Foundry Agent to inform the student gracefully: "I'm having trouble reaching the financial aid system right now. Let me connect you with an agent who can check directly." The circuit breaker opens for 60 seconds before retrying.
-- **Data Isolation:** Adapters can only query for the `student_id` provided by the Gateway, which validates the ID against the authenticated Entra ID JWT. Cross-student queries are impossible at the adapter level.
+- **Circuit Breaker:** If a university backend goes down or times out (>5s), the Adapter throws `ARCHON_SYSTEM_UNAVAILABLE`. The backend catches this and instructs the AI Foundry Agent to inform the student gracefully: "I'm having trouble reaching the financial aid system right now. Let me connect you with an agent who can check directly." The circuit breaker opens for 60 seconds before retrying.
+- **Data Isolation:** Adapters can only query for the `student_id` provided by the API Route, which validates the ID against the authenticated Entra ID session. Cross-student queries are impossible at the adapter level.

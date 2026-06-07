@@ -26,7 +26,7 @@ The documentation suite is the source of truth. Read in this order before writin
 
 1. **`docs/index.md`** — Start here every session.
 2. **PRD** — What to build and why (`PRD-F1` to `PRD-F11`).
-3. **SDD** — How the system is architected (Azure AI Foundry + Cosmos DB + Node.js Gateway + Microsoft Graph).
+3. **SDD** — How the system is architected (Azure AI Foundry + Cosmos DB + Next.js Monolith + Microsoft Graph).
 4. **RFCs** — Implementation decisions for Orchestration (RFC-001), Handoff (RFC-002), Adapters (RFC-003), and M365 Integration (RFC-004).
 5. **DSD** — Visual tokens and UI components (Warm & Approachable).
 6. **This guide** — Stack conventions, patterns, guardrails.
@@ -54,7 +54,7 @@ The documentation suite is the source of truth. Read in this order before writin
 | Client Framework | Next.js (React) | 14.x | 2026-06-07 |
 | Client Auth | NextAuth.js (Auth.js) | 4.x | 2026-06-07 |
 | Backend Language | TypeScript | 5.4.x | 2026-06-07 |
-| Backend Framework | Node.js + Express | v20 LTS / 4.19.x | 2026-06-07 |
+| Backend Framework | Next.js API Routes (Server Actions) | 14.x | 2026-06-07 |
 | Backend Auth | `jsonwebtoken` (or similar JWT validator) | 9.x | 2026-06-07 |
 | Database | Azure Cosmos DB for NoSQL SDK | `@azure/cosmos` 4.x | 2026-06-07 |
 | AI Platform | Azure AI Foundry SDK | `@azure/ai-projects` 1.x | 2026-06-07 |
@@ -82,7 +82,7 @@ The documentation suite is the source of truth. Read in this order before writin
 
 ```
 /client          — Next.js web application.
-/gateway         — Node.js Express server, Cosmos DB data layer, University Adapters, Graph API proxy.
+/src/app/api     — Next.js API Routes, Cosmos DB data layer, University Adapters, Graph API proxy.
 /scheduler       — Power Automate Cloud Flow definitions (JSON/ZIP exports).
 /docs            — FMD documentation suite.
 /infra           — Terraform infrastructure-as-code (Azure resources).
@@ -120,7 +120,7 @@ export class ExampleUniversityAdapter implements IUniversityAdapter {
         canAutoLift: false,
       }));
     } catch (error) {
-      throw new Error('ARCHON_SYSTEM_UNAVAILABLE'); // Caught by Gateway for graceful AI fallback
+      throw new Error('ARCHON_SYSTEM_UNAVAILABLE'); // Caught by Next.js Backend for graceful AI fallback
     }
   }
 }
@@ -207,16 +207,16 @@ await graphClient.api(`/users/${agentUserId}/teamwork/sendActivityNotification`)
 ## 5. Conventions & Guardrails
 
 **Always:**
-- Validate all external input at the Gateway boundary using `Zod` before passing to AI Foundry or adapters.
+- Validate all external input at the API Route boundary using `Zod` before passing to AI Foundry or adapters.
 - Scrub PII (names, specific IDs) from chat transcripts before writing to Cosmos DB `messages` collection.
 - Require explicit boolean confirmation (Human-in-the-Loop) before executing any write operations (hold lifts, Graph API `Mail.Send`, Teams notifications on behalf of users).
 - Retrieve all secrets from Azure App Service Environment Variables. Do not hardcode them.
-- Validate Entra ID JWT `iss`, `aud`, and `tid` claims on every Gateway request.
+- Validate Entra ID JWT `iss`, `aud`, and `tid` claims on every backend request.
 
 **Never:**
 - Commit API keys, connection strings, or client secrets. Use `.env` files locally and Azure App Service App Settings in production.
 - Modify the AI system prompt dynamically based on user input (Prompt Injection risk).
-- Call Microsoft Graph API directly from the Next.js client — all Graph calls are proxied through the Gateway for RBAC enforcement and audit logging.
+- Call Microsoft Graph API directly from the Next.js client components — all Graph calls are proxied through the Next.js API Routes for RBAC enforcement and audit logging.
 - Store raw Graph API calendar responses permanently in Cosmos DB — only the normalized `CalendarEvent[]` schema with a 15-minute TTL.
 - Reference Microsoft Copilot Studio in any code, configuration, or comment. It is not part of this stack.
 
@@ -226,7 +226,7 @@ await graphClient.api(`/users/${agentUserId}/teamwork/sendActivityNotification`)
 - [ ] Unit tests pass via `SAD-A3` (Test Runner).
 - [ ] No new secrets committed; input validated at boundaries with Zod.
 - [ ] Cosmos DB queries use parameterized inputs (no string interpolation in query bodies).
-- [ ] Graph API calls are proxied through Gateway (never called directly from client).
+- [ ] Graph API calls are proxied through API Routes (never called directly from client components).
 - [ ] Compliance Checker (`SAD-A4`) approves the PR.
 
 ---

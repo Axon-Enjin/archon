@@ -13,7 +13,7 @@
 
 ## 1. Architecture Overview
 
-Archon uses a **native Azure AI architecture**. It leverages **Azure AI Foundry** as the unified platform for model deployment, agent orchestration, RAG pipelines, evaluation, and distributed tracing. Data is stored in **Azure Cosmos DB for NoSQL** — a globally distributed, serverless document database with native vector search. A custom **Node.js API Gateway** handles authentication (validated against Microsoft Entra ID tokens) and acts as the universal adapter to siloed university systems. Microsoft 365 integration (Calendar, Teams, Outlook) is powered by the **Microsoft Graph API**.
+Archon uses a **native Azure AI architecture**. It leverages **Azure AI Foundry** as the unified platform for model deployment, agent orchestration, RAG pipelines, evaluation, and distributed tracing. Data is stored in **Azure Cosmos DB for NoSQL** — a globally distributed, serverless document database with native vector search. A unified **Next.js Application** handles the frontend UI, authentication (via NextAuth and Microsoft Entra ID), and backend API routes that act as universal adapters to siloed university systems. Microsoft 365 integration (Calendar, Teams, Outlook) is powered by the **Microsoft Graph API**.
 
 This architecture satisfies `PRD-F2` (cross-department data orchestration), `PRD-F11` (M365 integration), and maintains enterprise-grade security and state management entirely within the Azure ecosystem.
 
@@ -34,12 +34,11 @@ flowchart TD
         Graph["Microsoft Graph API\n(Calendar · Teams · Outlook)"]
     end
 
-    %% Core Archon System on Azure
-    subgraph Archon on Azure
-        Client["Next.js Web Client"]
-        Dashboard["React Agent/Admin Dashboard"]
-
-        Gateway["API Gateway (Node.js/Express)\n+ JWT Token Validation\n+ University Adapters\n+ Graph API Proxy"]
+        subgraph Next.js Monolith
+            Client["Next.js Web Client (React UI)"]
+            Dashboard["React Agent/Admin Dashboard"]
+            NextAPI["Next.js API Routes\n+ JWT Token Validation\n+ University Adapters\n+ Graph API Proxy"]
+        end
 
         subgraph AI Layer — Azure AI Foundry
             FoundryAgent["AI Foundry Agent Service\n(Orchestration + Tool Calling)"]
@@ -70,33 +69,32 @@ flowchart TD
 
     Client -->|OIDC auth| EntraID
     Dashboard -->|OIDC auth| EntraID
-    EntraID -->|JWT token| Gateway
+    EntraID -->|JWT token| NextAPI
+    Client -->|Internal API| NextAPI
+    Dashboard -->|HTTPS| NextAPI
 
-    Client -->|HTTPS + WSS| Gateway
-    Dashboard -->|HTTPS| Gateway
-
-    Gateway --> FoundryAgent
-    Gateway --> CosmosNoSQL
-    Gateway --> Redis
-    Gateway --> KeyVault
-    Gateway -->|Graph API calls| Graph
+    NextAPI --> FoundryAgent
+    NextAPI --> CosmosNoSQL
+    NextAPI --> Redis
+    NextAPI --> KeyVault
+    NextAPI -->|Graph API calls| Graph
 
     FoundryAgent <--> GPT4o
     FoundryAgent <--> Phi4
     FoundryAgent --> CosmosVector
     FoundryAgent --> FoundryTrace
-    FoundryAgent -->|Tool: CheckHolds| Gateway
-    FoundryAgent -->|Tool: CheckFinancialAid| Gateway
-    FoundryAgent -->|Tool: EscalateToHuman| Gateway
-    FoundryAgent -->|Tool: GetCalendarEvents| Gateway
-    FoundryAgent -->|Tool: SendTeamsNotification| Gateway
-    FoundryAgent -->|Tool: SendOutlookEmail| Gateway
+    FoundryAgent -->|Tool: CheckHolds| NextAPI
+    FoundryAgent -->|Tool: CheckFinancialAid| NextAPI
+    FoundryAgent -->|Tool: EscalateToHuman| NextAPI
+    FoundryAgent -->|Tool: GetCalendarEvents| NextAPI
+    FoundryAgent -->|Tool: SendTeamsNotification| NextAPI
+    FoundryAgent -->|Tool: SendOutlookEmail| NextAPI
 
-    Gateway --> SIS
-    Gateway --> Bursar
-    Gateway --> FA
+    NextAPI --> SIS
+    NextAPI --> Bursar
+    NextAPI --> FA
 
-    Graph -->|Calendar events| Gateway
+    Graph -->|Calendar events| NextAPI
     Graph -->|Teams adaptive cards| Student
     Graph -->|Outlook emails| Student
 ```
@@ -131,27 +129,27 @@ All collections are partitioned by `/{institution_id}` to support future multi-t
 
 ## 4. API & Interface Contracts
 
-**Internal API (Gateway ↔ Client):**
+**Internal API (Next.js Client ↔ Next.js API Routes):**
 - RESTful JSON over HTTPS for standard CRUD operations (Dashboard, Ticket History).
 - WebSockets/Server-Sent Events (SSE) for real-time chat streaming between the Next.js client and the AI Foundry Agent.
 
-**External API (Gateway ↔ University Systems) — The "Adapter Pattern":**
-The Node.js Gateway implements an abstract `UniversityAdapter` interface. This allows Archon to connect to disparate systems (Banner, Workday, legacy Oracle DBs) without changing the core AI logic. **For the V1/Initial Build, we will use Mock/Dummy Data Adapters** that return static JSON to simulate these systems since live API access is unavailable.
+**External API (Next.js Backend ↔ University Systems) — The "Adapter Pattern":**
+The Next.js backend implements an abstract `UniversityAdapter` interface. This allows Archon to connect to disparate systems (Banner, Workday, legacy Oracle DBs) without changing the core AI logic. **For the V1/Initial Build, we will use Mock/Dummy Data Adapters** that return static JSON to simulate these systems since live API access is unavailable.
 
 - `getStudentProfile(studentId)` → Unified JSON (Name, Major, SAP Status)
 - `getHolds(studentId)` → Array of hold objects (Department, Reason, Resolution steps)
 - `getFinancialStatus(studentId)` → Object (Balance due, Pending aid, Next deadline)
 - `requestHoldLift(studentId, holdId, reason)` → Executes write action (requires prior HITL confirmation).
 
-**Microsoft Graph API (Gateway ↔ Microsoft 365) — PRD-F11:**
-
-All Graph API calls are proxied through the Gateway to enforce RBAC and audit logging. The AI Foundry Agent calls Graph via Gateway tools — never directly.
+**Microsoft Graph API (Next.js Backend ↔ Microsoft 365) — PRD-F11:**
+- Used for fetching the student's M365 Calendar (`Calendars.Read`).
+All Graph API calls are proxied through the Next.js API Routes to enforce RBAC and audit logging. The AI Foundry Agent calls Graph via Next.js backend tools — never directly.
 
 | Graph endpoint | Scope | Purpose |
 |---|---|---|
 | `GET /me/calendarView?startDateTime=&endDateTime=` | `Calendars.Read` | Fetch student's M365 calendar events for dashboard panel |
 | `POST /me/sendMail` | `Mail.Send` | Send Outlook deadline reminders and ticket resolution confirmations |
-| `POST /users/{id}/teamwork/sendActivityNotification` | `TeamsActivity.Send` | Send Teams adaptive card notifications for deadlines and escalations |
+| `POST /users/{id}/teamwork/sendActivityNotification` | `TeamsActivity.Send` | Send Teams activity feed notifications for deadlines and escalations |
 
 **AI Foundry Agent Tools (internal contract):**
 
@@ -171,16 +169,16 @@ const tools = [
 
 ## 5. Security & Authentication
 
-- **Authentication:** Archon relies entirely on **Microsoft Entra ID** (the university's M365 tenant) via OIDC/OAuth 2.0. NextAuth.js (Auth.js) is used on the Next.js client to securely manage the session. JWT validation is performed on the Gateway. Archon stores no passwords.
-- **Authorization:** Role-Based Access Control (RBAC) enforced at the Gateway layer using Entra ID JWT claims.
+- **Authentication:** Archon relies entirely on **Microsoft Entra ID** (the university's M365 tenant) via OIDC/OAuth 2.0. NextAuth.js (Auth.js) is used on the Next.js client to securely manage the session. JWT validation is performed on the Next.js API routes. Archon stores no passwords.
+- **Authorization:** Role-Based Access Control (RBAC) enforced at the API route layer using Entra ID JWT claims.
   - `Student`: Can only read/write data associated with their specific `entra_oid` / `student_id`.
   - `Agent`: Can read/write data for tickets in their assigned queue.
   - `Admin`: Can view aggregated analytics (no PII).
 - **Graph API Authorization:** Delegated permissions only (acting on behalf of the authenticated user). No application-level Graph permissions that could bypass per-user consent. Admin consent is required at the tenant level for `Calendars.Read`, `Mail.Send`, and `TeamsActivity.Send`.
 - **Data in Transit:** TLS 1.3 mandated for all connections (HTTPS + WSS).
 - **Data at Rest:** Azure Cosmos DB encryption at rest (AES-256, Microsoft-managed keys).
-- **Secrets Management:** All API keys, adapter credentials, and Graph API secrets are stored as Azure App Service Environment Variables (`.env` locally). The Gateway accesses them via `process.env`.
-- **PII Redaction:** The Gateway scrubs PII (names, specific IDs) using regex/NLP *before* sending conversation transcripts to Azure AI Foundry for reasoning, unless the specific AI operation explicitly requires that data.
+- **Secrets Management:** All API keys, adapter credentials, and Graph API secrets are stored as Azure App Service Environment Variables (`.env` locally). The Next.js backend accesses them via `process.env`.
+- **PII Redaction:** The Next.js API Routes scrub PII (names, specific IDs) using regex/NLP *before* sending conversation transcripts to Azure AI Foundry for reasoning, unless the specific AI operation explicitly requires that data.
 
 ---
 
@@ -195,7 +193,7 @@ Archon is registered as an application in the partner university's Entra ID tena
 | App type | Multi-tenant (registered in Archon's Azure tenant; university grants consent) |
 | Auth flow | Authorization Code Flow with PKCE (mobile/web) |
 | Redirect URIs | `https://app.archon.edu.ph/auth/callback`, `https://localhost:3000/auth/callback` (dev) |
-| Token validation | Gateway validates Entra ID JWT `iss`, `aud`, `tid` claims |
+| Token validation | Next.js NextAuth validates Entra ID JWT `iss`, `aud`, `tid` claims |
 
 ### 6.2 Required Graph API Scopes (Admin Consent Required)
 
@@ -210,10 +208,10 @@ Archon is registered as an application in the partner university's Entra ID tena
 
 ```
 Student opens Home Dashboard
-  → Client sends GET /api/v1/student/{id}/calendar to Gateway
-  → Gateway validates Entra ID JWT (student scope)
-  → Gateway calls Graph GET /me/calendarView (7-day window)
-  → Gateway normalizes events → CalendarEvent[] schema
+  → Client sends GET /api/v1/student/{id}/calendar to Next.js API Route
+  → Next.js API Route validates Entra ID session
+  → Next.js API Route calls Graph GET /me/calendarView (7-day window)
+  → Next.js API Route normalizes events → CalendarEvent[] schema
   → Client renders Academic Calendar panel
   → Events cached in Cosmos DB (TTL: 15 min) to reduce Graph API calls
 ```
@@ -237,9 +235,7 @@ Archon Notification Scheduler (daily recurrence via Power Automate)
 
 | Component | Azure Service | Notes |
 |---|---|---|
-| Client (Next.js Web App) | Azure App Service (Linux Node.js) | SSR rendering and NextAuth endpoint hosting |
-| Agent/Admin Dashboard (React) | Azure Static Web Apps | Same CDN as client |
-| API Gateway (Node.js) | Azure App Service (Linux, P2v3) | Auto-scaling; blue-green deployment slots |
+| Next.js Application (Full-Stack) | Azure App Service (Linux Node.js) | SSR rendering, API Routes, NextAuth endpoint hosting |
 | Notification Scheduler | Power Automate (Scheduled Cloud Flow) | Cron trigger for daily deadline scans & M365 notifications |
 | AI Platform | Azure AI Foundry | GPT-4o + Phi-4 deployments; AI Foundry Tracing |
 | Database | Azure Cosmos DB for NoSQL (Serverless) | Scales to zero; native vector search |
@@ -260,7 +256,7 @@ Archon Notification Scheduler (daily recurrence via Power Automate)
 | **Latency (Chat)** | Time-to-first-token < 3s (3G network). Full resolution < 15s. | Load testing (k6) simulating 3G latency. |
 | **Availability** | 99.9% uptime (approx 43m downtime/month). | Azure Monitor synthetic transactions. |
 | **Scalability** | Support 500 concurrent chat sessions during peak enrollment weeks. | Load testing (k6). Auto-scaling on App Service. |
-| **Data Freshness** | University API data cached for max 5 minutes (Cosmos DB TTL). Real-time fetch for transaction checks. | Gateway logging. |
+| **Data Freshness** | University API data cached for max 5 minutes (Cosmos DB TTL). Real-time fetch for transaction checks. | Next.js server logging. |
 | **Graph API Resilience** | Teams/Outlook notifications retried 3× with exponential backoff on throttling. Calendar falls back gracefully if Graph unavailable. | Integration tests + Application Insights alerts. |
 | **Cost (AI)** | Monthly AI compute ≤ $150 for a 12,000-student university. | Azure Cost Management budget alerts. |
 
@@ -272,16 +268,16 @@ The AI subsystem handles `PRD-F1` (Chat), `PRD-F2` (Orchestration), `PRD-F4` (Ha
 
 **AI Foundry Agent Service (The Orchestrator + Reasoner):**
 - Manages conversation state, tool selection, and multi-step execution.
-- Registered tools call the Node.js Gateway (which in turn calls university adapters or Microsoft Graph).
+- Registered tools call the Next.js API Routes (which in turn call university adapters or Microsoft Graph).
 - GPT-4o is the default model for complex reasoning, multi-department data synthesis, and handoff packet generation.
 - Phi-4 handles lightweight tasks: intent pre-classification, FAQ matching, simple balance queries — reducing GPT-4o token spend.
 
 **How a complex query flows:**
 1. Student asks a question via chat.
-2. Gateway receives the message, validates the Entra ID JWT, retrieves the conversation history from Cosmos DB.
-3. Gateway invokes the AI Foundry Agent with the message + conversation history + RAG context (from Cosmos DB vector search on policy documents).
-4. AI Foundry Agent (GPT-4o) reasons about the query and selects tools (e.g., `CheckStudentHolds`, `CheckFinancialAidStatus`).
-5. Gateway executes the tool calls against the university adapters, returns structured JSON.
+2. Next.js backend receives the message, validates the Entra ID session, retrieves the conversation history from Cosmos DB.
+3. Next.js backend invokes the AI Foundry Agent with the message + conversation history + RAG context (from Cosmos DB vector search on policy documents).
+4. The Agent reasons and determines it needs to call `CheckFinancialAid`.
+5. Next.js backend executes the tool call against the university adapters, returns structured JSON.
 6. AI Foundry Agent synthesizes the multi-department data into a Filipino/English response.
 7. Response streams back to the client via SSE.
 8. If context indicates an upcoming deadline, Agent may also call `GetCalendarEvents` to cross-reference, then `SendTeamsNotification` or `SendOutlookEmail` for proactive follow-up.
@@ -289,11 +285,11 @@ The AI subsystem handles `PRD-F1` (Chat), `PRD-F2` (Orchestration), `PRD-F4` (Ha
 
 ### 9.1 AI Safety & Guardrails (OWASP LLM Controls)
 
-1. **LLM01: Prompt Injection:** Gateway validates and sanitizes user input (length, character set, structural injection patterns) before passing to the Agent. System prompt is static and version-controlled — never modified by user input.
+1. **LLM01: Prompt Injection:** Next.js backend validates and sanitizes user input (length, character set, structural injection patterns) before passing to the Agent. System prompt is static and version-controlled — never modified by user input.
 2. **LLM02: Insecure Output Handling:** AI outputs are treated as untrusted markdown. The Next.js client sanitizes all HTML/Markdown before rendering to prevent XSS.
-3. **LLM06: Sensitive Information Disclosure:** System prompt explicitly forbids discussing other students' data. RBAC at the Gateway ensures the Agent *cannot* call a tool with a `student_id` different from the authenticated user's ID.
-4. **Scope Containment:** The Agent is given read-only tool access by default. Write actions (e.g., lifting a hold, sending a Teams message) require either explicit student confirmation in chat or staff approval in the Agent Dashboard before the Gateway executes the Graph API or adapter write call.
-5. **Graph API Least Privilege:** Only delegated (user-context) permissions are used. The Gateway never holds application-level Graph permissions that could act across all students.
+3. **LLM06: Sensitive Information Disclosure:** System prompt explicitly forbids discussing other students' data. RBAC at the API route layer ensures the Agent *cannot* call a tool with a `student_id` different from the authenticated user's ID.
+4. **Scope Containment:** The Agent is given read-only tool access by default. Write actions (e.g., lifting a hold, sending a Teams message) require either explicit student confirmation in chat or staff approval in the Agent Dashboard before the Next.js backend executes the Graph API or adapter write call.
+5. **Graph API Least Privilege:** Only delegated (user-context) permissions are used. The backend never holds application-level Graph permissions that could act across all students.
 
 ---
 
@@ -304,7 +300,7 @@ The AI subsystem handles `PRD-F1` (Chat), `PRD-F2` (Orchestration), `PRD-F4` (Ha
 - [x] Explains how `PRD-F2` (Data Orchestration) works without storing the university's data long-term.
 - [x] Explains how `PRD-F11` (M365 Integration) works — Entra ID auth, Graph Calendar, Teams, Outlook.
 - [x] Includes NFRs that can be tested (500 concurrent users, 3s TTFT, Graph API resilience).
-- [x] Defines specific AI guardrails, notably the separation of read (AI) and write (Human + Gateway confirmed) actions.
+- [x] Defines specific AI guardrails, notably the separation of read (AI) and write (Human + Backend confirmed) actions.
 - [x] Cosmos DB partition strategy documented.
 - [x] Microsoft Copilot Studio: not present — replaced by Azure AI Foundry Agent Service.
 - [x] PostgreSQL: not present — replaced by Azure Cosmos DB for NoSQL.
