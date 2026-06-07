@@ -2,7 +2,7 @@
 
 **Project:** Archon — Agentic AI-Powered Service Desk
 **Date:** 2026-06-07
-**Version:** 0.1
+**Version:** 0.2
 **Owner:** Regalia Council (Alaric)
 **Status:** Draft
 **Last reconciled:** N/A — not yet reconciled with code
@@ -25,9 +25,9 @@
 The documentation suite is the source of truth. Read in this order before writing code:
 
 1. **`docs/index.md`** — Start here every session.
-2. **PRD** — What to build and why (`PRD-F1` to `PRD-F10`).
-3. **SDD** — How the system is architected (Gateway + Copilot Studio + Azure OpenAI).
-4. **RFCs** — Implementation decisions for Orchestration, Handoff, and Adapters.
+2. **PRD** — What to build and why (`PRD-F1` to `PRD-F11`).
+3. **SDD** — How the system is architected (Azure AI Foundry + Cosmos DB + Node.js Gateway + Microsoft Graph).
+4. **RFCs** — Implementation decisions for Orchestration (RFC-001), Handoff (RFC-002), Adapters (RFC-003), and M365 Integration (RFC-004).
 5. **DSD** — Visual tokens and UI components (Warm & Approachable).
 6. **This guide** — Stack conventions, patterns, guardrails.
 
@@ -35,13 +35,15 @@ The documentation suite is the source of truth. Read in this order before writin
 
 | To implement… | Read | Then verify against |
 |---------------|------|---------------------|
-| An AI Orchestration Feature | PRD §3 → SDD §8 → RFC 001 | QAD Prompt Evaluations |
-| A University Data Adapter | PRD-F2 → SDD §4 → RFC 003 | QAD Sad Paths (Timeouts) |
+| An AI Orchestration Feature | PRD §3 → SDD §9 → RFC-001 | QAD Prompt Evaluations |
+| A University Data Adapter | PRD-F2 → SDD §4 → RFC-003 | QAD Sad Paths (Timeouts) |
 | A UI Chat Component | DSD §3.2 → PRD §5 | DSD a11y requirements |
+| An M365 Integration Feature | PRD-F11 → SDD §6 → RFC-004 | CLR §1 (Graph data flows), QAD §2 (US-08) |
+| A Cosmos DB Schema Change | SDD §3 | CLR §1 (data inventory), QAD §3 (sad paths) |
 
 ---
 
-## 3. Stack Currency & Deprecations
+## 2. Stack Currency & Deprecations
 
 > **Do not rely on training memory for fast-moving frameworks.** Verify conventions against official docs for the pinned versions below before writing code.
 
@@ -51,18 +53,43 @@ The documentation suite is the source of truth. Read in this order before writin
 |-------|------------|----------------|---------------------|
 | Client Language | Dart | 3.4.x | 2026-06-07 |
 | Client Framework | Flutter | 3.22.x | 2026-06-07 |
-| Backend Language| TypeScript | 5.4.x | 2026-06-07 |
-| Backend Framework| Node.js + Express | v20 LTS / 4.19.x | 2026-06-07 |
-| Database / ORM | PostgreSQL + Prisma | 16 / 5.14.x | 2026-06-07 |
-| AI Orchestration| Microsoft Copilot Studio| Latest | 2026-06-07 |
-| AI Reasoning | Azure OpenAI SDK | 1.0.0-beta.12+ | 2026-06-07 |
+| Client Auth | MSAL.js (`@azure/msal-browser`) | 3.x | 2026-06-07 |
+| Backend Language | TypeScript | 5.4.x | 2026-06-07 |
+| Backend Framework | Node.js + Express | v20 LTS / 4.19.x | 2026-06-07 |
+| Backend Auth | MSAL Node (`@azure/msal-node`) | 2.x | 2026-06-07 |
+| Database | Azure Cosmos DB for NoSQL SDK | `@azure/cosmos` 4.x | 2026-06-07 |
+| AI Platform | Azure AI Foundry SDK | `@azure/ai-projects` 1.x | 2026-06-07 |
+| AI Model | GPT-4o (via AI Foundry deployment) | `2024-11-20` API version | 2026-06-07 |
+| AI Model (Lightweight) | Phi-4 (via AI Foundry deployment) | Latest | 2026-06-07 |
+| Microsoft Graph | `@microsoft/microsoft-graph-client` | 3.x | 2026-06-07 |
+| Notification Scheduler | Azure Functions | v4 (Node.js) | 2026-06-07 |
+| Input Validation | Zod | 3.x | 2026-06-07 |
 
 ### Deprecations & Convention Changes
 
 | ❌ Stale / deprecated | ✅ Current convention | Since |
 |----------------------|----------------------|-------|
-| Older OpenAI Node.js SDK patterns | Use the official `@azure/openai` SDK for Azure-specific auth and deployments. | 2024+ |
-| Raw SQL for simple queries | Use Prisma ORM for standard CRUD; raw SQL only for complex `pgvector` operations. | Project start |
+| Microsoft Copilot Studio | **Removed.** Use Azure AI Foundry Agent Service for all orchestration. | CR-001 (v0.2) |
+| Azure OpenAI SDK (`openai` npm package direct) | Use `@azure/ai-projects` (AI Foundry SDK) for all model calls. | CR-001 (v0.2) |
+| PostgreSQL + Prisma | **Removed.** Use `@azure/cosmos` SDK for all data operations. | CR-001 (v0.2) |
+| Redis as primary cache | Redis retained for WebSocket session state and JWT blocklist only. Cosmos DB TTL used for all other caching. | CR-001 (v0.2) |
+| Generic SAML / OAuth SSO | Use Microsoft Entra ID via MSAL. No custom auth flows. | CR-001 (v0.2) |
+| Copilot Studio solution exports (`/copilot-studio/` folder) | **Removed.** No Copilot Studio artifacts in the repo. | CR-001 (v0.2) |
+| Raw SQL for simple queries | **Not applicable.** Cosmos DB uses SDK point reads and queries. Use `container.item(id).read()` for point reads; `container.items.query()` for queries. | Project start |
+
+---
+
+## 3. Repo Layout
+
+```
+/client          — Flutter PWA application.
+/gateway         — Node.js Express server, Cosmos DB data layer, University Adapters, Graph API proxy.
+/scheduler       — Azure Functions app (deadline notification cron).
+/docs            — FMD documentation suite.
+/infra           — Terraform infrastructure-as-code (Azure resources).
+```
+
+> Note: `/copilot-studio/` directory has been removed. There is no Copilot Studio in this project.
 
 ---
 
@@ -70,62 +97,135 @@ The documentation suite is the source of truth. Read in this order before writin
 
 ### 4.1 University Data Adapter Pattern (TypeScript)
 
-*verified 2026-06-07 against Node.js v20*
+*Verified 2026-06-07 against Node.js v20*
 
 ```typescript
 import { IUniversityAdapter, ArchonHold } from '../interfaces';
 import axios from 'axios';
 
 export class ExampleUniversityAdapter implements IUniversityAdapter {
+  constructor(private readonly apiKey: string) {} // Retrieved from Key Vault at runtime
+
   async getAcademicHolds(studentId: string): Promise<ArchonHold[]> {
     try {
-      // Direct call to the university's legacy API
-      const response = await axios.get(`https://api.example-univ.edu/v1/students/${studentId}/holds`, {
-        timeout: 5000 // Strict 5s timeout per RFC-003
-      });
-      
-      // Map to Archon standard schema
+      const response = await axios.get(
+        `https://api.example-univ.edu/v1/students/${studentId}/holds`,
+        { headers: { 'X-API-Key': this.apiKey }, timeout: 5000 } // 5s timeout per RFC-003
+      );
       return response.data.map(hold => ({
         id: hold.HoldID,
         department: 'Registrar',
         reason: hold.Description,
-        canAutoLift: false
+        canAutoLift: false,
       }));
     } catch (error) {
-      console.error(`Adapter Error: Failed to fetch holds for ${studentId}`, error);
-      throw new Error('ARCHON_SYSTEM_UNAVAILABLE'); // Caught by Gateway to gracefully degrade AI
+      throw new Error('ARCHON_SYSTEM_UNAVAILABLE'); // Caught by Gateway for graceful AI fallback
     }
   }
-  // ... other methods
 }
 ```
 
-*Why this shape:* Enforces the contract defined in RFC-003. Strict timeouts prevent the LLM from hanging. Errors are caught and standardized so the AI knows how to react gracefully.
+*Why this shape:* Enforces the contract defined in RFC-003. Strict timeouts prevent the LLM from hanging. Errors are caught and standardized so the AI Foundry Agent knows how to react gracefully.
+
+### 4.2 Cosmos DB Point Read Pattern (TypeScript)
+
+*Verified 2026-06-07 against @azure/cosmos 4.x*
+
+```typescript
+import { CosmosClient } from '@azure/cosmos';
+
+const client = new CosmosClient({ endpoint: process.env.COSMOS_ENDPOINT!, key: process.env.COSMOS_KEY! });
+const container = client.database('archon').container('conversations');
+
+// Point read (cheapest operation — use whenever you have id + partition key)
+const { resource: conversation } = await container
+  .item(ticketId, institutionId) // (id, partitionKey)
+  .read();
+
+// Query (use when filtering by non-id fields)
+const querySpec = {
+  query: 'SELECT * FROM c WHERE c.student_id = @studentId AND c.status = "open"',
+  parameters: [{ name: '@studentId', value: studentId }],
+};
+const { resources: tickets } = await container.items.query(querySpec).fetchAll();
+```
+
+### 4.3 AI Foundry Agent Tool Call Pattern (TypeScript)
+
+*Verified 2026-06-07 against @azure/ai-projects 1.x*
+
+```typescript
+import { AIProjectsClient } from '@azure/ai-projects';
+import { DefaultAzureCredential } from '@azure/identity';
+
+const client = AIProjectsClient.fromConnectionString(
+  process.env.AZURE_AI_FOUNDRY_CONNECTION_STRING!,
+  new DefaultAzureCredential()
+);
+
+// Create or resume a thread
+const thread = await client.agents.createThread();
+
+// Send a message and run the agent
+await client.agents.createMessage(thread.id, { role: 'user', content: studentMessage });
+const run = await client.agents.createRun(thread.id, process.env.ARCHON_AGENT_ID!);
+
+// Poll until complete (SDK handles tool call execution callbacks via registered tools)
+const completedRun = await client.agents.getRun(thread.id, run.id);
+```
+
+### 4.4 Microsoft Graph API Call Pattern (TypeScript)
+
+*Verified 2026-06-07 against @microsoft/microsoft-graph-client 3.x*
+
+```typescript
+import { Client } from '@microsoft/microsoft-graph-client';
+import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials';
+
+// Delegated auth (user context — use for Calendar reads, Mail.Send)
+const authProvider = new TokenCredentialAuthenticationProvider(credential, {
+  scopes: ['https://graph.microsoft.com/.default'],
+});
+const graphClient = Client.initWithMiddleware({ authProvider });
+
+// Get calendar events (7-day window)
+const now = new Date().toISOString();
+const end = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+const events = await graphClient
+  .api(`/me/calendarView?startDateTime=${now}&endDateTime=${end}`)
+  .select('id,subject,start,end,isAllDay')
+  .get();
+
+// Send a Teams notification
+await graphClient.api(`/users/${agentUserId}/teamwork/sendActivityNotification`)
+  .post(teamsAdaptiveCardPayload);
+```
 
 ---
 
 ## 5. Conventions & Guardrails
 
-**Repo layout:**
-- `/client` — Flutter PWA application.
-- `/gateway` — Node.js Express server, Prisma schema, and Adapters.
-- `/docs` — FMD documentation suite.
-- `/copilot-studio` — Exported Copilot Studio solution configurations.
-
 **Always:**
-- Validate external input at the Gateway boundary using `Zod`.
-- Scrub PII (names, specific IDs) from chat transcripts before saving to the database.
-- Require explicit boolean confirmation (Human-in-the-Loop) before executing any write operations (e.g., lifting a hold).
+- Validate all external input at the Gateway boundary using `Zod` before passing to AI Foundry or adapters.
+- Scrub PII (names, specific IDs) from chat transcripts before writing to Cosmos DB `messages` collection.
+- Require explicit boolean confirmation (Human-in-the-Loop) before executing any write operations (hold lifts, Graph API `Mail.Send`, Teams notifications on behalf of users).
+- Retrieve all secrets from Azure Key Vault via Managed Identity. Never read secrets from `.env` files in production.
+- Validate Entra ID JWT `iss`, `aud`, and `tid` claims on every Gateway request.
 
 **Never:**
-- Commit API keys or connection strings. Use `.env` files locally and Azure Key Vault in production.
+- Commit API keys, connection strings, or client secrets. Use `.env` files locally and Azure Key Vault in production.
 - Modify the AI system prompt dynamically based on user input (Prompt Injection risk).
+- Call Microsoft Graph API directly from the Flutter client — all Graph calls are proxied through the Gateway for RBAC enforcement and audit logging.
+- Store raw Graph API calendar responses permanently in Cosmos DB — only the normalized `CalendarEvent[]` schema with a 15-minute TTL.
+- Reference Microsoft Copilot Studio in any code, configuration, or comment. It is not part of this stack.
 
 **Definition of Done (per task):**
 - [ ] Implements the referenced `PRD-F#`.
-- [ ] Verified framework conventions against §3 (no stale APIs).
+- [ ] Verified framework conventions against §2 (no stale APIs — especially no Copilot Studio or PostgreSQL references).
 - [ ] Unit tests pass via `SAD-A3` (Test Runner).
-- [ ] No new secrets committed; input validated at boundaries.
+- [ ] No new secrets committed; input validated at boundaries with Zod.
+- [ ] Cosmos DB queries use parameterized inputs (no string interpolation in query bodies).
+- [ ] Graph API calls are proxied through Gateway (never called directly from client).
 - [ ] Compliance Checker (`SAD-A4`) approves the PR.
 
 ---

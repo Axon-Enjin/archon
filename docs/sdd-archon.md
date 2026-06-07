@@ -2,7 +2,7 @@
 
 **Project:** Archon — Agentic AI-Powered Service Desk for Higher Education
 **Date:** 2026-06-07
-**Version:** 0.1
+**Version:** 0.2
 **Owner:** Regalia Council (Alaric)
 **Status:** Draft
 **Last reconciled:** N/A — not yet reconciled with code
@@ -13,9 +13,9 @@
 
 ## 1. Architecture Overview
 
-Archon uses a **Hybrid Orchestration Architecture**. It leverages Microsoft Copilot Studio for low-code conversational routing and dialogue management, backed by Azure OpenAI for complex reasoning, and a custom Node.js middleware layer (API Gateway) that handles authentication and acts as the universal adapter to siloed university systems.
+Archon uses a **native Azure AI architecture**. It leverages **Azure AI Foundry** as the unified platform for model deployment, agent orchestration, RAG pipelines, evaluation, and distributed tracing. Data is stored in **Azure Cosmos DB for NoSQL** — a globally distributed, serverless document database with native vector search. A custom **Node.js API Gateway** handles authentication (validated against Microsoft Entra ID tokens) and acts as the universal adapter to siloed university systems. Microsoft 365 integration (Calendar, Teams, Outlook) is powered by the **Microsoft Graph API**.
 
-This architecture satisfies the PRD's requirement for cross-department data orchestration (`PRD-F2`) while maintaining enterprise-grade security and state management.
+This architecture satisfies `PRD-F2` (cross-department data orchestration), `PRD-F11` (M365 integration), and maintains enterprise-grade security and state management entirely within the Azure ecosystem.
 
 ---
 
@@ -24,31 +24,41 @@ This architecture satisfies the PRD's requirement for cross-department data orch
 ```mermaid
 flowchart TD
     %% Users
-    Student["Student (Web/Mobile)"]
+    Student["Student (Web/Mobile PWA)"]
     Agent["Tier 1 Support Agent"]
     Admin["University Admin"]
 
-    %% Core System
-    subgraph Archon System
-        Client["Flutter PWA Client"]
-        Dashboard["React Admin/Agent Dashboard"]
-        
-        Gateway["API Gateway (Node.js/Express)"]
-        
-        subgraph AI Layer
-            Copilot["Microsoft Copilot Studio\n(Orchestration & State)"]
-            OpenAI["Azure OpenAI (GPT-4o)\n(Reasoning & RAG)"]
-        end
-        
-        subgraph Data Layer
-            Redis[("Redis\n(Session/Cache)")]
-            Postgres[("PostgreSQL + pgvector\n(Logs/Analytics/Knowledge)")]
-        end
+    %% Microsoft 365 / Entra ID
+    subgraph Microsoft 365 Tenant
+        EntraID["Microsoft Entra ID\n(Identity & Auth — OIDC)"]
+        Graph["Microsoft Graph API\n(Calendar · Teams · Outlook)"]
     end
 
-    %% External Systems
+    %% Core Archon System on Azure
+    subgraph Archon on Azure
+        Client["Flutter PWA Client"]
+        Dashboard["React Agent/Admin Dashboard"]
+
+        Gateway["API Gateway (Node.js/Express)\n+ MSAL Token Validation\n+ University Adapters\n+ Graph API Proxy"]
+
+        subgraph AI Layer — Azure AI Foundry
+            FoundryAgent["AI Foundry Agent Service\n(Orchestration + Tool Calling)"]
+            GPT4o["GPT-4o\n(Complex Reasoning + RAG)"]
+            Phi4["Phi-4\n(Intent Routing / FAQ)"]
+            FoundryTrace["AI Foundry Tracing\n& Evaluation"]
+        end
+
+        subgraph Data Layer — Azure Cosmos DB
+            CosmosNoSQL[("Cosmos DB for NoSQL\n(Tickets · Conversations · Handoffs · Users)")]
+            CosmosVector[("Cosmos DB Vector Search\n(Policy Embeddings for RAG)")]
+        end
+
+        Redis[("Azure Cache for Redis\n(WebSocket Session State)")]
+        KeyVault["Azure Key Vault\n(Secrets + Adapter Credentials)"]
+    end
+
+    %% External University Systems
     subgraph University Systems
-        IdP["University IdP (SAML/OAuth)"]
         SIS["Student Information System (Registrar)"]
         Bursar["Bursar / Payment System"]
         FA["Financial Aid System"]
@@ -58,22 +68,38 @@ flowchart TD
     Student --> Client
     Agent --> Dashboard
     Admin --> Dashboard
-    
-    Client --> Gateway
-    Dashboard --> Gateway
-    
-    Gateway --> IdP
-    Gateway --> Copilot
+
+    Client -->|OIDC auth| EntraID
+    Dashboard -->|OIDC auth| EntraID
+    EntraID -->|JWT token| Gateway
+
+    Client -->|HTTPS + WSS| Gateway
+    Dashboard -->|HTTPS| Gateway
+
+    Gateway --> FoundryAgent
+    Gateway --> CosmosNoSQL
     Gateway --> Redis
-    Gateway --> Postgres
-    
-    Copilot <--> OpenAI
-    Copilot --> Gateway
-    OpenAI --> Postgres
-    
+    Gateway --> KeyVault
+    Gateway -->|Graph API calls| Graph
+
+    FoundryAgent <--> GPT4o
+    FoundryAgent <--> Phi4
+    FoundryAgent --> CosmosVector
+    FoundryAgent --> FoundryTrace
+    FoundryAgent -->|Tool: CheckHolds| Gateway
+    FoundryAgent -->|Tool: CheckFinancialAid| Gateway
+    FoundryAgent -->|Tool: EscalateToHuman| Gateway
+    FoundryAgent -->|Tool: GetCalendarEvents| Gateway
+    FoundryAgent -->|Tool: SendTeamsNotification| Gateway
+    FoundryAgent -->|Tool: SendOutlookEmail| Gateway
+
     Gateway --> SIS
     Gateway --> Bursar
     Gateway --> FA
+
+    Graph -->|Calendar events| Gateway
+    Graph -->|Teams adaptive cards| Student
+    Graph -->|Outlook emails| Student
 ```
 
 ---
@@ -82,103 +108,204 @@ flowchart TD
 
 Archon is *not* the system of record for student data. It is a real-time orchestration engine. It caches data for the duration of a session and stores anonymized transcripts for analytics and AI training.
 
-**Core Databases:**
+**Primary Database: Azure Cosmos DB for NoSQL**
 
-1.  **PostgreSQL (Operational Data & Analytics)**
-    *   `Users`: Local proxy mapping to University IdP (contains user UUID, preferences, role). No PII stored long-term; pulled via API on session start.
-    *   `Conversations`: Ticket/chat metadata (status, assignee, duration).
-    *   `Messages`: Transcript logs (PII redacted before insertion).
-    *   `Handoffs`: Structured context packets for human escalation.
-    *   `VectorStore` (pgvector): Embeddings for university policies, FAQs, and SAP appeal guidelines (used by RAG).
-2.  **Redis (Ephemeral State & Rate Limiting)**
-    *   Session management (JWT blocklists).
-    *   Chat streaming state.
-    *   Aggressive caching of university API responses (e.g., student balance cached for 5 minutes to prevent hammering the Bursar API).
+All collections are partitioned by `/{institution_id}` to support future multi-tenant deployments.
+
+| Collection | Partition Key | Key Fields | TTL | Notes |
+|---|---|---|---|---|
+| `users` | `/institution_id` | `entra_oid`, `role`, `preferences` | None | Proxy of Entra ID identity. No passwords stored. Synced from Entra ID claims on session start. |
+| `conversations` | `/institution_id` | `ticket_id`, `student_id`, `status`, `assignee_id`, `created_at` | None | Ticket/chat metadata. |
+| `messages` | `/institution_id` | `conversation_id`, `role`, `content_scrubbed`, `ts` | 90 days | PII scrubbed before insert. Raw content never persisted. |
+| `handoffs` | `/institution_id` | `ticket_id`, `handoff_packet`, `agent_id`, `resolved_at` | 90 days | Structured AI-generated context packets for human agents. |
+| `policy_embeddings` | `/institution_id` | `document_id`, `chunk_text`, `embedding` (vector) | None | University policy documents chunked and embedded for RAG. Uses Cosmos DB integrated vector search. |
+| `cache_university_data` | `/institution_id` | `cache_key`, `data`, `fetched_at` | 300s (5 min TTL) | Short-lived cache of university API responses (balances, holds). Replaces Redis for non-session caching. |
+
+**Secondary Cache: Azure Cache for Redis**
+- WebSocket session state and streaming context (chat response in-flight).
+- JWT blocklist for invalidated tokens.
+- Rate limiting counters (Graph API call throttle protection).
+
+> **Note:** Cosmos DB's per-document TTL replaces the need for Redis as a general-purpose cache. Redis is retained only for real-time WebSocket session coordination.
 
 ---
 
 ## 4. API & Interface Contracts
 
 **Internal API (Gateway ↔ Client):**
--   RESTful JSON over HTTPS for standard CRUD operations (Dashboard, Ticket History).
--   WebSockets/Server-Sent Events (SSE) for real-time chat streaming between the Flutter client and the Copilot Studio engine.
+- RESTful JSON over HTTPS for standard CRUD operations (Dashboard, Ticket History).
+- WebSockets/Server-Sent Events (SSE) for real-time chat streaming between the Flutter client and the AI Foundry Agent.
 
 **External API (Gateway ↔ University Systems) — The "Adapter Pattern":**
 The Node.js Gateway implements an abstract `UniversityAdapter` interface. This allows Archon to connect to disparate systems (Banner, Workday, legacy Oracle DBs) without changing the core AI logic.
 
-*   `getStudentProfile(studentId)` → Unified JSON (Name, Major, SAP Status)
-*   `getHolds(studentId)` → Array of hold objects (Department, Reason, Resolution steps)
-*   `getFinancialStatus(studentId)` → Object (Balance due, Pending aid, Next deadline)
-*   `requestHoldLift(studentId, holdId, reason)` → Executes write action (logs attempt).
+- `getStudentProfile(studentId)` → Unified JSON (Name, Major, SAP Status)
+- `getHolds(studentId)` → Array of hold objects (Department, Reason, Resolution steps)
+- `getFinancialStatus(studentId)` → Object (Balance due, Pending aid, Next deadline)
+- `requestHoldLift(studentId, holdId, reason)` → Executes write action (requires prior HITL confirmation).
+
+**Microsoft Graph API (Gateway ↔ Microsoft 365) — PRD-F11:**
+
+All Graph API calls are proxied through the Gateway to enforce RBAC and audit logging. The AI Foundry Agent calls Graph via Gateway tools — never directly.
+
+| Graph endpoint | Scope | Purpose |
+|---|---|---|
+| `GET /me/calendarView?startDateTime=&endDateTime=` | `Calendars.Read` | Fetch student's M365 calendar events for dashboard panel |
+| `POST /me/sendMail` | `Mail.Send` | Send Outlook deadline reminders and ticket resolution confirmations |
+| `POST /users/{id}/teamwork/sendActivityNotification` | `TeamsActivity.Send` | Send Teams adaptive card notifications for deadlines and escalations |
+
+**AI Foundry Agent Tools (internal contract):**
+
+```typescript
+// Tools registered with the AI Foundry Agent
+const tools = [
+  { name: "CheckStudentHolds",      endpoint: "GET /api/v1/student/{id}/holds" },
+  { name: "CheckFinancialAidStatus", endpoint: "GET /api/v1/student/{id}/financial" },
+  { name: "GetCalendarEvents",       endpoint: "GET /api/v1/student/{id}/calendar" },
+  { name: "EscalateToHuman",         endpoint: "POST /api/v1/tickets/{id}/escalate" },
+  { name: "SendTeamsNotification",   endpoint: "POST /api/v1/notify/teams" },
+  { name: "SendOutlookEmail",        endpoint: "POST /api/v1/notify/email" },
+];
+```
 
 ---
 
 ## 5. Security & Authentication
 
-*   **Authentication:** Archon relies entirely on the partner university's Identity Provider (IdP) via SAML 2.0 or OAuth 2.0/OIDC. Archon does not store passwords.
-*   **Authorization:** Role-Based Access Control (RBAC) enforced at the Gateway layer.
-    *   `Student`: Can only read/write data associated with their specific `student_id`.
-    *   `Agent`: Can read/write data for tickets in their queue.
-    *   `Admin`: Can view aggregated analytics (no PII).
-*   **Data in Transit:** TLS 1.3 mandated for all connections.
-*   **Data at Rest:** AES-256 encryption for the PostgreSQL database.
-*   **PII Redaction:** The Gateway scrubs PII (names, specific IDs) using regex/NLP *before* sending conversation transcripts to Azure OpenAI for reasoning, unless the specific AI operation explicitly requires that data (e.g., generating a personalized letter).
+- **Authentication:** Archon relies entirely on **Microsoft Entra ID** (the university's M365 tenant) via OIDC/OAuth 2.0. MSAL.js on the Flutter client. MSAL Node on the Gateway. Archon stores no passwords.
+- **Authorization:** Role-Based Access Control (RBAC) enforced at the Gateway layer using Entra ID JWT claims.
+  - `Student`: Can only read/write data associated with their specific `entra_oid` / `student_id`.
+  - `Agent`: Can read/write data for tickets in their assigned queue.
+  - `Admin`: Can view aggregated analytics (no PII).
+- **Graph API Authorization:** Delegated permissions only (acting on behalf of the authenticated user). No application-level Graph permissions that could bypass per-user consent. Admin consent is required at the tenant level for `Calendars.Read`, `Mail.Send`, and `TeamsActivity.Send`.
+- **Data in Transit:** TLS 1.3 mandated for all connections (HTTPS + WSS).
+- **Data at Rest:** Azure Cosmos DB encryption at rest (AES-256, Microsoft-managed keys; option to use Customer-Managed Keys in Key Vault for compliance).
+- **Secrets Management:** All API keys, adapter credentials, and Graph API secrets stored in Azure Key Vault. Gateway retrieves secrets at runtime via Managed Identity — no secrets in environment files in production.
+- **PII Redaction:** The Gateway scrubs PII (names, specific IDs) using regex/NLP *before* sending conversation transcripts to Azure AI Foundry for reasoning, unless the specific AI operation explicitly requires that data.
 
 ---
 
-## 6. Infrastructure & Deployment
+## 6. Microsoft 365 Integration Architecture (PRD-F11)
 
-*   **Cloud Provider:** Microsoft Azure (Optimized for Copilot Studio and Azure OpenAI).
-*   **Compute:** Azure App Service (Node.js Gateway) + Azure Static Web Apps (Flutter PWA, React Dashboard).
-*   **Database:** Azure Database for PostgreSQL (Flexible Server) + Azure Cache for Redis.
-*   **AI:** Azure AI Studio (Provisioned Throughput Units for GPT-4o if volume demands; Pay-As-You-Go for Alpha/Beta).
-*   **CI/CD:** GitHub Actions. Deployments triggered on tag. Infrastructure managed via Terraform.
+### 6.1 Entra ID App Registration
+
+Archon is registered as an application in the partner university's Entra ID tenant (or as a multi-tenant app with per-institution consent).
+
+| Setting | Value |
+|---|---|
+| App type | Multi-tenant (registered in Archon's Azure tenant; university grants consent) |
+| Auth flow | Authorization Code Flow with PKCE (mobile/web) |
+| Redirect URIs | `https://app.archon.edu.ph/auth/callback`, `https://localhost:3000/auth/callback` (dev) |
+| Token validation | Gateway validates Entra ID JWT `iss`, `aud`, `tid` claims |
+
+### 6.2 Required Graph API Scopes (Admin Consent Required)
+
+| Scope | Type | Purpose | UI Disclosure |
+|---|---|---|---|
+| `User.Read` | Delegated | Read authenticated user's profile (name, email, student ID) | Shown at login |
+| `Calendars.Read` | Delegated | Read student's M365 calendar events for dashboard panel | Shown at Calendar consent prompt |
+| `Mail.Send` | Delegated | Send Outlook emails for deadline reminders and ticket confirmations | Shown at notification settings |
+| `TeamsActivity.Send` | Delegated | Send Teams activity feed notifications | Shown at notification settings |
+
+### 6.3 M365 Calendar Panel — Data Flow
+
+```
+Student opens Home Dashboard
+  → Client sends GET /api/v1/student/{id}/calendar to Gateway
+  → Gateway validates Entra ID JWT (student scope)
+  → Gateway calls Graph GET /me/calendarView (7-day window)
+  → Gateway normalizes events → CalendarEvent[] schema
+  → Client renders Academic Calendar panel
+  → Events cached in Cosmos DB (TTL: 15 min) to reduce Graph API calls
+```
+
+### 6.4 Teams & Outlook Notification — Data Flow
+
+```
+Archon Notification Scheduler (daily cron via Azure Functions)
+  → Queries Cosmos DB for students with deadlines ≤14 days
+  → For each student:
+      → Checks if notification already sent (idempotency key in Cosmos DB)
+      → Calls POST /api/v1/notify/teams → Gateway → Graph API TeamsActivity.Send
+      → Calls POST /api/v1/notify/email → Gateway → Graph API /me/sendMail
+      → Writes notification record to Cosmos DB (TTL: 30 days)
+  → Logs m365_notification_sent event to Application Insights
+```
 
 ---
 
-## 7. Non-Functional Requirements (NFRs)
+## 7. Infrastructure & Deployment
+
+| Component | Azure Service | Notes |
+|---|---|---|
+| Client (Flutter PWA) | Azure Static Web Apps | CDN-backed, global edge distribution |
+| Agent/Admin Dashboard (React) | Azure Static Web Apps | Same CDN as client |
+| API Gateway (Node.js) | Azure App Service (Linux, P2v3) | Auto-scaling; blue-green deployment slots |
+| Notification Scheduler | Azure Functions (Consumption Plan) | Cron trigger for daily deadline scans |
+| AI Platform | Azure AI Foundry | GPT-4o + Phi-4 deployments; AI Foundry Tracing |
+| Database | Azure Cosmos DB for NoSQL (Serverless) | Scales to zero; native vector search |
+| Session Cache | Azure Cache for Redis (C1 Standard) | WebSocket state; JWT blocklist |
+| Secrets | Azure Key Vault | Gateway uses Managed Identity — no secret in env vars |
+| Identity | Microsoft Entra ID | University M365 tenant; Archon app registration |
+| M365 Integration | Microsoft Graph API | Calendar, Teams, Outlook |
+| CI/CD | GitHub Actions | Tagged releases; Terraform for IaC |
+| Monitoring | Azure Monitor + Application Insights + AI Foundry Tracing | Single observability pane |
+| Region | Southeast Asia (Singapore) | Data residency preference for Philippine DPA compliance |
+
+---
+
+## 8. Non-Functional Requirements (NFRs)
 
 | NFR | Metric / Target | Verification |
-|-----|-----------------|--------------|
+|-----|----------------|--------------|
 | **Latency (Chat)** | Time-to-first-token < 3s (3G network). Full resolution < 15s. | Load testing (k6) simulating 3G latency. |
 | **Availability** | 99.9% uptime (approx 43m downtime/month). | Azure Monitor synthetic transactions. |
-| **Scalability** | Support 500 concurrent chat sessions during peak enrollment weeks. | Load testing (k6). Auto-scaling triggers on App Service. |
-| **Data Freshness** | University API data cached for max 5 minutes. Real-time fetch for transaction checks. | Gateway logging. |
+| **Scalability** | Support 500 concurrent chat sessions during peak enrollment weeks. | Load testing (k6). Auto-scaling on App Service. |
+| **Data Freshness** | University API data cached for max 5 minutes (Cosmos DB TTL). Real-time fetch for transaction checks. | Gateway logging. |
+| **Graph API Resilience** | Teams/Outlook notifications retried 3× with exponential backoff on throttling. Calendar falls back gracefully if Graph unavailable. | Integration tests + Application Insights alerts. |
+| **Cost (AI)** | Monthly AI compute ≤ $150 for a 12,000-student university. | Azure Cost Management budget alerts. |
 
 ---
 
-## 8. AI & Agent Architecture
+## 9. AI & Agent Architecture (Azure AI Foundry)
 
-The AI subsystem handles `PRD-F1` (Agentic Chat), `PRD-F2` (Orchestration), and `PRD-F4` (Handoff).
+The AI subsystem handles `PRD-F1` (Chat), `PRD-F2` (Orchestration), `PRD-F4` (Handoff), and `PRD-F11` (M365 integration tools).
 
-**Copilot Studio (The Orchestrator):**
--   Manages conversation state, branching logic, and user intent recognition.
--   Handles simple FAQ deflection natively (RAG over university policies).
--   Triggers "Topics" (workflows) based on intent.
+**AI Foundry Agent Service (The Orchestrator + Reasoner):**
+- Manages conversation state, tool selection, and multi-step execution.
+- Registered tools call the Node.js Gateway (which in turn calls university adapters or Microsoft Graph).
+- GPT-4o is the default model for complex reasoning, multi-department data synthesis, and handoff packet generation.
+- Phi-4 handles lightweight tasks: intent pre-classification, FAQ matching, simple balance queries — reducing GPT-4o token spend.
 
-**Azure OpenAI (The Reasoner):**
--   Called by Copilot Studio for complex, unstructured tasks.
--   *Example:* Copilot fetches JSON from the Registrar and Bursar APIs. It passes both JSONs to OpenAI with the prompt: *"The student asks why they cannot register. Analyze these two data sources and explain the situation to the student in friendly Filipino."*
+**How a complex query flows:**
+1. Student asks a question via chat.
+2. Gateway receives the message, validates the Entra ID JWT, retrieves the conversation history from Cosmos DB.
+3. Gateway invokes the AI Foundry Agent with the message + conversation history + RAG context (from Cosmos DB vector search on policy documents).
+4. AI Foundry Agent (GPT-4o) reasons about the query and selects tools (e.g., `CheckStudentHolds`, `CheckFinancialAidStatus`).
+5. Gateway executes the tool calls against the university adapters, returns structured JSON.
+6. AI Foundry Agent synthesizes the multi-department data into a Filipino/English response.
+7. Response streams back to the client via SSE.
+8. If context indicates an upcoming deadline, Agent may also call `GetCalendarEvents` to cross-reference, then `SendTeamsNotification` or `SendOutlookEmail` for proactive follow-up.
+9. All tool calls, responses, and latencies are traced in AI Foundry Tracing → forwarded to Application Insights.
 
-**The "Tools" (Agent Actions):**
-Copilot Studio is granted specific Tools (HTTP actions) pointing to the Node.js Gateway:
-1.  `Tool: CheckStudentHolds`
-2.  `Tool: CheckFinancialAidStatus`
-3.  `Tool: EscalateToHuman` (Generates the `PRD-F4` handoff packet)
+### 9.1 AI Safety & Guardrails (OWASP LLM Controls)
 
-### 8.1 AI Safety & Guardrails (OWASP LLM Controls)
-
-1.  **LLM01: Prompt Injection:** Copilot Studio topics strictly separate user input from system prompts. The Gateway validates user input length and character sets before passing to the AI.
-2.  **LLM02: Insecure Output Handling:** AI outputs are treated as untrusted markdown. The Flutter client sanitizes all HTML/Markdown before rendering to prevent XSS.
-3.  **LLM06: Sensitive Information Disclosure:** The system prompt explicitly forbids discussing other students' data. RBAC at the Gateway ensures the AI *cannot* fetch data for a `student_id` different from the authenticated user's ID.
-4.  **Scope Containment:** The AI is given read-only API access by default. Write actions (e.g., lifting a hold) require explicit human-in-the-loop confirmation via a UI button, bypassing the LLM for the final execution step.
+1. **LLM01: Prompt Injection:** Gateway validates and sanitizes user input (length, character set, structural injection patterns) before passing to the Agent. System prompt is static and version-controlled — never modified by user input.
+2. **LLM02: Insecure Output Handling:** AI outputs are treated as untrusted markdown. The Flutter client sanitizes all HTML/Markdown before rendering to prevent XSS.
+3. **LLM06: Sensitive Information Disclosure:** System prompt explicitly forbids discussing other students' data. RBAC at the Gateway ensures the Agent *cannot* call a tool with a `student_id` different from the authenticated user's ID.
+4. **Scope Containment:** The Agent is given read-only tool access by default. Write actions (e.g., lifting a hold, sending a Teams message) require either explicit student confirmation in chat or staff approval in the Agent Dashboard before the Gateway executes the Graph API or adapter write call.
+5. **Graph API Least Privilege:** Only delegated (user-context) permissions are used. The Gateway never holds application-level Graph permissions that could act across all students.
 
 ---
 
 ## Self-Check
 
-- [x] Specifies the exact stack (Node.js, Postgres, Redis, Flutter, Copilot Studio, Azure OpenAI).
-- [x] System diagram maps how the components talk to each other.
-- [x] Explains how `PRD-F2` (Data Orchestration) works without storing the university's data.
-- [x] Includes NFRs that can be tested (500 concurrent users, 3s TTFT).
-- [x] Defines specific AI guardrails, notably the separation of read (AI) and write (Human confirmed) actions.
+- [x] Specifies the exact stack (Node.js, Cosmos DB, Redis, Flutter, React, Azure AI Foundry, Microsoft Graph).
+- [x] System diagram maps how all components communicate, including M365 integration.
+- [x] Explains how `PRD-F2` (Data Orchestration) works without storing the university's data long-term.
+- [x] Explains how `PRD-F11` (M365 Integration) works — Entra ID auth, Graph Calendar, Teams, Outlook.
+- [x] Includes NFRs that can be tested (500 concurrent users, 3s TTFT, Graph API resilience).
+- [x] Defines specific AI guardrails, notably the separation of read (AI) and write (Human + Gateway confirmed) actions.
+- [x] Cosmos DB partition strategy documented.
+- [x] Microsoft Copilot Studio: not present — replaced by Azure AI Foundry Agent Service.
+- [x] PostgreSQL: not present — replaced by Azure Cosmos DB for NoSQL.
