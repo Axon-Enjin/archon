@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, unauthorizedResponse } from "@/lib/auth-helper";
 import { cosmosDbService } from "@/lib/db/cosmos";
 import { MessageDoc, HandoffDoc } from "@/lib/db/types";
+import { isAiEnabled } from "@/lib/feature-flags";
 
 interface HoldItem {
   id: string;
@@ -44,6 +45,29 @@ export async function POST(
       ts: new Date().toISOString(),
     };
     await cosmosDbService.createMessage(userMsg);
+
+    if (!isAiEnabled()) {
+      await cosmosDbService.updateConversationStatus(
+        conversationId,
+        authUser.institution_id,
+        "Pending Agent"
+      );
+
+      const assistantMsg: MessageDoc = {
+        id: `msg-${Date.now()}-assistant`,
+        institution_id: authUser.institution_id,
+        conversation_id: conversationId,
+        role: "assistant",
+        content_scrubbed: JSON.stringify({
+          text: "AI assistance is temporarily unavailable. Your request has been routed directly to the support queue, and a human agent will assist you shortly.",
+          toolCalls: ["EscalateToHuman"],
+        }),
+        ts: new Date(Date.now() + 1000).toISOString(),
+      };
+      await cosmosDbService.createMessage(assistantMsg);
+
+      return NextResponse.json({ success: true, data: assistantMsg });
+    }
 
     // 2. Fetch active holds/billing to make the AI responses data-driven
     const holdsKey = `holds:${authUser.entra_oid}`;
