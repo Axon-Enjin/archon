@@ -1,9 +1,10 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { LayoutDashboard, MessageCircle, FileText, UploadCloud, File, CheckCircle2 } from "lucide-react";
 
 export default function SAPAppealWizard() {
   const { data: session, status } = useSession();
@@ -135,19 +136,19 @@ export default function SAPAppealWizard() {
               href="/student"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50"
             >
-              📊 Dashboard
+              <LayoutDashboard className="w-4 h-4" /> Dashboard
             </Link>
             <Link
               href="/student/chat?ticketId=ticket-001"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50"
             >
-              💬 AI Help Desk
+              <MessageCircle className="w-4 h-4" /> AI Help Desk
             </Link>
             <Link
               href="/student/appeal"
               className="flex items-center gap-3 rounded-lg bg-brand-primary-light/50 px-3 py-2 text-sm font-semibold text-brand-primary"
             >
-              📝 SAP Appeal Wizard
+              <FileText className="w-4 h-4" /> SAP Appeal Wizard
             </Link>
           </nav>
         </div>
@@ -158,7 +159,7 @@ export default function SAPAppealWizard() {
         {/* Header */}
         <section className="border-b border-zinc-200 pb-6">
           <div className="flex items-center gap-2 text-xs font-semibold text-brand-primary uppercase tracking-wider">
-            <span>📝</span>
+            <FileText className="w-4 h-4" />
             <span>PRD-F9 · Academic Advisory Service</span>
           </div>
           <h1 className="text-3xl font-extrabold text-brand-text mt-1">SAP Appeal Wizard</h1>

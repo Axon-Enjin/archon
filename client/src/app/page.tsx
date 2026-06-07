@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { MessageCircle, Calendar, Bell, Search } from "lucide-react";
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
@@ -92,7 +93,7 @@ export default async function Home() {
 
                     <div className="flex gap-2 justify-end">
                       <div className="rounded-lg bg-brand-primary-light/50 p-3 text-brand-text max-w-[80%]">
-                        <p className="text-xs font-bold text-brand-primary mb-1">🔍 Querying Registrar & Bursar...</p>
+                        <p className="text-xs font-bold text-brand-primary mb-1 flex items-center gap-1.5"><Search className="w-3 h-3" /> Querying Registrar & Bursar...</p>
                         Sinisiyasat ko po ang iyong account. May nakita akong **Financial Hold** dahil sa kulang na balanse sa tuition na ₱12,500.
                       </div>
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-primary text-white font-bold text-xs">
@@ -131,8 +132,8 @@ export default async function Home() {
             <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {/* Feature 1 */}
               <div className="rounded-xl bg-white p-6 shadow-sm border border-zinc-100">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-primary text-white text-lg mb-4">
-                  💬
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-primary text-white mb-4">
+                  <MessageCircle className="w-5 h-5" />
                 </span>
                 <h3 className="text-lg font-bold text-brand-text">Multi-Lingual Agentic Chat</h3>
                 <p className="mt-2 text-sm text-brand-muted leading-relaxed">
@@ -142,8 +143,8 @@ export default async function Home() {
 
               {/* Feature 2 */}
               <div className="rounded-xl bg-white p-6 shadow-sm border border-zinc-100">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-m365 text-white text-lg mb-4">
-                  📅
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-m365 text-white mb-4">
+                  <Calendar className="w-5 h-5" />
                 </span>
                 <h3 className="text-lg font-bold text-brand-text">M365 Calendar Dashboard</h3>
                 <p className="mt-2 text-sm text-brand-muted leading-relaxed">
@@ -153,8 +154,8 @@ export default async function Home() {
 
               {/* Feature 3 */}
               <div className="rounded-xl bg-white p-6 shadow-sm border border-zinc-100">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-warning text-white text-lg mb-4">
-                  🔔
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-warning text-white mb-4">
+                  <Bell className="w-5 h-5" />
                 </span>
                 <h3 className="text-lg font-bold text-brand-text">Proactive Teams Alerts</h3>
                 <p className="mt-2 text-sm text-brand-muted leading-relaxed">

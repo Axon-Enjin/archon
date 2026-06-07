@@ -4,6 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { LayoutDashboard, MessageCircle, FileText, LogOut, AlertOctagon, Calendar, Clock } from "lucide-react";
 
 interface StudentProfile {
   student_id: string;
@@ -192,20 +193,20 @@ export default function StudentDashboard() {
               href="/student"
               className="flex items-center gap-3 rounded-lg bg-brand-primary-light/50 px-3 py-2 text-sm font-semibold text-brand-primary animate-fade-in"
             >
-              📊 Dashboard
+              <LayoutDashboard className="w-4 h-4" /> Dashboard
             </Link>
             <button
               onClick={handleStartNewChat}
               disabled={creatingTicket}
               className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 transition"
             >
-              💬 AI Help Desk
+              <MessageCircle className="w-4 h-4" /> AI Help Desk
             </button>
             <Link
               href="/student/appeal"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50"
             >
-              📝 SAP Appeal Wizard
+              <FileText className="w-4 h-4" /> SAP Appeal Wizard
             </Link>
           </nav>
         </div>
@@ -223,7 +224,7 @@ export default function StudentDashboard() {
             onClick={() => signOut({ callbackUrl: "/" })}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-error hover:bg-red-50 transition"
           >
-            🚪 Sign Out
+            <LogOut className="w-4 h-4" /> Sign Out
           </button>
         </div>
       </aside>
@@ -241,9 +242,9 @@ export default function StudentDashboard() {
           <button
             onClick={handleStartNewChat}
             disabled={creatingTicket}
-            className="flex h-11 items-center justify-center rounded-xl bg-brand-primary px-5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50 transition"
+            className="flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-primary px-5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50 transition"
           >
-            {creatingTicket ? "Initializing..." : "💬 Start AI Conversation"}
+            {creatingTicket ? "Initializing..." : <><MessageCircle className="w-4 h-4" /> Start AI Conversation</>}
           </button>
         </section>
 
@@ -251,7 +252,7 @@ export default function StudentDashboard() {
         {activeHolds.length > 0 ? (
           <section className="rounded-xl border border-brand-error/20 bg-red-50/30 p-6 space-y-4">
             <div className="flex items-center gap-2 text-brand-error font-bold font-display">
-              <span>🛑</span>
+              <AlertOctagon className="w-5 h-5" />
               <h2>Mayroon kang ({activeHolds.length}) na aktibong hold sa iyong account</h2>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -332,8 +333,8 @@ export default function StudentDashboard() {
                     <div key={evt.id} className={`py-1 pl-4 border-l-4 ${borderClass} flex items-start justify-between gap-4 transition-all duration-300`}>
                       <div className="space-y-1">
                         <p className="text-sm font-semibold text-brand-text font-display">{evt.title}</p>
-                        <p className="text-xs text-brand-muted">
-                          📅 {formatDate} · ⏰ {formatTime}
+                        <p className="text-xs text-brand-muted flex items-center gap-1.5">
+                          <Calendar className="w-3 h-3 inline" /> {formatDate} &middot; <Clock className="w-3 h-3 inline" /> {formatTime}
                         </p>
                       </div>
                       <span className="rounded bg-teal-50 px-2 py-0.5 text-[9px] font-bold text-brand-primary shrink-0 uppercase tracking-wider">
@@ -345,8 +346,8 @@ export default function StudentDashboard() {
               </div>
             ) : (
               <div className="py-8 text-center space-y-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-m365/10 text-brand-m365 mx-auto text-xl">
-                  📅
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-m365/10 text-brand-m365 mx-auto">
+                  <Calendar className="w-6 h-6" />
                 </div>
                 <div className="space-y-1 max-w-sm mx-auto">
                   <p className="text-sm font-bold text-brand-text font-display">Connect your Microsoft 365 Calendar</p>

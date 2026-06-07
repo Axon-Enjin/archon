@@ -4,6 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { DollarSign, Bot, Hourglass, Star, Target, Bell } from "lucide-react";
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
@@ -47,7 +48,7 @@ export default function AdminDashboard() {
       baseline: "₱104.68 (Legacy Baseline)",
       target: "Target: ₱22.00",
       status: "success",
-      icon: "💸",
+      icon: <DollarSign className="w-6 h-6 text-emerald-600" />,
     },
     {
       id: "BRD-M2",
@@ -56,7 +57,7 @@ export default function AdminDashboard() {
       baseline: "0% (Previous Baseline)",
       target: "Target: ≥30.0%",
       status: "success",
-      icon: "🤖",
+      icon: <Bot className="w-6 h-6 text-brand-primary" />,
     },
     {
       id: "BRD-M3",
@@ -65,7 +66,7 @@ export default function AdminDashboard() {
       baseline: "18m 30s (Legacy)",
       target: "Target: <5m 00s",
       status: "success",
-      icon: "⏳",
+      icon: <Hourglass className="w-6 h-6 text-amber-500" />,
     },
     {
       id: "BRD-M4",
@@ -74,7 +75,7 @@ export default function AdminDashboard() {
       baseline: "3.2 / 5.0 (Legacy)",
       target: "Target: ≥4.5 / 5.0",
       status: "success",
-      icon: "⭐",
+      icon: <Star className="w-6 h-6 text-yellow-500" />,
     },
     {
       id: "BRD-M5",
@@ -83,7 +84,7 @@ export default function AdminDashboard() {
       baseline: "71.0% (Legacy)",
       target: "Target: ≥95.0%",
       status: "success",
-      icon: "🎯",
+      icon: <Target className="w-6 h-6 text-rose-500" />,
     },
     {
       id: "BRD-M7",
@@ -92,7 +93,7 @@ export default function AdminDashboard() {
       baseline: "N/A (New Metric)",
       target: "Target: ≥50.0%",
       status: "success",
-      icon: "🔔",
+      icon: <Bell className="w-6 h-6 text-indigo-500" />,
     },
   ];
 
