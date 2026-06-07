@@ -23,7 +23,8 @@ The full architectural blueprint and product requirements are available in the `
 - [Design System Document (DSD)](docs/dsd-archon.md)
 
 ### Agent Operations
-To build on this project, please consult the canonical **[Build Guide / AGENTS.md](docs/build-archon.md)**.
+- **[AI Agent Playbook (AGENT.md)](AGENT.md)** — Core orchestration and health check playbook for AI agents.
+- **[Build Guide (build-archon.md)](docs/build-archon.md)** — Stack currency and golden-path code patterns.
 
 ## 🔒 Security & Privacy
 Archon is designed with Philippine Data Privacy Act (DPA 2012) compliance at its core.
