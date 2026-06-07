@@ -7,6 +7,7 @@ export interface AuthenticatedUser {
   role: "Student" | "Agent" | "Admin";
   institution_id: string;
   entra_oid: string;
+  accessToken?: string;
   name?: string | null;
   email?: string | null;
 }
