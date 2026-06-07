@@ -56,17 +56,17 @@ export async function POST(
 
     const normalizedContent = content.toLowerCase();
 
-    if (normalizedContent.includes("hold") || normalizedContent.includes("bakit may") || normalizedContent.includes("sagabal")) {
+    if (normalizedContent.includes("hold") || normalizedContent.includes("why") || normalizedContent.includes("block")) {
       toolCalls.push("CheckStudentHolds");
       if (activeHoldsCount === 0) {
-        aiContent = "Suriin ko ang iyong records... Wala po akong nakikitang aktibong hold sa iyong account sa kasalukuyan. Malinis po ang iyong katayuan sa Registrar.";
+        aiContent = "Checking your records... I don't see any active holds on your account at the moment. Your status with the Registrar is clear.";
       } else {
         const holdLines = holds
-          .map((h, i: number) => `${i + 1}. **${h.type} Hold** (${h.status}): ${h.reason}\n   *Lunas:* ${h.resolution_steps}`)
+          .map((h, i: number) => `${i + 1}. **${h.type} Hold** (${h.status}): ${h.reason}\n   *Resolution:* ${h.resolution_steps}`)
           .join("\n\n");
-        aiContent = `Nahanap ko po na mayroon kang **${activeHoldsCount}** na aktibong hold sa iyong account:\n\n${holdLines}\n\nPara sa iyong Financial Hold, maaari ko po itong pansamantalang i-lift para makapag-enroll ka kung mayroon kang scholarship na inaasahan. Gusto mo bang gawin natin ito?`;
+        aiContent = `I found **${activeHoldsCount}** active hold(s) on your account:\n\n${holdLines}\n\nFor your Financial Hold, I can temporarily lift it so you can enroll if you have a pending scholarship. Would you like me to do that?`;
       }
-    } else if (normalizedContent.includes("lift") || normalizedContent.includes("tanggalin") || normalizedContent.includes("yes") || normalizedContent.includes("oo") || normalizedContent.includes("opo")) {
+    } else if (normalizedContent.includes("lift") || normalizedContent.includes("remove") || normalizedContent.includes("yes") || normalizedContent.includes("please") || normalizedContent.includes("do it")) {
       const financialHold = holds.find((h) => h.id === "hold-financial" && h.status === "Active");
       if (financialHold) {
         toolCalls.push("CheckFinancialAidStatus");
@@ -76,14 +76,14 @@ export async function POST(
         financialHold.status = "Resolved";
         await cosmosDbService.setCacheData(holdsKey, holds, authUser.institution_id);
 
-        aiContent = "Sinusuri ko ang iyong Financial Aid records... Nakita ko po ang iyong pending CHED UniFAST grant na ₱15,000. Dahil dito, hiningi ko na po sa Bursar at Registrar na tanggalin muna ang iyong **Financial Hold** (temporary lift).\n\nTagumpay po ang pagtanggal! Na-clear na po ang hold na ito para sa susunod na 14 na araw para makapag-enroll ka. Maaari mo itong makita sa iyong Student Dashboard. May iba pa po ba ako maitutulong?";
+        aiContent = "Checking your Financial Aid records... I can see your pending CHED UniFAST grant of ₱15,000. Because of this, I have requested the Bursar and Registrar to temporarily lift your **Financial Hold**.\n\nThe lift was successful! This hold is cleared for the next 14 days so you can enroll. You can see this reflected on your Student Dashboard. Is there anything else I can help you with?";
       } else {
-        aiContent = "May maitutulong ba ako sa iba pang holds? Kung nais mong i-clear ang Academic (SAP) hold, mangyaring gumamit ng SAP Appeal Wizard sa sidebar.";
+        aiContent = "Is there anything else I can help with regarding your holds? If you'd like to clear your Academic (SAP) hold, please use the SAP Appeal Wizard in the sidebar.";
       }
-    } else if (normalizedContent.includes("sap") || normalizedContent.includes("appeal") || normalizedContent.includes("akademiko")) {
+    } else if (normalizedContent.includes("sap") || normalizedContent.includes("appeal") || normalizedContent.includes("academic")) {
       toolCalls.push("queryPolicies");
-      aiContent = "Para po sa iyong **Academic Hold (SAP deficiency)**, kinakailangan pong mag-file ng pormal na SAP Appeal. \n\nMaaari mo pong buksan ang **SAP Appeal Wizard** sa dashboard side panel upang maihanda ang appeal narrative at checklist ng mga dokumento (katulad ng transcript o medical certificate). Nais mo bang gabayan kita doon?";
-    } else if (normalizedContent.includes("human") || normalizedContent.includes("agent") || normalizedContent.includes("makausap") || normalizedContent.includes("staff")) {
+      aiContent = "For your **Academic Hold (SAP deficiency)**, you are required to file a formal SAP Appeal. \n\nYou can open the **SAP Appeal Wizard** from the dashboard sidebar to prepare your appeal narrative and checklist of documents (such as transcript or medical certificate). Would you like me to guide you there?";
+    } else if (normalizedContent.includes("human") || normalizedContent.includes("agent") || normalizedContent.includes("talk") || normalizedContent.includes("staff")) {
       toolCalls.push("EscalateToHuman");
       
       // Update ticket status to Pending Agent
@@ -111,9 +111,9 @@ export async function POST(
       };
       await cosmosDbService.createHandoff(handoffDoc);
 
-      aiContent = "Nauunawaan ko po. Inilipat ko na ang usapang ito sa ating student services support queue. Kasama po sa inilipat ko ang summary ng holds at mga naisagawa ko upang hindi mo na kailangang ulitin ang kwento mo. \n\nMangyaring maghintay ng ilang sandali habang kumokonekta ang available support staff.";
+      aiContent = "I understand. I have escalated this conversation to our student services support queue. I've included a summary of your holds and the actions I took so you won't have to repeat your story. \n\nPlease hold on a moment while I connect you to the next available support staff.";
     } else {
-      aiContent = `Salamat sa mensahe, ${authUser.name || "Student"}. Maaari mo akong tanungin tungkol sa iyong holds ('bakit may hold ako?'), balanse sa tuition, UniFAST scholarship deadlines, o mag-request na makipag-usap sa support agent.`;
+      aiContent = `Thank you for your message, ${authUser.name || "Student"}. You can ask me about your holds ('why do I have a hold?'), tuition balance, UniFAST scholarship deadlines, or request to speak with a support agent.`;
     }
 
     // 4. Save the assistant's message

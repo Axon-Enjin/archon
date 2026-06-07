@@ -155,7 +155,7 @@ export default function AgentDashboard() {
       <div className="flex min-h-screen items-center justify-center bg-brand-surface">
         <div className="text-center">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-sm text-brand-muted font-sans">Kargang muli ang Agent Console...</p>
+          <p className="mt-4 text-sm text-brand-muted font-sans">Loading Agent Console...</p>
         </div>
       </div>
     );
@@ -236,7 +236,7 @@ export default function AgentDashboard() {
             ))}
             {queue.length === 0 && (
               <div className="text-center py-20 text-sm text-brand-muted">
-                Wala nang nakabinbing ticket sa queue. Nice!
+                No pending tickets in the queue. Nice!
               </div>
             )}
           </div>
@@ -350,7 +350,7 @@ export default function AgentDashboard() {
               <span className="text-4xl">📥</span>
               <h3 className="text-lg font-bold text-brand-text font-display">Select a ticket from the queue</h3>
               <p className="text-xs text-brand-muted max-w-sm">
-                Suriin ang profile ng mag-aaral, suriin ang AI Handoff packet, at aprubahan o tanggihan ang appeal sa isang click.
+                Review the student profile, inspect the AI Handoff packet, and approve or reject the appeal in one click.
               </p>
             </div>
           )}

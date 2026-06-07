@@ -33,7 +33,7 @@ export default function AdminDashboard() {
       <div className="flex min-h-screen items-center justify-center bg-brand-surface">
         <div className="text-center">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-sm text-brand-muted">Kargang muli ang Admin Analytics...</p>
+          <p className="mt-4 text-sm text-brand-muted">Loading Admin Analytics...</p>
         </div>
       </div>
     );
@@ -215,12 +215,12 @@ export default function AdminDashboard() {
 
                 {/* Data Points / Interactivity circles */}
                 {[
-                  { x: 50, y: 165, val: "₱15,000", def: "10.0%", month: "Ene" },
-                  { x: 130, y: 139, val: "₱38,000", def: "25.0%", month: "Peb" },
+                  { x: 50, y: 165, val: "₱15,000", def: "10.0%", month: "Jan" },
+                  { x: 130, y: 139, val: "₱38,000", def: "25.0%", month: "Feb" },
                   { x: 210, y: 111, val: "₱65,000", def: "45.0%", month: "Mar" },
-                  { x: 290, y: 79, val: "₱92,000", def: "60.0%", month: "Abr" },
+                  { x: 290, y: 79, val: "₱92,000", def: "60.0%", month: "Apr" },
                   { x: 370, y: 61, val: "₱110,000", def: "70.0%", month: "May" },
-                  { x: 450, y: 38, val: "₱124,500", def: "73.5%", month: "Hun" },
+                  { x: 450, y: 38, val: "₱124,500", def: "73.5%", month: "Jun" },
                 ].map((pt, idx) => (
                   <g key={idx}>
                     {/* Tick label */}
@@ -283,12 +283,12 @@ export default function AdminDashboard() {
 
                 {/* Bars */}
                 {[
-                  { label: "Buwan 1", csat: 3.2, y: 98, h: 82, color: "#F59E0B" },
-                  { label: "Buwan 2", csat: 3.5, y: 90, h: 90, color: "#F59E0B" },
-                  { label: "Buwan 3", csat: 3.9, y: 80, h: 100, color: "#0D9488" },
-                  { label: "Buwan 4", csat: 4.2, y: 72, h: 108, color: "#0D9488" },
-                  { label: "Buwan 5", csat: 4.6, y: 62, h: 118, color: "#10B981" },
-                  { label: "Buwan 6", csat: 4.8, y: 57, h: 123, color: "#10B981" },
+                  { label: "Month 1", csat: 3.2, y: 98, h: 82, color: "#F59E0B" },
+                  { label: "Month 2", csat: 3.5, y: 90, h: 90, color: "#F59E0B" },
+                  { label: "Month 3", csat: 3.9, y: 80, h: 100, color: "#0D9488" },
+                  { label: "Month 4", csat: 4.2, y: 72, h: 108, color: "#0D9488" },
+                  { label: "Month 5", csat: 4.6, y: 62, h: 118, color: "#10B981" },
+                  { label: "Month 6", csat: 4.8, y: 57, h: 123, color: "#10B981" },
                 ].map((bar, idx) => {
                   const barWidth = 32;
                   const x = 70 + idx * 65;

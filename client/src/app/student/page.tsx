@@ -168,7 +168,7 @@ export default function StudentDashboard() {
       <div className="flex min-h-screen items-center justify-center bg-brand-surface">
         <div className="text-center">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-sm text-brand-muted font-sans">Kargang muli ang iyong dashboard...</p>
+          <p className="mt-4 text-sm text-brand-muted font-sans">Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -234,7 +234,7 @@ export default function StudentDashboard() {
         {/* Welcome Header */}
         <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-200 pb-6">
           <div>
-            <h1 className="text-3xl font-bold font-display text-brand-text">Maligayang pagdating, {profile?.name}!</h1>
+            <h1 className="text-3xl font-bold font-display text-brand-text">Welcome, {profile?.name}!</h1>
             <p className="text-brand-muted text-sm mt-1">
               {profile?.major} · {profile?.year} · ID: {profile?.student_id}
             </p>
@@ -253,7 +253,7 @@ export default function StudentDashboard() {
           <section className="rounded-xl border border-brand-error/20 bg-red-50/30 p-6 space-y-4">
             <div className="flex items-center gap-2 text-brand-error font-bold font-display">
               <AlertOctagon className="w-5 h-5" />
-              <h2>Mayroon kang ({activeHolds.length}) na aktibong hold sa iyong account</h2>
+              <h2>You have ({activeHolds.length}) active holds on your account</h2>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {activeHolds.map((hold) => (
@@ -295,8 +295,7 @@ export default function StudentDashboard() {
             <span className="text-brand-success text-xl">✓</span>
             <div>
               <p className="text-sm font-semibold text-green-800">Clear Account Status</p>
-              <p className="text-xs text-brand-muted">Wala kang aktibong holds. Ikaw ay kwalipikadong mag-enroll at kumuha ng klase.</p>
-            </div>
+              <p className="text-xs text-brand-muted">You have no active holds. You are cleared to enroll and register for classes.</p>            </div>
           </section>
         )}
 
@@ -368,7 +367,7 @@ export default function StudentDashboard() {
           {/* Active Support Tickets */}
           <section className="lg:col-span-5 rounded-xl bg-white p-6 border border-zinc-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
-              <h2 className="text-lg font-bold font-display text-brand-text">Aktibong Tickets</h2>
+              <h2 className="text-lg font-bold font-display text-brand-text">Active Tickets</h2>
               <span className="text-xs font-semibold bg-brand-primary-light text-brand-primary rounded-full px-2.5 py-0.5">
                 {tickets.length} Total
               </span>
@@ -385,7 +384,7 @@ export default function StudentDashboard() {
                       <p className="text-xs text-brand-muted font-mono">{ticket.ticket_id}</p>
                       <p className="text-sm font-bold font-display text-brand-text">Support Chat Session</p>
                       <p className="text-[10px] text-brand-muted">
-                        Binuksan noong {new Date(ticket.created_at).toLocaleDateString()}
+                        Opened on {new Date(ticket.created_at).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
@@ -404,7 +403,7 @@ export default function StudentDashboard() {
                         href={`/student/chat?ticketId=${ticket.id}`}
                         className="text-xs font-semibold text-brand-primary hover:underline font-display"
                       >
-                        Buksan ➔
+                        Open ➔
                       </Link>
                     </div>
                   </div>
@@ -412,7 +411,7 @@ export default function StudentDashboard() {
               </div>
             ) : (
               <div className="text-center py-10 space-y-3">
-                <p className="text-sm text-brand-muted">Wala kang aktibong ticket sa ngayon.</p>
+                <p className="text-sm text-brand-muted">You have no active tickets at this time.</p>
                 <button
                   onClick={handleStartNewChat}
                   disabled={creatingTicket}

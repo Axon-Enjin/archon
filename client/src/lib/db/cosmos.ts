@@ -191,7 +191,7 @@ class CosmosDBService {
           institution_id: institutionId,
           conversation_id: "ticket-001",
           role: "assistant",
-          content_scrubbed: "Sinisiyasat ko po ang Bursar system. Hintayin lamang po ng ilang segundo...",
+          content_scrubbed: "Checking the Bursar system. Please wait a few seconds...",
           ts: new Date(Date.now() - 3600000 * 2 + 10000).toISOString(),
         },
       ],

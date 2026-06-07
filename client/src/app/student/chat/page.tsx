@@ -186,11 +186,11 @@ function StudentChatContent() {
       case "CheckFinancialAidStatus":
         return <span className="flex items-center gap-1.5"><Banknote className="w-3.5 h-3.5" /> Sinusuri ang iyong CHED UniFAST grant status...</span>;
       case "requestHoldLift":
-        return <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> Nagpapadala ng kahilingan na tanggalin ang Financial Hold...</span>;
+        return <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> Sending a request to lift the Financial Hold...</span>;
       case "EscalateToHuman":
-        return <span className="flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> Inililipat ang chat session sa support staff (Jay)...</span>;
+        return <span className="flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> Transferring chat session to support staff (Jay)...</span>;
       default:
-        return <span className="flex items-center gap-1.5"><Wrench className="w-3.5 h-3.5" /> Gumagana ang tool: {tool}...</span>;
+        return <span className="flex items-center gap-1.5"><Wrench className="w-3.5 h-3.5" /> Tool executing: {tool}...</span>;
     }
   };
 
@@ -199,7 +199,7 @@ function StudentChatContent() {
       <div className="flex min-h-screen items-center justify-center bg-brand-surface">
         <div className="text-center">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-sm text-brand-muted">Kinokonekta ka sa Archon Desk...</p>
+          <p className="mt-4 text-sm text-brand-muted">Connecting to Archon Desk...</p>
         </div>
       </div>
     );
@@ -335,22 +335,22 @@ function StudentChatContent() {
         <section className="shrink-0 bg-zinc-50 border-t border-zinc-100 py-3 px-6 overflow-x-auto">
           <div className="max-w-3xl mx-auto flex gap-2 whitespace-nowrap">
             <button
-              onClick={() => handleSendMessage("Bakit ako may hold sa enrollment?")}
+              onClick={() => handleSendMessage("Why do I have an enrollment hold?")}
               className="flex items-center gap-1.5 rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
             >
-              <Search className="w-3.5 h-3.5" /> Bakit may hold ako?
+              <Search className="w-3.5 h-3.5" /> Why do I have a hold?
             </button>
             <button
-              onClick={() => handleSendMessage("Paki-lift po ng financial hold ko.")}
+              onClick={() => handleSendMessage("Please lift my financial hold.")}
               className="flex items-center gap-1.5 rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
             >
-              <Zap className="w-3.5 h-3.5" /> Paki-lift ang hold ko
+              <Zap className="w-3.5 h-3.5" /> Please lift my hold
             </button>
             <button
-              onClick={() => handleSendMessage("Gusto ko pong makausap ang support agent.")}
-              className="rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
+              onClick={() => handleSendMessage("I'd like to speak with a support agent.")}
+              className="flex items-center gap-1.5 rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
             >
-              🚨 Makausap ang support agent
+              <AlertTriangle className="w-3.5 h-3.5" /> Speak to support
             </button>
           </div>
         </section>
@@ -372,8 +372,8 @@ function StudentChatContent() {
             disabled={sending || ticketDetails?.status === "Resolved"}
             placeholder={
               ticketDetails?.status === "Resolved"
-                ? "Sarado na ang ticket na ito."
-                : "Magtanong tungkol sa iyong holds o balanse..."
+                ? "This ticket is closed."
+                : "Ask about your holds or balance..."
             }
             className="flex-1 bg-transparent px-2 py-3 text-sm focus:outline-none disabled:opacity-50 font-sans"
           />
@@ -395,7 +395,7 @@ export default function StudentChat() {
     <Suspense fallback={
       <div className="flex min-h-screen items-center justify-center bg-brand-surface">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-primary border-t-transparent mx-auto"></div>
-        <p className="mt-4 text-sm text-brand-muted">Kargang muli ang AI Chat Desk...</p>
+        <p className="mt-4 text-sm text-brand-muted">Loading AI Chat Desk...</p>
       </div>
     }>
       <StudentChatContent />

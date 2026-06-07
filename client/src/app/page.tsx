@@ -87,14 +87,14 @@ export default async function Home() {
                         M
                       </div>
                       <div className="rounded-lg bg-zinc-100 p-3 text-brand-text max-w-[80%]">
-                        Bakit po may hold ako sa registration ko? Di ako makapag-enroll.
+                        Why do I have a hold on my registration? I can't enroll.
                       </div>
                     </div>
 
                     <div className="flex gap-2 justify-end">
                       <div className="rounded-lg bg-brand-primary-light/50 p-3 text-brand-text max-w-[80%]">
                         <p className="text-xs font-bold text-brand-primary mb-1 flex items-center gap-1.5"><Search className="w-3 h-3" /> Querying Registrar & Bursar...</p>
-                        Sinisiyasat ko po ang iyong account. May nakita akong **Financial Hold** dahil sa kulang na balanse sa tuition na ₱12,500.
+                        I am checking your account. I found a **Financial Hold** due to an outstanding tuition balance of ₱12,500.
                       </div>
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-primary text-white font-bold text-xs">
                         A
