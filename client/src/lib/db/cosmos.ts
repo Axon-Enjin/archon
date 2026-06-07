@@ -34,20 +34,39 @@ class CosmosDBService {
   constructor() {
     this.mockFilePath = path.join(process.cwd(), "src", "lib", "db", "mock-db.json");
 
-    const connectionString = process.env.COSMOS_CONNECTION_STRING;
-    const endpoint = process.env.COSMOS_ENDPOINT;
-    const key = process.env.COSMOS_KEY;
+    const connectionString = process.env.COSMOS_CONNECTION_STRING?.trim();
+    const endpoint = process.env.COSMOS_ENDPOINT?.trim();
+    const key = process.env.COSMOS_KEY?.trim();
 
-    if (connectionString || (endpoint && key)) {
-      try {
-        this.client = connectionString
-          ? new CosmosClient(connectionString)
-          : new CosmosClient({ endpoint: endpoint || "", key: key || "" });
-        this.isMockMode = false;
-        console.log("Cosmos DB client configured. Initialization will run on first request.");
-      } catch (err) {
-        console.error("Failed to initialize Cosmos DB client, falling back to mock mode:", err);
-        this.isMockMode = true;
+    const canUseConnectionString = Boolean(connectionString);
+    const canUseEndpointKey = Boolean(endpoint && key);
+
+    if (canUseConnectionString || canUseEndpointKey) {
+      const initAttempts: Array<() => CosmosClient> = [];
+
+      if (canUseConnectionString) {
+        initAttempts.push(() => new CosmosClient(connectionString as string));
+      }
+
+      if (canUseEndpointKey) {
+        initAttempts.push(() => new CosmosClient({ endpoint: endpoint as string, key: key as string }));
+      }
+
+      for (const createClient of initAttempts) {
+        try {
+          this.client = createClient();
+          this.isMockMode = false;
+          console.log("Cosmos DB client configured. Initialization will run on first request.");
+          break;
+        } catch (err) {
+          console.error("Failed to initialize Cosmos DB client with one configuration path:", err);
+          this.client = null;
+          this.isMockMode = true;
+        }
+      }
+
+      if (this.isMockMode) {
+        console.error("Cosmos DB initialization failed. Falling back to mock mode.");
         this.ensureMockDataSeeded();
       }
     } else {
