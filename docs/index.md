@@ -38,6 +38,7 @@ Every material change to a Locked document is recorded as a Change Record. Newes
 
 | CR ID | Date | Summary | Trigger doc | Docs touched | File |
 |-------|------|---------|-------------|--------------|------|
+| CR-005 | 2026-06-07 | CSS Framework standard: Pinned Tailwind CSS v4.x replacing default Vanilla CSS; updated build-archon.md, dsd-archon.md, and index.md. | USER | DSD, BUILD, INDEX | All docs v0.2 |
 | CR-001 | 2026-06-07 | Tech stack modernization: Azure AI Foundry replaces Azure OpenAI service; Microsoft Copilot Studio removed; Cosmos DB replaces PostgreSQL; Entra ID + Microsoft Graph API added for M365 integration (Calendar, Teams, Outlook); new PRD-F11 and RFC-004. | PRD | ALL | All docs v0.2 |
 | CR-002 | 2026-06-07 | Architecture update: Azure Key Vault removed (switched to App Service Env Vars). Azure Functions Notification Scheduler replaced with Power Automate. | PRD | ALL | All docs v0.2 |
 | CR-003 | 2026-06-07 | Frontend framework migration: Replaced Flutter PWA with Next.js React web application deployed on Azure App Service. Replaced MSAL.js with NextAuth.js (Auth.js) for Entra ID authentication. Replaced Flutter Driver with Playwright. | PRD | ALL | All docs v0.2 |

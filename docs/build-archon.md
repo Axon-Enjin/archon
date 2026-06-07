@@ -53,6 +53,7 @@ The documentation suite is the source of truth. Read in this order before writin
 |-------|------------|----------------|---------------------|
 | Client Framework | Next.js (React) | 14.x | 2026-06-07 |
 | Client Auth | NextAuth.js (Auth.js) | 4.x | 2026-06-07 |
+| Styling Framework | Tailwind CSS | 4.x | 2026-06-07 |
 | Backend Language | TypeScript | 5.4.x | 2026-06-07 |
 | Backend Framework | Next.js API Routes (Server Actions) | 14.x | 2026-06-07 |
 | Backend Auth | `jsonwebtoken` (or similar JWT validator) | 9.x | 2026-06-07 |

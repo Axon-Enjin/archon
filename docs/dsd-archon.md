@@ -140,7 +140,7 @@ Motion should be subtle and serve to provide feedback or smooth transitions, nev
 
 ## 6. Implementation Notes
 
-- **CSS Framework:** Tailwind CSS v4 is recommended for rapid implementation of these tokens.
+- **CSS Framework:** Tailwind CSS v4 is the standard styling framework. All design tokens are implemented as Tailwind utilities and CSS variables in the client application.
 - **M365 Icons:** Use the official Microsoft 365 product icons (available under Microsoft's brand usage guidelines) for Teams, Outlook, and Entra ID UI elements. Do not use generic alternatives.
 - **Theme Support:** V1 is Light Mode only (with warm tones). Dark Mode is deferred to V2 to reduce initial design complexity, as the primary persona (students) typically access these services during daytime hours.
 

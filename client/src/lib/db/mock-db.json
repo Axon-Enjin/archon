@@ -1,0 +1,105 @@
+{
+  "users": [
+    {
+      "id": "user-mara",
+      "institution_id": "inst-up",
+      "entra_oid": "student-mara-oid",
+      "role": "Student",
+      "preferences": {
+        "language": "fil"
+      }
+    },
+    {
+      "id": "user-jay",
+      "institution_id": "inst-up",
+      "entra_oid": "agent-jay-oid",
+      "role": "Agent",
+      "preferences": {
+        "language": "en"
+      }
+    },
+    {
+      "id": "user-reyes",
+      "institution_id": "inst-up",
+      "entra_oid": "admin-reyes-oid",
+      "role": "Admin",
+      "preferences": {
+        "language": "en"
+      }
+    }
+  ],
+  "conversations": [
+    {
+      "id": "ticket-001",
+      "institution_id": "inst-up",
+      "ticket_id": "ARC-T-1001",
+      "student_id": "student-mara-oid",
+      "status": "Open",
+      "created_at": "2026-06-07T09:23:10.480Z"
+    },
+    {
+      "id": "ticket-002",
+      "institution_id": "inst-up",
+      "ticket_id": "ARC-T-1002",
+      "student_id": "student-mara-oid",
+      "status": "Resolved",
+      "assignee_id": "agent-jay-oid",
+      "created_at": "2026-06-04T11:23:10.484Z"
+    }
+  ],
+  "messages": [
+    {
+      "id": "msg-1",
+      "institution_id": "inst-up",
+      "conversation_id": "ticket-001",
+      "role": "user",
+      "content_scrubbed": "Magkano po ba ang utang ko para sa semester na ito?",
+      "ts": "2026-06-07T09:23:10.484Z"
+    },
+    {
+      "id": "msg-2",
+      "institution_id": "inst-up",
+      "conversation_id": "ticket-001",
+      "role": "assistant",
+      "content_scrubbed": "Sinisiyasat ko po ang Bursar system. Hintayin lamang po ng ilang segundo...",
+      "ts": "2026-06-07T09:23:20.485Z"
+    }
+  ],
+  "handoffs": [],
+  "policyEmbeddings": [
+    {
+      "id": "policy-hold",
+      "institution_id": "inst-up",
+      "document_id": "bursar-holds-policy",
+      "chunk_text": "Ang Enrollment Hold (Financial Hold) ay inilalagay kapag may natitirang balanse na higit sa ₱5,000. Upang matanggal ang hold, kailangang bayaran ang natitirang balanse o magsumite ng scholarship clearance mula sa Financial Aid Office.",
+      "embedding": [
+        0.1,
+        -0.2,
+        0.3
+      ]
+    },
+    {
+      "id": "policy-sap",
+      "institution_id": "inst-up",
+      "document_id": "academic-sap-policy",
+      "chunk_text": "Ang Satisfactory Academic Progress (SAP) ay nangangailangan ng GWA na hindi bababa sa 2.50 at completion rate na 67% ng mga enrolled units. Ang mga mag-aaral na bumagsak sa ilalim nito ay mayroong Academic Hold at kailangang mag-file ng appeal form kasama ang personal na paliwanag at supporting documents.",
+      "embedding": [
+        0.15,
+        -0.1,
+        0.45
+      ]
+    },
+    {
+      "id": "policy-unifast",
+      "institution_id": "inst-up",
+      "document_id": "financial-aid-deadlines",
+      "chunk_text": "Ang deadline para sa pagsusumite ng UniFAST at CHED Scholarship renewal ay hanggang July 15, 2026. Ang mga dokumentong kailangan ay ang GWA certified copy at Registration Form para sa kasalukuyang semester.",
+      "embedding": [
+        0.05,
+        0.25,
+        -0.12
+      ]
+    }
+  ],
+  "cacheUniversityData": []
+}
