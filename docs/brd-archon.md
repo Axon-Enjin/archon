@@ -2,7 +2,7 @@
 
 **Project:** Archon — Agentic AI-Powered Service Desk for Higher Education
 **Date:** 2026-06-07
-**Version:** 0.1
+**Version:** 0.2
 **Owner:** Regalia Council
 **Status:** Draft
 **Last reconciled:** N/A — not yet reconciled with reality
@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-Archon is an Agentic AI-powered service desk platform designed to eliminate the "experience deficit" plaguing higher education institutions — starting with the Philippines. When a student's financial aid is delayed, their classes are at risk of being dropped, or they receive conflicting guidance from siloed university departments, Archon's autonomous AI agents resolve the issue across departmental boundaries in real-time, without the student being bounced between offices. For institutions, Archon converts the service desk from a reactive cost center hemorrhaging capital at up to ₱5,800 ($104.68) per ticket into a proactive resolution engine operating at a blended cost of ₱1,220 ($22) per ticket — a 79% reduction. The platform bridges the gap between fragmented university data and the student's immediate, critical needs through autonomous multi-step workflow execution, seamless human handoff, and proactive crisis prevention.
+Archon is an Agentic AI-powered service desk platform designed to eliminate the "experience deficit" plaguing higher education institutions — starting with the Philippines. When a student's financial aid is delayed, their classes are at risk of being dropped, or they receive conflicting guidance from siloed university departments, Archon's autonomous AI agents resolve the issue across departmental boundaries in real-time, without the student being bounced between offices. For institutions, Archon converts the service desk from a reactive cost center hemorrhaging capital at up to ₱5,800 ($104.68) per ticket into a proactive resolution engine operating at a blended cost of ₱1,220 ($22) per ticket — a 79% reduction. The platform bridges the gap between fragmented university data and the student's immediate, critical needs through autonomous multi-step workflow execution, seamless human handoff, proactive crisis prevention, and deep integration with the Microsoft 365 ecosystem already deployed in partner universities.
 
 ---
 
@@ -27,17 +27,17 @@ Empirical analysis of student forums reveals that administrative delays are not 
 
 **The Opportunity:**
 
-2026 represents the definitive maturity inflection point for Agentic AI — systems that don't just generate text but autonomously execute multi-step workflows.[^10] Gartner predicts that by 2028, 33% of enterprise organizations will leverage agentic AI in ITSM workflows, and 40% of enterprise applications will embed task agents by end of 2026.[^31] The KPMG Academic Innovation Challenge (AIC) in the Philippines, which engaged 211 students from 28 universities building Agentic AI platforms using Microsoft Copilot Studio, has demonstrated that the next generation of workers inherently understands how to build and operate these autonomous tools.[^24]
+2026 represents the definitive maturity inflection point for Agentic AI — systems that don't just generate text but autonomously execute multi-step workflows.[^10] Gartner predicts that by 2028, 33% of enterprise organizations will leverage agentic AI in ITSM workflows, and 40% of enterprise applications will embed task agents by end of 2026.[^31] The KPMG Academic Innovation Challenge (AIC) in the Philippines, which engaged 211 students from 28 universities building Agentic AI platforms, has demonstrated that the next generation of workers inherently understands how to build and operate these autonomous tools.[^24]
 
-The architectural solution is industry-proven: Wyndham Hotels achieved a 94% reduction in review times and 28% autonomous call handling.[^13] Adventist Health reduced call handle times by 20% and dropped calls by 24%.[^13] Rush University reduced patient calls by 15% while increasing digital self-service by 25%.[^13] LSU successfully disbursed $235 million in financial aid without systemic failure using unified cloud architecture.[^22]
+The critical insight: the technology required to solve a student's financial aid crisis is functionally identical to that solving a franchisee's IT outage or a patient's prescription refill — an autonomous agent accessing a unified data platform to execute a multi-step workflow on behalf of a human user.[^Research §66]
 
-The critical insight: the technology required to solve a student's financial aid crisis is functionally identical to that solving a franchisee's IT outage or a patient's prescription refill — an autonomous agent accessing a unified data lake to execute a multi-step workflow on behalf of a human user.[^Research §66]
+Partner universities in the KPMG AIC ecosystem already operate on Microsoft 365 with Entra ID as their identity backbone. This means Archon can integrate directly into the tools students and staff use daily — Microsoft Teams for real-time notifications, Outlook for email reminders, and M365 Calendar for deadline awareness — without requiring new software adoption. The infrastructure is already deployed; Archon activates it.
 
 **Target Customer / User:**
 
 - **Primary — The University Student (Philippines):** Gen Z and millennial digital natives expecting consumer-grade, frictionless interactions.[^1] Includes a growing sub-sector of working adults and students across provincial campuses relying on 24/7 asynchronous support for FAFSA-equivalent (CHED/UniFAST) applications, tuition inquiries, and enrollment.[^11] These students experience acute anxiety, abandonment, systemic confusion, helplessness, and administrative exhaustion when support fails.[^15–21]
 
-- **Secondary — Institutional Support Staff:** Tier 1 agents overwhelmed by repetitive tasks consuming ~20% of operational bandwidth.[^12] Registrars, financial aid officers, and academic advisors burdened by manual data retrieval across fragmented systems. Clinicians in affiliated health systems spending up to 40% of their time on administrative tasks.[^13]
+- **Secondary — Institutional Support Staff:** Tier 1 agents overwhelmed by repetitive tasks consuming ~20% of operational bandwidth.[^12] Registrars, financial aid officers, and academic advisors burdened by manual data retrieval across fragmented systems.
 
 - **Tertiary — Institutional Leaders:** CIOs, University Presidents, and Vice Presidents for Student Affairs attempting to balance static budgets against exponentially rising technological demands, while managing profound "change fatigue" from pandemic-era deployments.[^4]
 
@@ -47,9 +47,9 @@ The critical insight: the technology required to solve a student's financial aid
 
 Archon directly addresses three convergent strategic imperatives:
 
-1. **KPMG AIC Ecosystem:** Extends the innovation demonstrated by the 2025 Academic Innovation Challenge — where Filipino university students built helpdesk and smart search platforms with Microsoft Copilot Studio — into a production-grade platform.[^24][^25] This creates a self-sustaining loop: the AIC trains talent → Archon employs that talent → Archon serves the universities that produce that talent.
+1. **KPMG AIC & Microsoft Ecosystem:** Extends the innovation demonstrated by the 2025 Academic Innovation Challenge into a production-grade platform. Partner universities already run Microsoft 365 with Entra ID — Archon plugs into this existing identity and productivity infrastructure natively. This eliminates the "new tool adoption" barrier that kills most enterprise software deployments.
 
-2. **Philippine Higher Education Modernization:** Aligns with CHED's (Commission on Higher Education) digital transformation mandate and the Data Privacy Act of 2012 (RA 10173) governance framework. Archon provides the unified data architecture Philippine universities need to comply with NPC (National Privacy Commission) requirements while modernizing student services.
+2. **Philippine Higher Education Modernization:** Aligns with CHED's (Commission on Higher Education) digital transformation mandate and the Data Privacy Act of 2012 (RA 10173) governance framework. Azure AI Foundry and Cosmos DB are deployable in Microsoft's Southeast Asia Azure regions, satisfying data residency preferences. Microsoft Entra ID provides the enterprise-grade identity layer required by NPC compliance frameworks.
 
 3. **Cost Reduction Mandate:** Universities globally are under pressure to reduce administrative costs. Archon's target of reducing blended cost-per-ticket from ~$104.68 to ~$22 (79% reduction) directly frees budget for academic programs, faculty hiring, and research — the institution's core mission.[^32]
 
@@ -61,12 +61,13 @@ Archon directly addresses three convergent strategic imperatives:
 
 - Agentic AI service desk for university student support (enrollment, financial aid, registration, academic advising, IT support)
 - Web-based and mobile (Flutter PWA) student-facing chat interface
-- AI-powered cross-department data orchestration (registrar, bursar, financial aid, academic records)
+- AI-powered cross-department data orchestration (registrar, bursar, financial aid, academic records) via Azure AI Foundry Agent Service
 - Seamless human handoff with full context preservation
 - Proactive alert system for deadlines, holds, and balance changes
 - Agent dashboard for institutional support staff
+- **Microsoft 365 integration:** Entra ID authentication, M365 Calendar surfacing in dashboard, Teams and Outlook deadline notifications via Microsoft Graph API
 - Philippines-first deployment, English and Filipino language support
-- Microsoft Copilot Studio + Azure OpenAI hybrid AI architecture
+- **Azure AI Foundry + Azure Cosmos DB** as the AI and data platform
 
 **Out of Scope:**
 
@@ -91,6 +92,7 @@ Each metric gets a stable **ID** (`BRD-M1`, `BRD-M2`, …), never renumbered —
 | BRD-M4 | **Dropped/abandoned call rate** | Estimated 15–25% at Philippine university helpdesks | ≤10% (24%+ reduction, aligned with Adventist Health benchmark)[^13] | Within 3 months of deployment |
 | BRD-M5 | **Student satisfaction score (NPS)** | TBD — baseline survey at partner university pre-deployment | ≥+30 NPS (from expected negative baseline, given sentiment analysis)[^15–21] | 30-day post-launch survey |
 | BRD-M6 | **Digital self-service adoption** | Estimated <10% (most students call or visit in-person) | ≥25% of students using chat/self-service for routine inquiries[^13] | Within 6 months of deployment |
+| BRD-M7 | **M365 notification action rate** | 0% (baseline — no proactive notifications currently) | ≥40% of deadline notifications actioned within 24 hours (student opens Teams/Outlook alert and takes action) | Within 3 months of deployment |
 
 ---
 
@@ -101,18 +103,18 @@ Each metric gets a stable **ID** (`BRD-M1`, `BRD-M2`, …), never renumbered —
 | Sponsor / Decision Maker | TBD — University Partner VP for Student Affairs or CIO | Final approval, institutional buy-in, funding allocation |
 | Business Owner | TBD — KPMG AIC Program Lead or Project Champion | Accountable for the outcome; manages university relationship |
 | Product / Tech Lead | Regalia Council (Alaric — structure, Crow — research, Thranduil — expression) | Delivering the build; managing the FMD suite and development |
+| M365 Admin Liaison | TBD — University M365 Tenant Admin | Grants admin consent for Graph API scopes in Entra ID; required before M365 features go live |
 
-*Note: For the initial build phase, the Regalia Council operates in all three roles. Once a partner university is engaged, the Sponsor and Business Owner roles transfer to institutional stakeholders.*
+*Note: For the initial build phase, the Regalia Council operates in all three product/tech roles. Once a partner university is engaged, the Sponsor, Business Owner, and M365 Admin Liaison roles transfer to institutional stakeholders.*
 
 ---
 
 ## Self-Check
 
-Before handing this off or moving to the PRD, confirm:
-
 - [x] Section 1 can be read by a non-technical person and makes immediate sense
 - [x] Section 2 quantifies the problem (cost per ticket: $0.74–$104.68; escalation costs: $75–$600; handle time benchmarks; sentiment data from 10 ranked user grievances)
-- [x] Section 5 has at least one metric with a number and a timeline (6 metrics, all with baselines, targets, and timelines)
+- [x] Section 3 explicitly ties M365 ecosystem advantage to reduced adoption friction
+- [x] Section 5 has at least one metric with a number and a timeline (7 metrics, all with baselines, targets, and timelines; BRD-M7 added for M365 notification action rate)
 - [x] Section 4 explicitly names at least one thing that is out of scope (6 out-of-scope items named)
 - [x] Nothing in this document describes *how* to build the solution (architecture deferred to SDD)
 
