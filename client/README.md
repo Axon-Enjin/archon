@@ -33,6 +33,9 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 - The shared NextAuth configuration lives in `src/lib/auth.ts` and is reused by the route handler, server helpers, and the home page redirect.
 - Optional tenant allowlist can be configured with `ARCHON_ALLOWED_TENANT_IDS`.
 - Local persona logins are available only when `ARCHON_ENABLE_MOCK_AUTH=true` or Entra credentials are missing.
+- Runtime rollback flags:
+  - `ARCHON_AI_ENABLED=false` routes chat traffic directly to human queue.
+  - `ARCHON_M365_ENABLED=false` disables Microsoft Graph calendar integration.
 
 ## Deploy
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, verifyStudentAccess, unauthorizedResponse, forbiddenResponse } from "@/lib/auth-helper";
 import { cosmosDbService } from "@/lib/db/cosmos";
+import { isM365Enabled } from "@/lib/feature-flags";
 
 interface CalendarEvent {
   id: string;
@@ -114,6 +115,17 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!isM365Enabled()) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "M365 calendar integration is currently disabled by configuration.",
+        data: [],
+      },
+      { status: 503 }
+    );
+  }
+
   const authUser = await getAuthenticatedUser();
   if (!authUser) return unauthorizedResponse();
 
