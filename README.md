@@ -41,8 +41,8 @@ Archon is built to run natively within a university's existing Microsoft 365 eco
 | AI Agent Orchestration & Models | Azure AI Foundry (GPT-4o) |
 | Database & Vector Search | Azure Cosmos DB for NoSQL |
 | Student Calendar | Microsoft Graph — Calendars.Read |
-| Deadline Reminders | Microsoft Graph — Teams + Outlook |
-| Secrets Management | Azure Key Vault |
+| Deadline Reminders | Microsoft Power Automate (Teams + Outlook connectors) |
+| Secrets Management | Azure App Service Environment Variables (`.env`) |
 | Monitoring & Tracing | Azure Monitor + Application Insights + AI Foundry Tracing |
 
 ---

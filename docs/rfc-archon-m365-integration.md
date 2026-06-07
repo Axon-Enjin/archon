@@ -105,7 +105,7 @@ import { ConfidentialClientApplication } from '@azure/msal-node';
 const ccaConfig = {
   auth: {
     clientId: process.env.ARCHON_CLIENT_ID,
-    clientSecret: process.env.ARCHON_CLIENT_SECRET, // Stored in Azure Key Vault
+    clientSecret: process.env.ARCHON_CLIENT_SECRET, // Loaded via environment variables
     authority: `https://login.microsoftonline.com/${universityTenantId}`,
   },
 };
@@ -173,23 +173,24 @@ Calendar events are cached in Cosmos DB with a 15-minute TTL to prevent hammerin
 }
 ```
 
-### 4.6 Notification Scheduler — Azure Functions
+### 4.6 Notification Scheduler — Power Automate
 
-A daily cron Azure Function (`notification-scheduler`) runs at 08:00 Philippine time (UTC+8):
+A Power Automate Scheduled Cloud Flow runs daily at 08:00 Philippine time (UTC+8):
 
 ```
-Trigger: Timer (CRON: "0 0 8 * * *", Asia/Manila)
+Trigger: Recurrence (Daily, 08:00)
 
-For each active student with a deadline in the next 14 days:
-  1. Check Cosmos DB for existing notification (idempotency: ticket_id + notification_type + date)
-  2. If not already sent:
-     a. Build Teams adaptive card payload
-     b. Build Outlook email payload
-     c. POST to /api/v1/notify/teams   (Gateway → Graph TeamsActivity.Send)
-     d. POST to /api/v1/notify/email   (Gateway → Graph /me/sendMail)
-     e. Write notification record to Cosmos DB (TTL: 30 days)
-     f. Log m365_notification_sent event to Application Insights
+Actions:
+1. Cosmos DB Connector: Query Active students with deadlines in next 14 days
+2. Filter Array: Remove students where notification already sent today (idempotency check)
+3. Apply to each (Student):
+     a. Microsoft Teams Connector: Post an Adaptive Card to user (using schema 4.5)
+     b. Office 365 Outlook Connector: Send an email (V2)
+     c. Cosmos DB Connector: Upsert notification record (TTL: 30 days)
+     d. HTTP Connector (Optional): Send event telemetry to Azure Application Insights
 ```
+
+This bypasses the need to write custom Graph API calls in the Node.js Gateway for notifications, offloading the scheduling and reliable delivery to native Power Automate M365 connectors.
 
 ## 5. Reduced Mode (Admin Consent Not Yet Granted)
 

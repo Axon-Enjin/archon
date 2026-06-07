@@ -74,12 +74,12 @@ Archon operations revolve around **Azure Monitor + Application Insights**, integ
 
 | Task | Frequency | Owner | Description |
 |------|-----------|-------|-------------|
-| **Policy Document Sync** | Nightly | Azure Functions cron job | Scrape university web pages/PDFs, re-embed vectors into Cosmos DB Vector Search collection for RAG accuracy. |
+| **Policy Document Sync** | Nightly | Power Automate scheduled flow | Scrape university web pages/PDFs, re-embed vectors into Cosmos DB Vector Search collection for RAG accuracy. |
 | **Hallucination Triage** | Weekly | AI Ops Engineer | Review sessions flagged with poor CSAT (BRD-M5) using AI Foundry Tracing. Identify prompt weaknesses or missing RAG context. |
 | **Adapter Audit** | Monthly | Gateway Engineer | Review Application Insights adapter error logs. Catch silent API deprecations on the university's side. |
 | **Token Cost Analysis** | Monthly | FinOps | Analyze GPT-4o vs. Phi-4 token spend per intent in Application Insights. Look for optimization opportunities (expand Phi-4 routing). |
 | **Graph API Scope Review** | Quarterly | Compliance Officer | Verify that only the documented Graph API scopes (RFC-004 §4.2) are in use. Confirm no scope creep in app registration. |
-| **Entra ID Token Rotation** | Per Azure Key Vault policy | Platform Engineer | Rotate Archon client secret in Azure Key Vault and Entra ID app registration. Update Key Vault secret version. |
+| **Entra ID Token Rotation** | As per institutional policy | Platform Engineer | Rotate Archon client secret in Entra ID app registration. Update Azure App Service Environment Variables. |
 
 ---
 
@@ -90,8 +90,7 @@ Archon operations revolve around **Azure Monitor + Application Insights**, integ
 - **Procedure:**
   1. Failover Cosmos DB to secondary region (Azure Cosmos DB multi-region writes enabled — SE Asia primary, East Asia secondary).
   2. Redeploy Node.js Gateway via GitHub Actions tagged release to secondary App Service slot.
-  3. Redeploy Azure Functions (notification scheduler) to secondary region.
-  4. Confirm Azure Key Vault secrets are replicated to the secondary region (Key Vault geo-redundancy).
+  4. Confirm Power Automate Cloud Flows are correctly imported or exist in the target region.
   5. Update DNS (Azure Traffic Manager) to point to secondary region.
   6. AI Foundry and Microsoft Graph are Microsoft-managed SaaS — rely on Microsoft's internal redundancy. Monitor at status.azure.com and admin.microsoft.com.
   7. Post-recovery: verify Graph API admin consent is still valid in the university Entra ID tenant (consent is tenant-bound, not region-bound).

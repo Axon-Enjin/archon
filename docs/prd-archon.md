@@ -274,7 +274,7 @@ The AI operates as an autonomous service desk agent capable of: (1) understandin
 - Any write action affecting enrollment status (hold lifts, registration changes) requires either: (a) student confirmation in chat, or (b) staff approval in Agent Dashboard.
 - Financial transactions (payment processing, refund initiation) are never executed by AI — always routed to human agent.
 - Academic standing changes (SAP status, grade disputes) are always escalated with recommendation, never auto-resolved.
-- Microsoft Graph write operations (sending Teams messages or Outlook emails) are executed server-side by the Gateway, not by the LLM directly — the LLM generates the payload, the Gateway sends it after schema validation.
+- Microsoft Graph write operations (sending Teams messages or Outlook emails) are executed by Power Automate flows triggered by Cosmos DB events, not by the LLM or Gateway directly — the LLM generates the data, Power Automate handles the reliable M365 delivery.
 
 **Fallback behavior when AI fails or is unavailable:**
 - If Azure AI Foundry returns an error: retry once with exponential backoff. On second failure, present a clear message: "I'm having trouble processing your request right now. Let me connect you with a human agent who can help." Auto-escalate with context.

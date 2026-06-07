@@ -39,7 +39,7 @@ When the AI Foundry Agent determines an escalation is necessary (after 2 failed 
 1. Generates a `HandoffPacket` (GPT-4o call synthesizing the conversation + API data).
 2. Persists the `HandoffPacket` to the `handoffs` Cosmos DB collection.
 3. Triggers the `EscalateToHuman` tool → Gateway → queues the ticket in the Agent Dashboard.
-4. Triggers the `SendTeamsNotification` tool → Gateway → Microsoft Graph `TeamsActivity.Send` → agent receives a Teams adaptive card.
+4. Cosmos DB write triggers a **Power Automate Cloud Flow** → Power Automate native connector → agent receives a Teams adaptive card.
 
 The student sees: *"Let me connect you with a specialist. I'm summarizing our conversation for them right now…"*
 
@@ -75,5 +75,5 @@ After the agent resolves the ticket and marks it resolved, the Gateway calls `Se
 ## 5. Security & Rollback
 
 - **Security:** The HandoffPacket must be scrubbed of raw payment data (e.g., card numbers) before being stored in Cosmos DB or sent via Teams, in compliance with PCI-DSS guidelines and Philippine DPA 2012.
-- **Graph API Fallback:** If the Teams notification fails (Graph API throttled or `TeamsActivity.Send` consent not yet granted), the escalation still completes — the ticket enters the Agent Dashboard queue and the agent sees a visual badge on their next dashboard visit. The Teams notification failure is logged to Application Insights and retried once after 5 minutes.
+- **Power Automate Fallback:** If the Teams notification fails in Power Automate (e.g., connector throttled), the escalation still completes — the ticket enters the Agent Dashboard queue and the agent sees a visual badge on their next dashboard visit. The Teams notification failure is logged to Application Insights by Power Automate and retried natively.
 - **Rollback:** If the AI Foundry `HandoffPacket` generation fails, the system degrades to Option A (Transcript Passthrough) — the raw conversation history is sent to the agent. The escalation always completes; only the quality of the context packet degrades.

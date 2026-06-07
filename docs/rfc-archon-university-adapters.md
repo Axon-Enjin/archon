@@ -68,13 +68,12 @@ Because we do not have direct API access to actual university systems during the
 ```typescript
 import { IUniversityAdapter, ArchonHold } from '../interfaces';
 import axios from 'axios';
-import { SecretClient } from '@azure/keyvault-secrets';
 
 export class ExampleUniversityAdapter implements IUniversityAdapter {
   private readonly apiKey: string;
 
   constructor(apiKey: string) {
-    this.apiKey = apiKey; // Retrieved from Azure Key Vault at runtime
+    this.apiKey = apiKey; // Retrieved from Environment Variables at runtime
   }
 
   async getAcademicHolds(studentId: string): Promise<ArchonHold[]> {
@@ -117,14 +116,14 @@ Each institution has a configuration document in Cosmos DB:
   "sis_endpoint": "https://sis.upm.edu.ph/api",
   "bursar_endpoint": "https://bursar.upm.edu.ph/api",
   "fa_endpoint": "https://fa.upm.edu.ph/soap",
-  "credentials_keyvault_prefix": "upm-"
+  "env_prefix": "UPM_"
 }
 ```
 
-All sensitive credentials (API keys, connection strings) are stored in Azure Key Vault under the `credentials_keyvault_prefix` prefix. The Gateway retrieves them at startup via Managed Identity — no secrets in code or environment variables in production.
+All sensitive credentials (API keys, connection strings) are injected into the Gateway container via Azure App Service Environment Variables using the `env_prefix` (e.g., `UPM_API_KEY`). The Gateway passes these to the Adapter constructor at startup.
 
 ## 6. Security & Rollback
 
-- **Security:** Adapters run with least-privilege credentials provided by the university. All credentials stored in Azure Key Vault, retrieved via Managed Identity. All adapter egress traffic is logged to Application Insights for auditability.
+- **Security:** Adapters run with least-privilege credentials provided by the university. All credentials are provided securely via environment variables. All adapter egress traffic is logged to Application Insights for auditability.
 - **Circuit Breaker:** If a university backend goes down or times out (>5s), the Adapter throws `ARCHON_SYSTEM_UNAVAILABLE`. The Gateway catches this and instructs the AI Foundry Agent to inform the student gracefully: "I'm having trouble reaching the financial aid system right now. Let me connect you with an agent who can check directly." The circuit breaker opens for 60 seconds before retrying.
 - **Data Isolation:** Adapters can only query for the `student_id` provided by the Gateway, which validates the ID against the authenticated Entra ID JWT. Cross-student queries are impossible at the adapter level.

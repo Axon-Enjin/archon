@@ -54,7 +54,6 @@ flowchart TD
         end
 
         Redis[("Azure Cache for Redis\n(WebSocket Session State)")]
-        KeyVault["Azure Key Vault\n(Secrets + Adapter Credentials)"]
     end
 
     %% External University Systems
@@ -179,8 +178,8 @@ const tools = [
   - `Admin`: Can view aggregated analytics (no PII).
 - **Graph API Authorization:** Delegated permissions only (acting on behalf of the authenticated user). No application-level Graph permissions that could bypass per-user consent. Admin consent is required at the tenant level for `Calendars.Read`, `Mail.Send`, and `TeamsActivity.Send`.
 - **Data in Transit:** TLS 1.3 mandated for all connections (HTTPS + WSS).
-- **Data at Rest:** Azure Cosmos DB encryption at rest (AES-256, Microsoft-managed keys; option to use Customer-Managed Keys in Key Vault for compliance).
-- **Secrets Management:** All API keys, adapter credentials, and Graph API secrets stored in Azure Key Vault. Gateway retrieves secrets at runtime via Managed Identity — no secrets in environment files in production.
+- **Data at Rest:** Azure Cosmos DB encryption at rest (AES-256, Microsoft-managed keys).
+- **Secrets Management:** All API keys, adapter credentials, and Graph API secrets are stored as Azure App Service Environment Variables (`.env` locally). The Gateway accesses them via `process.env`.
 - **PII Redaction:** The Gateway scrubs PII (names, specific IDs) using regex/NLP *before* sending conversation transcripts to Azure AI Foundry for reasoning, unless the specific AI operation explicitly requires that data.
 
 ---
@@ -222,12 +221,12 @@ Student opens Home Dashboard
 ### 6.4 Teams & Outlook Notification — Data Flow
 
 ```
-Archon Notification Scheduler (daily cron via Azure Functions)
+Archon Notification Scheduler (daily recurrence via Power Automate)
   → Queries Cosmos DB for students with deadlines ≤14 days
   → For each student:
       → Checks if notification already sent (idempotency key in Cosmos DB)
-      → Calls POST /api/v1/notify/teams → Gateway → Graph API TeamsActivity.Send
-      → Calls POST /api/v1/notify/email → Gateway → Graph API /me/sendMail
+      → Native Power Automate Connector: Posts Teams Adaptive Card
+      → Native Power Automate Connector: Sends Outlook Email
       → Writes notification record to Cosmos DB (TTL: 30 days)
   → Logs m365_notification_sent event to Application Insights
 ```
@@ -241,11 +240,11 @@ Archon Notification Scheduler (daily cron via Azure Functions)
 | Client (Flutter PWA) | Azure Static Web Apps | CDN-backed, global edge distribution |
 | Agent/Admin Dashboard (React) | Azure Static Web Apps | Same CDN as client |
 | API Gateway (Node.js) | Azure App Service (Linux, P2v3) | Auto-scaling; blue-green deployment slots |
-| Notification Scheduler | Azure Functions (Consumption Plan) | Cron trigger for daily deadline scans |
+| Notification Scheduler | Power Automate (Scheduled Cloud Flow) | Cron trigger for daily deadline scans & M365 notifications |
 | AI Platform | Azure AI Foundry | GPT-4o + Phi-4 deployments; AI Foundry Tracing |
 | Database | Azure Cosmos DB for NoSQL (Serverless) | Scales to zero; native vector search |
 | Session Cache | Azure Cache for Redis (C1 Standard) | WebSocket state; JWT blocklist |
-| Secrets | Azure Key Vault | Gateway uses Managed Identity — no secret in env vars |
+| Secrets | Azure App Service App Settings | Environment variables mapped to `process.env` |
 | Identity | Microsoft Entra ID | University M365 tenant; Archon app registration |
 | M365 Integration | Microsoft Graph API | Calendar, Teams, Outlook |
 | CI/CD | GitHub Actions | Tagged releases; Terraform for IaC |

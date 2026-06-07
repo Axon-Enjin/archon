@@ -62,7 +62,7 @@ The documentation suite is the source of truth. Read in this order before writin
 | AI Model | GPT-4o (via AI Foundry deployment) | `2024-11-20` API version | 2026-06-07 |
 | AI Model (Lightweight) | Phi-4 (via AI Foundry deployment) | Latest | 2026-06-07 |
 | Microsoft Graph | `@microsoft/microsoft-graph-client` | 3.x | 2026-06-07 |
-| Notification Scheduler | Azure Functions | v4 (Node.js) | 2026-06-07 |
+| Notification Scheduler | Power Automate | Cloud Flow | 2026-06-07 |
 | Input Validation | Zod | 3.x | 2026-06-07 |
 
 ### Deprecations & Convention Changes
@@ -84,7 +84,7 @@ The documentation suite is the source of truth. Read in this order before writin
 ```
 /client          — Flutter PWA application.
 /gateway         — Node.js Express server, Cosmos DB data layer, University Adapters, Graph API proxy.
-/scheduler       — Azure Functions app (deadline notification cron).
+/scheduler       — Power Automate Cloud Flow definitions (JSON/ZIP exports).
 /docs            — FMD documentation suite.
 /infra           — Terraform infrastructure-as-code (Azure resources).
 ```
@@ -106,7 +106,7 @@ import { IUniversityAdapter, ArchonHold } from '../interfaces';
 import axios from 'axios';
 
 export class ExampleUniversityAdapter implements IUniversityAdapter {
-  constructor(private readonly apiKey: string) {} // Retrieved from Key Vault at runtime
+  constructor(private readonly apiKey: string) {} // Retrieved from Environment Variables at runtime
 
   async getAcademicHolds(studentId: string): Promise<ArchonHold[]> {
     try {
@@ -211,11 +211,11 @@ await graphClient.api(`/users/${agentUserId}/teamwork/sendActivityNotification`)
 - Validate all external input at the Gateway boundary using `Zod` before passing to AI Foundry or adapters.
 - Scrub PII (names, specific IDs) from chat transcripts before writing to Cosmos DB `messages` collection.
 - Require explicit boolean confirmation (Human-in-the-Loop) before executing any write operations (hold lifts, Graph API `Mail.Send`, Teams notifications on behalf of users).
-- Retrieve all secrets from Azure Key Vault via Managed Identity. Never read secrets from `.env` files in production.
+- Retrieve all secrets from Azure App Service Environment Variables. Do not hardcode them.
 - Validate Entra ID JWT `iss`, `aud`, and `tid` claims on every Gateway request.
 
 **Never:**
-- Commit API keys, connection strings, or client secrets. Use `.env` files locally and Azure Key Vault in production.
+- Commit API keys, connection strings, or client secrets. Use `.env` files locally and Azure App Service App Settings in production.
 - Modify the AI system prompt dynamically based on user input (Prompt Injection risk).
 - Call Microsoft Graph API directly from the Flutter client — all Graph calls are proxied through the Gateway for RBAC enforcement and audit logging.
 - Store raw Graph API calendar responses permanently in Cosmos DB — only the normalized `CalendarEvent[]` schema with a 15-minute TTL.
