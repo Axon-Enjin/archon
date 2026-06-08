@@ -173,8 +173,12 @@ function StudentChatContent() {
     switch (tool) {
       case "CheckStudentHolds":
         return "🔍 Checking your registrar hold records...";
+      case "CheckTuitionBalance":
+        return "🧾 Checking your tuition and billing summary...";
       case "CheckFinancialAidStatus":
         return "💵 Checking your CHED UniFAST grant status...";
+      case "AttemptAutonomousResolution":
+        return "🧠 Running autonomous resolution attempt...";
       case "requestHoldLift":
         return "⚡ Submitting request for temporary financial hold lift...";
       case "EscalateToHuman":

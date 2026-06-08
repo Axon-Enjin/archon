@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
       ticket_id: nextTicketId,
       student_id: targetStudent,
       status: "Open",
+      ai_resolution_attempts: 0,
       created_at: new Date().toISOString(),
     };
 
@@ -67,7 +68,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data: created });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to create ticket.";
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
