@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
       institution_id: authUser.institution_id,
       ticket_id: nextTicketId,
       student_id: targetStudent,
+      student_email: authUser.role === "Student" && targetStudent === authUser.entra_oid ? (authUser.email || undefined) : undefined,
       status: "Open",
       ai_resolution_attempts: 0,
       created_at: new Date().toISOString(),

@@ -236,6 +236,7 @@ export async function POST(
         await enqueueOutlookNotification({
           institutionId: authUser.institution_id,
           recipientEntraOid: conversation.student_id,
+          recipientEmail: conversation.student_email,
           subject: `Ticket ${conversation.ticket_id} has been resolved`,
           textBody:
             `Your support ticket ${conversation.ticket_id} has been marked as resolved by ${authUser.name || "Student Support"}. ` +
