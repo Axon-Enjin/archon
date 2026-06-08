@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef, Suspense } from "react";
 import Link from "next/link";
 import { Search, Zap, AlertTriangle, ArrowLeft, ArrowRight, Banknote, Wrench } from "lucide-react";
+import MarkdownText from "@/components/MarkdownText";
 
 interface Message {
   id: string;
@@ -300,12 +301,7 @@ function StudentChatContent() {
                         : "bg-brand-primary-light text-brand-text rounded-[20px] rounded-bl-[4px]"
                     }`}
                   >
-                    <p className="whitespace-pre-line">
-                      {displayText}
-                      {isStreaming && (
-                        <span className="inline-block w-1.5 h-4 ml-1 bg-brand-primary animate-pulse align-middle"></span>
-                      )}
-                    </p>
+                    <MarkdownText text={displayText} showCursor={isStreaming} />
                   </div>
                 ) : (
                   isStreaming && (

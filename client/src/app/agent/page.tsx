@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Inbox, BarChart3, LogOut, Brain, Check } from "lucide-react";
+import MarkdownText from "@/components/MarkdownText";
 
 interface TicketItem {
   id: string;
@@ -313,9 +314,10 @@ export default function AgentDashboard() {
                         <p className="font-semibold text-brand-primary font-display">
                           {msg.role === "user" ? "Student" : "Archon Bot"}:
                         </p>
-                        <p className="text-brand-text mt-1 whitespace-pre-line">
-                          {parseMessageContent(msg.content_scrubbed)}
-                        </p>
+                        <MarkdownText
+                          text={parseMessageContent(msg.content_scrubbed)}
+                          className="text-brand-text mt-1"
+                        />
                       </div>
                     ))}
                   </div>
