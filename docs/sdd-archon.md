@@ -170,10 +170,16 @@ const tools = [
 ## 5. Security & Authentication
 
 - **Authentication:** Archon relies entirely on **Microsoft Entra ID** (the university's M365 tenant) via OIDC/OAuth 2.0. NextAuth.js (Auth.js) is used on the Next.js client to securely manage the session. JWT validation is performed on the Next.js API routes. Archon stores no passwords.
-- **Authorization:** Role-Based Access Control (RBAC) enforced at the API route layer using Entra ID JWT claims.
-  - `Student`: Can only read/write data associated with their specific `entra_oid` / `student_id`.
-  - `Agent`: Can read/write data for tickets in their assigned queue.
-  - `Admin`: Can view aggregated analytics (no PII).
+- **Authorization:** Role-Based Access Control (RBAC) enforced at both the UI routing and API layers using Entra ID JWT claims.
+  - `Student`: Accesses `/student/*` routes. Can only read/write data associated with their specific `entra_oid` / `student_id`.
+  - `Agent`: Accesses `/agent` (ticket triage). Can read/write data for tickets in their assigned queue.
+  - `Admin`: Accesses `/admin/*` routes. Can view aggregated analytics (no PII), trigger notifications, and manage the system outbox queue.
+- **UI Routing & Navigation Guards:**
+  - `/admin`: Automatically redirects to `/admin/analytics`.
+  - `/admin/analytics`: Displays system telemetry metrics and charts for Admins.
+  - `/admin/queue`: Active support queue triage console for Admins.
+  - `/admin/notifications`: Outbox queue scheduler and diagnostics console for Admins.
+  - `/agent`: Real-time queue management for Agents. Admin attempts to access `/agent` are automatically routed to `/admin/queue` to prevent role-based workspace confusion. Unauthenticated sessions are redirected to `/auth/signin`.
 - **Graph API Authorization:** Delegated permissions only (acting on behalf of the authenticated user). No application-level Graph permissions that could bypass per-user consent. Admin consent is required at the tenant level for `Calendars.Read`, `Mail.Send`, and `TeamsActivity.Send`.
 - **Data in Transit:** TLS 1.3 mandated for all connections (HTTPS + WSS).
 - **Data at Rest:** Azure Cosmos DB encryption at rest (AES-256, Microsoft-managed keys).
