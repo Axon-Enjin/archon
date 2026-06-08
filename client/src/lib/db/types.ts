@@ -14,6 +14,7 @@ export interface UserDoc extends BaseCosmosDocument {
 export interface ConversationDoc extends BaseCosmosDocument {
   ticket_id: string;
   student_id: string; // Entra ID or student number
+  student_email?: string;
   status: "Open" | "Pending Agent" | "Resolved";
   assignee_id?: string; // ID of the human agent
   ai_resolution_attempts?: number; // failed autonomous attempts before escalation
