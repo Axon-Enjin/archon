@@ -291,6 +291,41 @@ export async function POST(
     const holds = (await cosmosDbService.getCacheData<HoldItem[]>(holdsKey, authUser.institution_id)) || [];
     const activeHoldsCount = holds.filter((h) => h.status === "Active").length;
 
+    const triggerEscalation = async () => {
+      await cosmosDbService.updateConversationStatus(conversationId, authUser.institution_id, "Pending Agent");
+      await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
+
+      const handoffDoc: HandoffDoc = {
+        id: `handoff-${conversationId}`,
+        institution_id: authUser.institution_id,
+        ticket_id: conversationId,
+        handoff_packet: {
+          student_profile: {
+            name: authUser.name || "Student",
+            student_id: authUser.entra_oid,
+            major: "N/A",
+            year: "N/A",
+          },
+          diagnosis: "Student queries holds or requested escalation. Financial holds or other assistance required.",
+          systems_queried: ["RegistrarHolds", "BursarTuition", "CHEDUniFASTStatus"],
+          actions_taken: ["Escalated to human support queue"],
+          recommended_resolution: "Review student's billing records, SAP status, and holds history to assist with registration or waivers.",
+        },
+        agent_id: undefined,
+        resolved_at: undefined,
+      };
+      await cosmosDbService.createHandoff(handoffDoc);
+
+      await enqueueTeamsNotification({
+        institutionId: authUser.institution_id,
+        recipientEntraOid: authUser.entra_oid,
+        title: "Ticket escalated to support queue",
+        message: "Your ticket has been escalated. A support staff member will assist you shortly.",
+        actionUrl: `/student/chat?ticketId=${conversationId}`,
+        ticketId: conversationId,
+      });
+    };
+
     if (isFoundryConfigured()) {
       const history = await cosmosDbService.getMessages(conversationId, authUser.institution_id);
       const lastTurns = history.slice(-14).map((msg) => ({
@@ -322,6 +357,23 @@ export async function POST(
       });
 
       if (foundryResult?.text) {
+        const finalToolCalls = foundryResult.toolCalls || [];
+        
+        // Execute tool calls on the server
+        if (finalToolCalls.includes("EscalateToHuman")) {
+          await triggerEscalation();
+        }
+        
+        if (finalToolCalls.includes("requestHoldLift")) {
+          const holdsKey = `holds:${authUser.entra_oid}`;
+          const holdsList = (await cosmosDbService.getCacheData<HoldItem[]>(holdsKey, authUser.institution_id)) || [];
+          const financialHold = holdsList.find((h) => h.id === "hold-financial" && h.status === "Active");
+          if (financialHold) {
+            financialHold.status = "Resolved";
+            await cosmosDbService.setCacheData(holdsKey, holdsList, authUser.institution_id);
+          }
+        }
+
         await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
         const assistantMsg: MessageDoc = {
           id: `msg-${Date.now()}-assistant`,
@@ -330,7 +382,7 @@ export async function POST(
           role: "assistant",
           content_scrubbed: JSON.stringify({
             text: foundryResult.text,
-            toolCalls: foundryResult.toolCalls || [],
+            toolCalls: finalToolCalls,
           }),
           ts: new Date(Date.now() + 1000).toISOString(),
         };
@@ -348,39 +400,7 @@ export async function POST(
       toolCalls.push("EscalateToHuman");
       didEscalate = true;
       nextAiAttempts = 0;
-
-      await cosmosDbService.updateConversationStatus(conversationId, authUser.institution_id, "Pending Agent");
-      await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
-
-      const handoffDoc: HandoffDoc = {
-        id: `handoff-${conversationId}`,
-        institution_id: authUser.institution_id,
-        ticket_id: conversationId,
-        handoff_packet: {
-          student_profile: {
-            name: authUser.name || "Student",
-            student_id: authUser.entra_oid,
-            major: "N/A",
-            year: "N/A",
-          },
-          diagnosis: "Student queries holds. Financial hold temporarily lifted based on UniFAST status. Academic SAP warning hold requires coordinator review and appeal submission.",
-          systems_queried: ["RegistrarHolds", "BursarTuition", "CHEDUniFASTStatus"],
-          actions_taken: ["Lifting financial hold (temporary lift approved)"],
-          recommended_resolution: "Review student's SAP Appeal narrative once submitted via the Wizard, and clear academic hold if appeal grounds are approved.",
-        },
-        agent_id: undefined,
-        resolved_at: undefined,
-      };
-      await cosmosDbService.createHandoff(handoffDoc);
-
-      await enqueueTeamsNotification({
-        institutionId: authUser.institution_id,
-        recipientEntraOid: authUser.entra_oid,
-        title: "Ticket escalated to support queue",
-        message: "Your ticket has been escalated. A support staff member will assist you shortly.",
-        actionUrl: `/student/chat?ticketId=${conversationId}`,
-        ticketId: conversationId,
-      });
+      await triggerEscalation();
     };
 
     const lowerContent = normalizedContent.toLowerCase();
