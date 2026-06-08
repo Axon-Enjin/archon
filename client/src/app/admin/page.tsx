@@ -121,7 +121,7 @@ export default function AdminDashboard() {
 
           <nav className="space-y-1">
             <Link
-              href="/agent"
+              href="/admin/queue"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 font-display"
             >
               <Inbox className="w-4 h-4" /> Active Queue

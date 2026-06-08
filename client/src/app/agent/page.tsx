@@ -75,7 +75,11 @@ export default function AgentDashboard() {
     }
 
     if (session?.user) {
-      if (session.user.role !== "Agent" && session.user.role !== "Admin") {
+      if (session.user.role === "Admin") {
+        router.push("/admin/queue");
+        return;
+      }
+      if (session.user.role !== "Agent") {
         router.push("/auth/signin");
         return;
       }
@@ -178,7 +182,7 @@ export default function AgentDashboard() {
               A
             </span>
             <span className="text-lg font-bold tracking-tight text-brand-text font-display">
-              {session?.user?.role === "Admin" ? "Archon Admin" : "Archon Agent"}
+              Archon Agent
             </span>
           </div>
 
@@ -189,23 +193,6 @@ export default function AgentDashboard() {
             >
               <Inbox className="w-4 h-4" /> Active Queue
             </Link>
-
-            {session?.user?.role === "Admin" && (
-              <>
-                <Link
-                  href="/admin"
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 font-display"
-                >
-                  <BarChart3 className="w-4 h-4" /> Analytics
-                </Link>
-                <Link
-                  href="/admin/notifications"
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 font-display"
-                >
-                  <Bell className="w-4 h-4" /> Notification Ops
-                </Link>
-              </>
-            )}
           </nav>
         </div>
 
