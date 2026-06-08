@@ -614,14 +614,14 @@ class CosmosDBService {
     }
   }
 
-  async setCacheData<T>(cacheKey: string, data: T, institutionId: string): Promise<void> {
+  async setCacheData<T>(cacheKey: string, data: T, institutionId: string, ttl?: number): Promise<void> {
     const doc: CacheUniversityDataDoc = {
       id: cacheKey,
       institution_id: institutionId,
       cache_key: cacheKey,
       data,
       fetched_at: Date.now(),
-      ttl: 300,
+      ttl: ttl ?? 300,
     };
 
     if (this.isMockMode) {

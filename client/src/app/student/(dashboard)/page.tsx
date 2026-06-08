@@ -56,6 +56,8 @@ export default function StudentDashboard() {
   const [holds, setHolds] = useState<HoldItem[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [tickets, setTickets] = useState<TicketItem[]>([]);
+  const [ticketPage, setTicketPage] = useState(1);
+  const TICKETS_PER_PAGE = 3;
   const [loading, setLoading] = useState(true);
   const [creatingTicket, setCreatingTicket] = useState(false);
   const [calendarError, setCalendarError] = useState<string | null>(null);
@@ -470,39 +472,64 @@ export default function StudentDashboard() {
 
           {tickets.length > 0 ? (
             <div className="space-y-3">
-              {tickets.map((ticket) => (
-                <div
-                  key={ticket.id}
-                  className="rounded-xl border border-zinc-100 p-4 hover:border-zinc-200 transition flex items-center justify-between"
-                >
-                  <div className="space-y-1">
-                    <p className="text-xs text-brand-muted font-mono">{ticket.ticket_id}</p>
-                    <p className="text-sm font-bold font-display text-brand-text">Support Chat Session</p>
-                    <p className="text-[10px] text-brand-muted">
-                      Opened on {new Date(ticket.created_at).toLocaleDateString()}
-                    </p>
+              {tickets
+                .slice((ticketPage - 1) * TICKETS_PER_PAGE, ticketPage * TICKETS_PER_PAGE)
+                .map((ticket) => (
+                  <div
+                    key={ticket.id}
+                    className="rounded-xl border border-zinc-100 p-4 hover:border-zinc-200 transition flex items-center justify-between"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-xs text-brand-muted font-mono">{ticket.ticket_id}</p>
+                      <p className="text-sm font-bold font-display text-brand-text">Support Chat Session</p>
+                      <p className="text-[10px] text-brand-muted">
+                        Opened on {new Date(ticket.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                          ticket.status === "Open"
+                            ? "bg-green-100 text-green-700"
+                            : ticket.status === "Pending Agent"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-zinc-100 text-zinc-600"
+                        }`}
+                      >
+                        {ticket.status}
+                      </span>
+                      <Link
+                        href={`/student/chat?ticketId=${ticket.id}`}
+                        className="text-xs font-semibold text-brand-primary hover:underline font-display"
+                      >
+                        Open ➔
+                      </Link>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                        ticket.status === "Open"
-                          ? "bg-green-100 text-green-700"
-                          : ticket.status === "Pending Agent"
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-zinc-100 text-zinc-600"
-                      }`}
-                    >
-                      {ticket.status}
-                    </span>
-                    <Link
-                      href={`/student/chat?ticketId=${ticket.id}`}
-                      className="text-xs font-semibold text-brand-primary hover:underline font-display"
-                    >
-                      Open ➔
-                    </Link>
-                  </div>
+                ))}
+
+              {/* Pagination Controls */}
+              {tickets.length > TICKETS_PER_PAGE && (
+                <div className="flex items-center justify-between border-t border-zinc-100 pt-3">
+                  <button
+                    onClick={() => setTicketPage((p) => Math.max(p - 1, 1))}
+                    disabled={ticketPage === 1}
+                    className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-brand-text hover:bg-zinc-50 disabled:opacity-50 transition"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-xs text-brand-muted">
+                    Page {ticketPage} of {Math.ceil(tickets.length / TICKETS_PER_PAGE)}
+                  </span>
+                  <button
+                    onClick={() => setTicketPage((p) => Math.min(p + 1, Math.ceil(tickets.length / TICKETS_PER_PAGE)))}
+                    disabled={ticketPage === Math.ceil(tickets.length / TICKETS_PER_PAGE)}
+                    className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-brand-text hover:bg-zinc-50 disabled:opacity-50 transition"
+                  >
+                    Next
+                  </button>
                 </div>
-              ))}
+              )}
             </div>
           ) : (
             <div className="text-center py-10 space-y-3">

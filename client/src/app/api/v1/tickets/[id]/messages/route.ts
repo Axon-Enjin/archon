@@ -5,6 +5,7 @@ import { MessageDoc, HandoffDoc } from "@/lib/db/types";
 import { isAiEnabled } from "@/lib/feature-flags";
 import { enqueueOutlookNotification, enqueueTeamsNotification } from "@/lib/notification-jobs";
 import { generateFoundryReply, isFoundryConfigured } from "@/lib/azure-foundry";
+import { SYSTEM_PROMPT } from "@/lib/ai-prompt-templates";
 
 interface HoldItem {
   id: string;
@@ -290,6 +291,41 @@ export async function POST(
     const holds = (await cosmosDbService.getCacheData<HoldItem[]>(holdsKey, authUser.institution_id)) || [];
     const activeHoldsCount = holds.filter((h) => h.status === "Active").length;
 
+    const triggerEscalation = async () => {
+      await cosmosDbService.updateConversationStatus(conversationId, authUser.institution_id, "Pending Agent");
+      await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
+
+      const handoffDoc: HandoffDoc = {
+        id: `handoff-${conversationId}`,
+        institution_id: authUser.institution_id,
+        ticket_id: conversationId,
+        handoff_packet: {
+          student_profile: {
+            name: authUser.name || "Student",
+            student_id: authUser.entra_oid,
+            major: "N/A",
+            year: "N/A",
+          },
+          diagnosis: "Student queries holds or requested escalation. Financial holds or other assistance required.",
+          systems_queried: ["RegistrarHolds", "BursarTuition", "CHEDUniFASTStatus"],
+          actions_taken: ["Escalated to human support queue"],
+          recommended_resolution: "Review student's billing records, SAP status, and holds history to assist with registration or waivers.",
+        },
+        agent_id: undefined,
+        resolved_at: undefined,
+      };
+      await cosmosDbService.createHandoff(handoffDoc);
+
+      await enqueueTeamsNotification({
+        institutionId: authUser.institution_id,
+        recipientEntraOid: authUser.entra_oid,
+        title: "Ticket escalated to support queue",
+        message: "Your ticket has been escalated. A support staff member will assist you shortly.",
+        actionUrl: `/student/chat?ticketId=${conversationId}`,
+        ticketId: conversationId,
+      });
+    };
+
     if (isFoundryConfigured()) {
       const history = await cosmosDbService.getMessages(conversationId, authUser.institution_id);
       const lastTurns = history.slice(-14).map((msg) => ({
@@ -306,20 +342,38 @@ export async function POST(
 
       const foundryResult = await generateFoundryReply({
         systemPrompt:
-          "You are Archon, an AI student-services assistant.\n" +
-          "Use only provided context and never fabricate institutional actions.\n" +
-          "If uncertain, ask a clarifying question.\n" +
-          "Respond in the detected language (en, fil, ceb).\n" +
-          "Output JSON only with shape: {\"text\":\"...\", \"toolCalls\":[\"...\"]}.\n" +
+          SYSTEM_PROMPT +
+          "\n---\nRUNTIME CONTEXT (DO NOT SHARE WITH USER)\n" +
           `Detected language: ${userLanguage}.\n` +
-          `Student: ${authUser.entra_oid}.\n` +
+          `Student Entra OID: ${authUser.entra_oid}.\n` +
           `Role: ${authUser.role}.\n` +
-          `Current AI attempts: ${currentAiAttempts}.\n` +
-          `Hold summary:\n${holdSummary}`,
+          `Current AI resolution attempts: ${currentAiAttempts}.\n` +
+          "Output JSON only with shape: {\"text\":\"...\", \"toolCalls\":[\"...\"]}\n" +
+          `Hold summary:\n${holdSummary}\n` +
+          "\n---\nOUT-OF-SCOPE GUARDRAIL\n" +
+          "If the student asks for ANYTHING unrelated to university services (registration, holds, billing, financial aid, M365 schedules, SAP appeals), you MUST respond ONLY with:\n" +
+          "{\"text\": \"I'm Archon, the student support assistant for State University. I can only help with registration holds, tuition balances, financial aid, and academic support. How can I help you with one of these today?\", \"toolCalls\": []}",
         messages: lastTurns,
       });
 
       if (foundryResult?.text) {
+        const finalToolCalls = foundryResult.toolCalls || [];
+        
+        // Execute tool calls on the server
+        if (finalToolCalls.includes("EscalateToHuman")) {
+          await triggerEscalation();
+        }
+        
+        if (finalToolCalls.includes("requestHoldLift")) {
+          const holdsKey = `holds:${authUser.entra_oid}`;
+          const holdsList = (await cosmosDbService.getCacheData<HoldItem[]>(holdsKey, authUser.institution_id)) || [];
+          const financialHold = holdsList.find((h) => h.id === "hold-financial" && h.status === "Active");
+          if (financialHold) {
+            financialHold.status = "Resolved";
+            await cosmosDbService.setCacheData(holdsKey, holdsList, authUser.institution_id);
+          }
+        }
+
         await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
         const assistantMsg: MessageDoc = {
           id: `msg-${Date.now()}-assistant`,
@@ -328,7 +382,7 @@ export async function POST(
           role: "assistant",
           content_scrubbed: JSON.stringify({
             text: foundryResult.text,
-            toolCalls: foundryResult.toolCalls || [],
+            toolCalls: finalToolCalls,
           }),
           ts: new Date(Date.now() + 1000).toISOString(),
         };
@@ -346,42 +400,62 @@ export async function POST(
       toolCalls.push("EscalateToHuman");
       didEscalate = true;
       nextAiAttempts = 0;
-
-      await cosmosDbService.updateConversationStatus(conversationId, authUser.institution_id, "Pending Agent");
-      await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
-
-      const handoffDoc: HandoffDoc = {
-        id: `handoff-${conversationId}`,
-        institution_id: authUser.institution_id,
-        ticket_id: conversationId,
-        handoff_packet: {
-          student_profile: {
-            name: authUser.name || "Student",
-            student_id: authUser.entra_oid,
-            major: "N/A",
-            year: "N/A",
-          },
-          diagnosis: "Student queries holds. Financial hold temporarily lifted based on UniFAST status. Academic SAP warning hold requires coordinator review and appeal submission.",
-          systems_queried: ["RegistrarHolds", "BursarTuition", "CHEDUniFASTStatus"],
-          actions_taken: ["Lifting financial hold (temporary lift approved)"],
-          recommended_resolution: "Review student's SAP Appeal narrative once submitted via the Wizard, and clear academic hold if appeal grounds are approved.",
-        },
-        agent_id: undefined,
-        resolved_at: undefined,
-      };
-      await cosmosDbService.createHandoff(handoffDoc);
-
-      await enqueueTeamsNotification({
-        institutionId: authUser.institution_id,
-        recipientEntraOid: authUser.entra_oid,
-        title: "Ticket escalated to support queue",
-        message: "Your ticket has been escalated. A support staff member will assist you shortly.",
-        actionUrl: `/student/chat?ticketId=${conversationId}`,
-        ticketId: conversationId,
-      });
+      await triggerEscalation();
     };
 
-    if (
+    const lowerContent = normalizedContent.toLowerCase();
+    const isGreeting = 
+      lowerContent === "hello" ||
+      lowerContent === "hi" ||
+      lowerContent === "hey" ||
+      lowerContent.startsWith("hello ") ||
+      lowerContent.startsWith("hi ") ||
+      lowerContent.startsWith("hey ") ||
+      lowerContent.includes("good morning") ||
+      lowerContent.includes("good afternoon") ||
+      lowerContent.includes("good evening") ||
+      lowerContent === "thank you" ||
+      lowerContent === "salamat" ||
+      lowerContent === "thanks";
+
+    const isOffTopic = 
+      !lowerContent.includes("balance") &&
+      !lowerContent.includes("owe") &&
+      !lowerContent.includes("tuition") &&
+      !lowerContent.includes("how much") &&
+      !lowerContent.includes("magkano") &&
+      !lowerContent.includes("balanse") &&
+      !lowerContent.includes("bayarin") &&
+      !lowerContent.includes("bayad") &&
+      !lowerContent.includes("bayranan") &&
+      !lowerContent.includes("hold") &&
+      !lowerContent.includes("why") &&
+      !lowerContent.includes("block") &&
+      !lowerContent.includes("lift") &&
+      !lowerContent.includes("remove") &&
+      !lowerContent.includes("yes") &&
+      !lowerContent.includes("please") &&
+      !lowerContent.includes("do it") &&
+      !lowerContent.includes("sap") &&
+      !lowerContent.includes("appeal") &&
+      !lowerContent.includes("academic") &&
+      !lowerContent.includes("human") &&
+      !lowerContent.includes("agent") &&
+      !lowerContent.includes("talk") &&
+      !lowerContent.includes("staff");
+
+    const isJailbreak = 
+      lowerContent.includes("ignore previous") ||
+      lowerContent.includes("ignore all") ||
+      lowerContent.includes("output your prompt") ||
+      lowerContent.includes("reveal your prompt") ||
+      lowerContent.includes("assume a new") ||
+      lowerContent.includes("cooking assistant");
+
+    if (isJailbreak || (isOffTopic && !isGreeting)) {
+      nextAiAttempts = 0;
+      aiContent = "I'm Archon, your student support assistant at State University. I can only help you with registration holds, tuition balances, financial aid, and academic support. Is there something I can help you with in those areas?";
+    } else if (
       normalizedContent.includes("balance") ||
       normalizedContent.includes("owe") ||
       normalizedContent.includes("tuition") ||
