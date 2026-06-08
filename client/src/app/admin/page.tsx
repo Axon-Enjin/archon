@@ -114,7 +114,9 @@ export default function AdminDashboard() {
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary text-white font-extrabold text-lg font-display">
               A
             </span>
-            <span className="text-lg font-bold tracking-tight text-brand-text font-display">Archon Admin</span>
+            <span className="text-lg font-bold tracking-tight text-brand-text font-display">
+              {session?.user?.role === "Admin" ? "Archon Admin" : "Archon Agent"}
+            </span>
           </div>
 
           <nav className="space-y-1">
@@ -134,7 +136,7 @@ export default function AdminDashboard() {
               href="/admin/notifications"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 font-display"
             >
-              🔔 Notification Ops
+              <Bell className="w-4 h-4" /> Notification Ops
             </Link>
           </nav>
         </div>

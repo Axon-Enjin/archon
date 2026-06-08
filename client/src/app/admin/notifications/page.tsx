@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { RefreshCw } from "lucide-react";
+import { Inbox, BarChart3, Bell, LogOut, RefreshCw } from "lucide-react";
 
 type NotificationChannel = "teams" | "outlook";
 type NotificationStatus = "pending" | "processing" | "sent" | "failed";
@@ -298,7 +298,9 @@ export default function AdminNotificationOpsPage() {
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary text-white font-extrabold text-lg font-display">
               A
             </span>
-            <span className="text-lg font-bold tracking-tight text-brand-text font-display">Archon Admin</span>
+            <span className="text-lg font-bold tracking-tight text-brand-text font-display">
+              {session?.user?.role === "Admin" ? "Archon Admin" : "Archon Agent"}
+            </span>
           </div>
 
           <nav className="space-y-1">
@@ -306,19 +308,19 @@ export default function AdminNotificationOpsPage() {
               href="/agent"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 font-display"
             >
-              📥 Active Queue
+              <Inbox className="w-4 h-4" /> Active Queue
             </Link>
             <Link
               href="/admin"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 font-display"
             >
-              📊 Analytics
+              <BarChart3 className="w-4 h-4" /> Analytics
             </Link>
             <Link
               href="/admin/notifications"
               className="flex items-center gap-3 rounded-lg bg-brand-primary-light/50 px-3 py-2 text-sm font-semibold text-brand-primary font-display"
             >
-              🔔 Notification Ops
+              <Bell className="w-4 h-4" /> Notification Ops
             </Link>
           </nav>
         </div>
@@ -328,7 +330,7 @@ export default function AdminNotificationOpsPage() {
             onClick={() => signOut({ callbackUrl: "/" })}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-error hover:bg-red-50"
           >
-            🚪 Sign Out
+            <LogOut className="w-4 h-4" /> Sign Out
           </button>
         </div>
       </aside>
