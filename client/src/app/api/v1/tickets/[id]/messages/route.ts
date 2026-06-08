@@ -383,7 +383,59 @@ export async function POST(
       });
     };
 
-    if (
+    const lowerContent = normalizedContent.toLowerCase();
+    const isGreeting = 
+      lowerContent === "hello" ||
+      lowerContent === "hi" ||
+      lowerContent === "hey" ||
+      lowerContent.startsWith("hello ") ||
+      lowerContent.startsWith("hi ") ||
+      lowerContent.startsWith("hey ") ||
+      lowerContent.includes("good morning") ||
+      lowerContent.includes("good afternoon") ||
+      lowerContent.includes("good evening") ||
+      lowerContent === "thank you" ||
+      lowerContent === "salamat" ||
+      lowerContent === "thanks";
+
+    const isOffTopic = 
+      !lowerContent.includes("balance") &&
+      !lowerContent.includes("owe") &&
+      !lowerContent.includes("tuition") &&
+      !lowerContent.includes("how much") &&
+      !lowerContent.includes("magkano") &&
+      !lowerContent.includes("balanse") &&
+      !lowerContent.includes("bayarin") &&
+      !lowerContent.includes("bayad") &&
+      !lowerContent.includes("bayranan") &&
+      !lowerContent.includes("hold") &&
+      !lowerContent.includes("why") &&
+      !lowerContent.includes("block") &&
+      !lowerContent.includes("lift") &&
+      !lowerContent.includes("remove") &&
+      !lowerContent.includes("yes") &&
+      !lowerContent.includes("please") &&
+      !lowerContent.includes("do it") &&
+      !lowerContent.includes("sap") &&
+      !lowerContent.includes("appeal") &&
+      !lowerContent.includes("academic") &&
+      !lowerContent.includes("human") &&
+      !lowerContent.includes("agent") &&
+      !lowerContent.includes("talk") &&
+      !lowerContent.includes("staff");
+
+    const isJailbreak = 
+      lowerContent.includes("ignore previous") ||
+      lowerContent.includes("ignore all") ||
+      lowerContent.includes("output your prompt") ||
+      lowerContent.includes("reveal your prompt") ||
+      lowerContent.includes("assume a new") ||
+      lowerContent.includes("cooking assistant");
+
+    if (isJailbreak || (isOffTopic && !isGreeting)) {
+      nextAiAttempts = 0;
+      aiContent = "I'm Archon, your student support assistant at State University. I can only help you with registration holds, tuition balances, financial aid, and academic support. Is there something I can help you with in those areas?";
+    } else if (
       normalizedContent.includes("balance") ||
       normalizedContent.includes("owe") ||
       normalizedContent.includes("tuition") ||
