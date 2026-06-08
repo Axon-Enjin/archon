@@ -57,6 +57,9 @@ export default function AdminNotificationOpsPage() {
   const [ticketId, setTicketId] = useState("");
   const [sendingTest, setSendingTest] = useState(false);
   const [runningReminders, setRunningReminders] = useState(false);
+  const [syncingOutbox, setSyncingOutbox] = useState(false);
+  const [runningDiagnostics, setRunningDiagnostics] = useState(false);
+  const [diagnosticsOutput, setDiagnosticsOutput] = useState<string | null>(null);
 
   const fetchJobs = async (isRefresh = false) => {
     try {
@@ -182,6 +185,55 @@ export default function AdminNotificationOpsPage() {
       setError(msg);
     } finally {
       setRunningReminders(false);
+    }
+  };
+
+  const handleSyncPowerAutomateOutbox = async () => {
+    try {
+      setSyncingOutbox(true);
+      setError(null);
+      setSuccessMessage(null);
+
+      const res = await fetch("/api/v1/notify/power-automate/sync?status=pending&limit=100", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || "Failed to sync pending jobs to Power Automate outbox.");
+      }
+
+      setSuccessMessage(
+        `Outbox sync complete: ${data.data.sentToOutbox} handed off, ${data.data.failed} failed, ${data.data.scanned} scanned.`
+      );
+      await fetchJobs(true);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to sync pending jobs to Power Automate outbox.";
+      setError(msg);
+    } finally {
+      setSyncingOutbox(false);
+    }
+  };
+
+  const handleRunPowerAutomateDiagnostics = async () => {
+    try {
+      setRunningDiagnostics(true);
+      setError(null);
+      setSuccessMessage(null);
+      setDiagnosticsOutput(null);
+
+      const res = await fetch("/api/v1/notify/power-automate/diagnostics");
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || "Failed to run Power Automate diagnostics.");
+      }
+
+      setSuccessMessage("Power Automate diagnostics completed.");
+      setDiagnosticsOutput(JSON.stringify(data.data, null, 2));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to run Power Automate diagnostics.";
+      setError(msg);
+    } finally {
+      setRunningDiagnostics(false);
     }
   };
 
@@ -336,13 +388,45 @@ export default function AdminNotificationOpsPage() {
               Creates daily pending Teams/Outlook reminder jobs from active holds and upcoming deadlines.
             </p>
           </div>
-          <button
-            onClick={() => void handleRunReminders()}
-            disabled={runningReminders}
-            className="rounded-lg bg-brand-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
-          >
-            {runningReminders ? "Generating..." : "Run Reminder Generation"}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={() => void handleRunReminders()}
+              disabled={runningReminders}
+              className="rounded-lg bg-brand-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+            >
+              {runningReminders ? "Generating..." : "Run Reminder Generation"}
+            </button>
+            <button
+              onClick={() => void handleSyncPowerAutomateOutbox()}
+              disabled={syncingOutbox}
+              className="rounded-lg border border-brand-primary text-brand-primary px-4 py-2 text-sm font-semibold hover:bg-brand-primary-light/40 disabled:opacity-50"
+            >
+              {syncingOutbox ? "Syncing Outbox..." : "Sync Pending to PA Outbox"}
+            </button>
+          </div>
+        </section>
+
+        <section className="rounded-xl bg-white border border-zinc-200 p-4 md:p-6 flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-brand-text font-display">Power Automate Diagnostics</h2>
+              <p className="text-sm text-brand-muted">
+                Probes Graph token claims, site access, list access, and list columns access.
+              </p>
+            </div>
+            <button
+              onClick={() => void handleRunPowerAutomateDiagnostics()}
+              disabled={runningDiagnostics}
+              className="rounded-lg border border-zinc-300 text-brand-text px-4 py-2 text-sm font-semibold hover:bg-zinc-50 disabled:opacity-50"
+            >
+              {runningDiagnostics ? "Running Diagnostics..." : "Run PA Diagnostics"}
+            </button>
+          </div>
+          {diagnosticsOutput && (
+            <pre className="rounded-lg bg-zinc-950 text-zinc-100 text-xs p-4 overflow-x-auto">
+              {diagnosticsOutput}
+            </pre>
+          )}
         </section>
 
         <section className="rounded-xl bg-white border border-zinc-200 p-4 flex flex-col sm:flex-row gap-3">

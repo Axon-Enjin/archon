@@ -11,3 +11,7 @@ export function isAiEnabled(): boolean {
 export function isM365Enabled(): boolean {
   return normalizeBoolean(process.env.ARCHON_M365_ENABLED, true);
 }
+
+export function isPowerAutomateFreeEnabled(): boolean {
+  return normalizeBoolean(process.env.ARCHON_POWER_AUTOMATE_FREE_ENABLED, false);
+}
