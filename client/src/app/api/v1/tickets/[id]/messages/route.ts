@@ -4,6 +4,7 @@ import { cosmosDbService } from "@/lib/db/cosmos";
 import { MessageDoc, HandoffDoc } from "@/lib/db/types";
 import { isAiEnabled } from "@/lib/feature-flags";
 import { enqueueOutlookNotification, enqueueTeamsNotification } from "@/lib/notification-jobs";
+import { generateFoundryReply, isFoundryConfigured } from "@/lib/azure-foundry";
 
 interface HoldItem {
   id: string;
@@ -175,6 +176,16 @@ function getDefaultFinancialData(): FinancialData {
   };
 }
 
+function extractMessageText(content: string): string {
+  try {
+    const parsed = JSON.parse(content) as { text?: string };
+    if (parsed && typeof parsed.text === "string") return parsed.text;
+  } catch {
+    // Plain text path.
+  }
+  return content;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -277,6 +288,53 @@ export async function POST(
     const holdsKey = `holds:${authUser.entra_oid}`;
     const holds = (await cosmosDbService.getCacheData<HoldItem[]>(holdsKey, authUser.institution_id)) || [];
     const activeHoldsCount = holds.filter((h) => h.status === "Active").length;
+
+    if (isFoundryConfigured()) {
+      const history = await cosmosDbService.getMessages(conversationId, authUser.institution_id);
+      const lastTurns = history.slice(-14).map((msg) => ({
+        role: msg.role === "system" ? "assistant" : msg.role,
+        content: extractMessageText(msg.content_scrubbed),
+      })) as Array<{ role: "assistant" | "user"; content: string }>;
+
+      const holdSummary =
+        holds.length > 0
+          ? holds
+              .map((hold) => `${hold.type} hold (${hold.status}): ${hold.reason}. Resolution: ${hold.resolution_steps}`)
+              .join("\n")
+          : "No active hold data available.";
+
+      const foundryResult = await generateFoundryReply({
+        systemPrompt:
+          "You are Archon, an AI student-services assistant.\n" +
+          "Use only provided context and never fabricate institutional actions.\n" +
+          "If uncertain, ask a clarifying question.\n" +
+          "Respond in the detected language (en, fil, ceb).\n" +
+          "Output JSON only with shape: {\"text\":\"...\", \"toolCalls\":[\"...\"]}.\n" +
+          `Detected language: ${userLanguage}.\n` +
+          `Student: ${authUser.entra_oid}.\n` +
+          `Role: ${authUser.role}.\n` +
+          `Current AI attempts: ${currentAiAttempts}.\n` +
+          `Hold summary:\n${holdSummary}`,
+        messages: lastTurns,
+      });
+
+      if (foundryResult?.text) {
+        await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
+        const assistantMsg: MessageDoc = {
+          id: `msg-${Date.now()}-assistant`,
+          institution_id: authUser.institution_id,
+          conversation_id: conversationId,
+          role: "assistant",
+          content_scrubbed: JSON.stringify({
+            text: foundryResult.text,
+            toolCalls: foundryResult.toolCalls || [],
+          }),
+          ts: new Date(Date.now() + 1000).toISOString(),
+        };
+        await cosmosDbService.createMessage(assistantMsg);
+        return NextResponse.json({ success: true, data: assistantMsg });
+      }
+    }
 
     // 3. Mock AI agent response generation loop
     let aiContent = "";
