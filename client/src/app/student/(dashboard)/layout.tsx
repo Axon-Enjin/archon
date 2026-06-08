@@ -4,7 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, MessageCircle, FileText, LogOut, Bell } from "lucide-react";
+import { LayoutDashboard, MessageCircle, FileText, LogOut, Bell, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function DashboardLayout({
   children,
@@ -15,6 +15,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [creatingTicket, setCreatingTicket] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -60,52 +61,99 @@ export default function DashboardLayout({
   return (
     <div className="flex min-h-screen bg-brand-surface font-sans">
       {/* Sidebar Navigation */}
-      <aside className="w-64 h-screen sticky top-0 border-r border-zinc-200 bg-white p-6 hidden md:flex flex-col justify-between shrink-0">
+      <aside
+        className={`h-screen sticky top-0 border-r border-zinc-200 bg-white hidden md:flex flex-col justify-between shrink-0 transition-all duration-300 ease-in-out ${
+          isCollapsed ? "w-20 p-4" : "w-64 p-6"
+        }`}
+      >
         <div className="space-y-8">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary text-white font-extrabold text-lg font-display">
-              A
-            </span>
-            <span className="text-lg font-bold tracking-tight text-brand-text font-display">Archon</span>
+          <div className="flex items-center justify-between">
+            <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center w-full" : ""}`}>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-primary text-white font-extrabold text-lg font-display">
+                A
+              </span>
+              {!isCollapsed && (
+                <span className="text-lg font-bold tracking-tight text-brand-text font-display transition-opacity duration-300">
+                  Archon
+                </span>
+              )}
+            </div>
+            {!isCollapsed && (
+              <button
+                onClick={() => setIsCollapsed(true)}
+                className="rounded-lg p-1.5 hover:bg-zinc-100 text-brand-muted hover:text-brand-text transition"
+                title="Collapse sidebar"
+              >
+                <ChevronLeft className="w-4.5 h-4.5" />
+              </button>
+            )}
           </div>
+
+          {isCollapsed && (
+            <div className="flex justify-center">
+              <button
+                onClick={() => setIsCollapsed(false)}
+                className="rounded-lg p-1.5 hover:bg-zinc-100 text-brand-muted hover:text-brand-text transition"
+                title="Expand sidebar"
+              >
+                <ChevronRight className="w-4.5 h-4.5" />
+              </button>
+            </div>
+          )}
 
           <nav className="space-y-1">
             <Link
               href="/student"
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
+              title={isCollapsed ? "Dashboard" : undefined}
+              className={`flex items-center rounded-lg px-3 py-2 text-sm transition-all duration-200 ${
+                isCollapsed ? "justify-center" : "gap-3"
+              } ${
                 isDashboardActive
                   ? "bg-brand-primary-light/50 font-semibold text-brand-primary"
                   : "font-medium text-brand-text hover:bg-zinc-50"
               }`}
             >
-              <LayoutDashboard className="w-4 h-4" /> Dashboard
+              <LayoutDashboard className="w-4 h-4 shrink-0" />
+              {!isCollapsed && <span>Dashboard</span>}
             </Link>
             <Link
               href="/student/alerts"
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
+              title={isCollapsed ? "Alert Center" : undefined}
+              className={`flex items-center rounded-lg px-3 py-2 text-sm transition-all duration-200 ${
+                isCollapsed ? "justify-center" : "gap-3"
+              } ${
                 isAlertsActive
                   ? "bg-brand-primary-light/50 font-semibold text-brand-primary"
                   : "font-medium text-brand-text hover:bg-zinc-50"
               }`}
             >
-              <Bell className="w-4 h-4" /> Alert Center
+              <Bell className="w-4 h-4 shrink-0" />
+              {!isCollapsed && <span>Alert Center</span>}
             </Link>
             <button
               onClick={handleStartNewChat}
               disabled={creatingTicket}
-              className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 transition text-left"
+              title={isCollapsed ? "AI Help Desk" : undefined}
+              className={`w-full flex items-center rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 transition-all duration-200 text-left ${
+                isCollapsed ? "justify-center" : "gap-3"
+              }`}
             >
-              <MessageCircle className="w-4 h-4" /> AI Help Desk
+              <MessageCircle className="w-4 h-4 shrink-0" />
+              {!isCollapsed && <span>AI Help Desk</span>}
             </button>
             <Link
               href="/student/appeal"
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
+              title={isCollapsed ? "SAP Appeal Wizard" : undefined}
+              className={`flex items-center rounded-lg px-3 py-2 text-sm transition-all duration-200 ${
+                isCollapsed ? "justify-center" : "gap-3"
+              } ${
                 isAppealActive
                   ? "bg-brand-primary-light/50 font-semibold text-brand-primary"
                   : "font-medium text-brand-text hover:bg-zinc-50"
               }`}
             >
-              <FileText className="w-4 h-4" /> SAP Appeal Wizard
+              <FileText className="w-4 h-4 shrink-0" />
+              {!isCollapsed && <span>SAP Appeal Wizard</span>}
             </Link>
           </nav>
         </div>
@@ -113,9 +161,13 @@ export default function DashboardLayout({
         <div className="space-y-4">
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-error hover:bg-red-50 transition"
+            title={isCollapsed ? "Sign Out" : undefined}
+            className={`flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium text-brand-error hover:bg-red-50 transition-all duration-200 ${
+              isCollapsed ? "justify-center" : "gap-3"
+            }`}
           >
-            <LogOut className="w-4 h-4" /> Sign Out
+            <LogOut className="w-4 h-4 shrink-0" />
+            {!isCollapsed && <span>Sign Out</span>}
           </button>
         </div>
       </aside>

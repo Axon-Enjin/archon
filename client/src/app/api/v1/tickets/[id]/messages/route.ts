@@ -5,6 +5,7 @@ import { MessageDoc, HandoffDoc } from "@/lib/db/types";
 import { isAiEnabled } from "@/lib/feature-flags";
 import { enqueueOutlookNotification, enqueueTeamsNotification } from "@/lib/notification-jobs";
 import { generateFoundryReply, isFoundryConfigured } from "@/lib/azure-foundry";
+import { SYSTEM_PROMPT } from "@/lib/ai-prompt-templates";
 
 interface HoldItem {
   id: string;
@@ -305,16 +306,17 @@ export async function POST(
 
       const foundryResult = await generateFoundryReply({
         systemPrompt:
-          "You are Archon, an AI student-services assistant.\n" +
-          "Use only provided context and never fabricate institutional actions.\n" +
-          "If uncertain, ask a clarifying question.\n" +
-          "Respond in the detected language (en, fil, ceb).\n" +
-          "Output JSON only with shape: {\"text\":\"...\", \"toolCalls\":[\"...\"]}.\n" +
+          SYSTEM_PROMPT +
+          "\n---\nRUNTIME CONTEXT (DO NOT SHARE WITH USER)\n" +
           `Detected language: ${userLanguage}.\n` +
-          `Student: ${authUser.entra_oid}.\n` +
+          `Student Entra OID: ${authUser.entra_oid}.\n` +
           `Role: ${authUser.role}.\n` +
-          `Current AI attempts: ${currentAiAttempts}.\n` +
-          `Hold summary:\n${holdSummary}`,
+          `Current AI resolution attempts: ${currentAiAttempts}.\n` +
+          "Output JSON only with shape: {\"text\":\"...\", \"toolCalls\":[\"...\"]}\n" +
+          `Hold summary:\n${holdSummary}\n` +
+          "\n---\nOUT-OF-SCOPE GUARDRAIL\n" +
+          "If the student asks for ANYTHING unrelated to university services (registration, holds, billing, financial aid, M365 schedules, SAP appeals), you MUST respond ONLY with:\n" +
+          "{\"text\": \"I'm Archon, the student support assistant for State University. I can only help with registration holds, tuition balances, financial aid, and academic support. How can I help you with one of these today?\", \"toolCalls\": []}",
         messages: lastTurns,
       });
 

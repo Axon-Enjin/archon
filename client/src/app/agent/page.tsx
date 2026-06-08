@@ -43,6 +43,8 @@ export default function AgentDashboard() {
   const router = useRouter();
 
   const [queue, setQueue] = useState<TicketItem[]>([]);
+  const [queuePage, setQueuePage] = useState(1);
+  const QUEUE_PER_PAGE = 5;
   const [selectedTicket, setSelectedTicket] = useState<TicketItem | null>(null);
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [handoff, setHandoff] = useState<HandoffPacket | null>(null);
@@ -212,36 +214,63 @@ export default function AgentDashboard() {
             <h2 className="text-xl font-bold text-brand-text font-display">Support Queue</h2>
             <p className="text-xs text-brand-muted mt-1">{queue.length} Active Tickets Pending</p>
           </div>
-          <div className="flex-1 overflow-y-auto divide-y divide-zinc-100">
-            {queue.map((ticket) => (
-              <button
-                key={ticket.id}
-                onClick={() => handleSelectTicket(ticket)}
-                className={`w-full text-left p-4 hover:bg-zinc-50 transition flex flex-col gap-1.5 ${
-                  selectedTicket?.id === ticket.id ? "bg-brand-primary-light/20" : ""
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono text-brand-muted">{ticket.ticket_id}</span>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${
-                      ticket.status === "Pending Agent"
-                        ? "bg-amber-100 text-amber-700"
-                        : "bg-green-100 text-green-700"
+          <div className="flex-1 overflow-y-auto divide-y divide-zinc-100 flex flex-col justify-between">
+            <div>
+              {queue
+                .slice((queuePage - 1) * QUEUE_PER_PAGE, queuePage * QUEUE_PER_PAGE)
+                .map((ticket) => (
+                  <button
+                    key={ticket.id}
+                    onClick={() => handleSelectTicket(ticket)}
+                    className={`w-full text-left p-4 hover:bg-zinc-50 transition flex flex-col gap-1.5 border-b border-zinc-100 ${
+                      selectedTicket?.id === ticket.id ? "bg-brand-primary-light/20" : ""
                     }`}
                   >
-                    {ticket.status}
-                  </span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono text-brand-muted">{ticket.ticket_id}</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${
+                          ticket.status === "Pending Agent"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-green-100 text-green-700"
+                        }`}
+                      >
+                        {ticket.status}
+                      </span>
+                    </div>
+                    <p className="text-sm font-semibold text-brand-text font-display">{ticket.student_id}</p>
+                    <p className="text-[10px] text-brand-muted">
+                      Created {new Date(ticket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </button>
+                ))}
+              {queue.length === 0 && (
+                <div className="text-center py-20 text-sm text-brand-muted">
+                  No pending tickets in the queue. Nice!
                 </div>
-                <p className="text-sm font-semibold text-brand-text font-display">{ticket.student_id}</p>
-                <p className="text-[10px] text-brand-muted">
-                  Created {new Date(ticket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
-              </button>
-            ))}
-            {queue.length === 0 && (
-              <div className="text-center py-20 text-sm text-brand-muted">
-                No pending tickets in the queue. Nice!
+              )}
+            </div>
+
+            {/* Pagination Controls */}
+            {queue.length > QUEUE_PER_PAGE && (
+              <div className="flex items-center justify-between p-4 border-t border-zinc-100 bg-white sticky bottom-0">
+                <button
+                  onClick={() => setQueuePage((p) => Math.max(p - 1, 1))}
+                  disabled={queuePage === 1}
+                  className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-brand-text hover:bg-zinc-50 disabled:opacity-50 transition"
+                >
+                  Prev
+                </button>
+                <span className="text-xs text-brand-muted">
+                  Page {queuePage} of {Math.ceil(queue.length / QUEUE_PER_PAGE)}
+                </span>
+                <button
+                  onClick={() => setQueuePage((p) => Math.min(p + 1, Math.ceil(queue.length / QUEUE_PER_PAGE)))}
+                  disabled={queuePage === Math.ceil(queue.length / QUEUE_PER_PAGE)}
+                  className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-brand-text hover:bg-zinc-50 disabled:opacity-50 transition"
+                >
+                  Next
+                </button>
               </div>
             )}
           </div>
