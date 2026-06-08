@@ -1,5 +1,9 @@
 import { cosmosDbService } from "@/lib/db/cosmos";
 import { NotificationJobDoc } from "@/lib/db/types";
+import {
+  canPublishToPowerAutomateFree,
+  publishNotificationJobToPowerAutomateFree,
+} from "@/lib/power-automate-free";
 
 export interface TeamsNotificationInput {
   institutionId: string;
@@ -22,7 +26,7 @@ export interface OutlookNotificationInput {
 
 export async function enqueueTeamsNotification(input: TeamsNotificationInput): Promise<NotificationJobDoc> {
   const now = new Date().toISOString();
-  return cosmosDbService.createNotificationJob({
+  const job = await cosmosDbService.createNotificationJob({
     id: `notifjob-teams-${crypto.randomUUID()}`,
     institution_id: input.institutionId,
     channel: "teams",
@@ -38,11 +42,34 @@ export async function enqueueTeamsNotification(input: TeamsNotificationInput): P
     created_at: now,
     updated_at: now,
   });
+
+  if (!canPublishToPowerAutomateFree()) {
+    return job;
+  }
+
+  try {
+    const published = await publishNotificationJobToPowerAutomateFree(job);
+    const updated = await cosmosDbService.updateNotificationJobStatus(job.id, job.institution_id, {
+      status: "processing",
+      provider_message_id: published.listItemId,
+      error_message: undefined,
+      attempts: job.attempts + 1,
+    });
+    return updated || job;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Power Automate outbox publish failed.";
+    const failed = await cosmosDbService.updateNotificationJobStatus(job.id, job.institution_id, {
+      status: "failed",
+      error_message: message,
+      attempts: job.attempts + 1,
+    });
+    return failed || job;
+  }
 }
 
 export async function enqueueOutlookNotification(input: OutlookNotificationInput): Promise<NotificationJobDoc> {
   const now = new Date().toISOString();
-  return cosmosDbService.createNotificationJob({
+  const job = await cosmosDbService.createNotificationJob({
     id: `notifjob-outlook-${crypto.randomUUID()}`,
     institution_id: input.institutionId,
     channel: "outlook",
@@ -59,4 +86,27 @@ export async function enqueueOutlookNotification(input: OutlookNotificationInput
     created_at: now,
     updated_at: now,
   });
+
+  if (!canPublishToPowerAutomateFree()) {
+    return job;
+  }
+
+  try {
+    const published = await publishNotificationJobToPowerAutomateFree(job);
+    const updated = await cosmosDbService.updateNotificationJobStatus(job.id, job.institution_id, {
+      status: "processing",
+      provider_message_id: published.listItemId,
+      error_message: undefined,
+      attempts: job.attempts + 1,
+    });
+    return updated || job;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Power Automate outbox publish failed.";
+    const failed = await cosmosDbService.updateNotificationJobStatus(job.id, job.institution_id, {
+      status: "failed",
+      error_message: message,
+      attempts: job.attempts + 1,
+    });
+    return failed || job;
+  }
 }
