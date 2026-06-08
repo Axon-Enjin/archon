@@ -29,6 +29,8 @@ export async function GET(
       status: "Hold Active",
       payment_deadline: "2026-06-30",
       scholarship_renewal_deadline: "2026-07-15",
+      scholarship_renewal_status: "not_started",
+      scholarship_renewal_submitted: false,
       itemized_charges: [
         { item: "Tuition Fee (18 units)", amount: 18000.0 },
         { item: "Laboratory Fees (IT Lab)", amount: 3500.0 },

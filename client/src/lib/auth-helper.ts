@@ -8,6 +8,8 @@ export interface AuthenticatedUser {
   institution_id: string;
   entra_oid: string;
   accessToken?: string;
+  major?: string;
+  year?: string;
   name?: string | null;
   email?: string | null;
 }

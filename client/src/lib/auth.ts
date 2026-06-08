@@ -15,6 +15,14 @@ const roleClaimKeys = (process.env.ARCHON_ENTRA_ROLE_CLAIMS || "roles,groups,wid
   .split(",")
   .map((claim) => claim.trim())
   .filter(Boolean);
+const majorClaimKeys = (process.env.ARCHON_ENTRA_MAJOR_CLAIM_KEYS || "major,department,extension_major")
+  .split(",")
+  .map((claim) => claim.trim())
+  .filter(Boolean);
+const yearClaimKeys = (process.env.ARCHON_ENTRA_YEAR_CLAIM_KEYS || "year,academic_year,extension_year")
+  .split(",")
+  .map((claim) => claim.trim())
+  .filter(Boolean);
 
 function parseCsv(value: string | undefined): string[] {
   return (value || "")
@@ -58,6 +66,15 @@ function mapEntraRole(profile: Record<string, unknown>): AppRole {
   return defaultRole;
 }
 
+function getFirstClaimValue(profile: Record<string, unknown>, claimKeys: string[]): string | undefined {
+  for (const claimKey of claimKeys) {
+    const values = getClaimValues(profile, claimKey);
+    const firstValue = values.find(Boolean);
+    if (firstValue) return firstValue;
+  }
+  return undefined;
+}
+
 function decodeJwtClaims(token: string | undefined): Record<string, unknown> | null {
   if (!token) return null;
   const parts = token.split(".");
@@ -78,6 +95,8 @@ interface SessionClaims {
   role?: AppRole;
   institution_id?: string;
   entra_oid?: string;
+  major?: string;
+  year?: string;
 }
 
 export const authOptions: NextAuthOptions = {
@@ -180,6 +199,8 @@ export const authOptions: NextAuthOptions = {
         token.institution_id =
           tenantId;
         token.role = mapEntraRole(roleSource);
+        token.major = getFirstClaimValue(roleSource, majorClaimKeys) || token.major;
+        token.year = getFirstClaimValue(roleSource, yearClaimKeys) || token.year;
       }
 
       if (user) {
@@ -188,6 +209,8 @@ export const authOptions: NextAuthOptions = {
         token.role = sessionUser.role || token.role || "Student";
         token.institution_id = sessionUser.institution_id || token.institution_id || "inst-up";
         token.entra_oid = sessionUser.entra_oid || token.entra_oid || token.sub || "";
+        token.major = sessionUser.major || token.major;
+        token.year = sessionUser.year || token.year;
       }
       return token;
     },
@@ -198,6 +221,8 @@ export const authOptions: NextAuthOptions = {
         session.user.institution_id = token.institution_id;
         session.user.entra_oid = token.entra_oid;
         session.user.accessToken = token.accessToken;
+        session.user.major = token.major;
+        session.user.year = token.year;
       }
       return session;
     },

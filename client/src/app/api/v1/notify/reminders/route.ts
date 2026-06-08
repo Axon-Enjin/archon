@@ -19,6 +19,9 @@ interface CalendarEvent {
 interface FinancialData {
   payment_deadline?: string;
   scholarship_renewal_deadline?: string;
+  scholarship_renewal_status?: "not_started" | "in_progress" | "submitted";
+  scholarship_renewal_submitted?: boolean;
+  scholarship_renewal_submitted_at?: string;
 }
 
 function daysUntil(isoDate: string, now: Date): number {
@@ -133,6 +136,15 @@ export async function POST() {
         const diff = daysUntil(evt.start, now);
         return diff >= 0 && diff <= 14;
       })) {
+        const renewalSubmitted =
+          financial?.scholarship_renewal_submitted === true ||
+          financial?.scholarship_renewal_status === "submitted";
+        const isScholarshipRenewalEvent =
+          event.title.toLowerCase().includes("scholarship") ||
+          event.title.toLowerCase().includes("renewal") ||
+          event.title.toLowerCase().includes("unifast");
+        if (renewalSubmitted && isScholarshipRenewalEvent) continue;
+
         const eventTag = event.id.replace(/[^a-zA-Z0-9_-]/g, "");
         const eventDate = new Date(event.start).toLocaleDateString();
 
@@ -175,14 +187,58 @@ export async function POST() {
       if (scholarshipDeadline) {
         const diff = daysUntil(scholarshipDeadline, now);
         if (diff >= 0 && diff <= 14) {
-          await queueJob({
-            id: `notifjob-outlook-reminder-scholarship-${studentId}-${dayKey}`,
-            channel: "outlook",
-            studentId,
-            kind: "deadline",
-            subject: "Scholarship renewal reminder",
-            textBody: `Your scholarship renewal deadline is on ${new Date(scholarshipDeadline).toLocaleDateString()}.`,
-          });
+          const submitted =
+            financial?.scholarship_renewal_submitted === true ||
+            financial?.scholarship_renewal_status === "submitted";
+          const deadlineText = new Date(scholarshipDeadline).toLocaleDateString();
+
+          if (submitted) {
+            const submittedAtText = financial?.scholarship_renewal_submitted_at
+              ? new Date(financial.scholarship_renewal_submitted_at).toLocaleDateString()
+              : "recently";
+
+            await queueJob({
+              id: `notifjob-teams-scholarship-submitted-${studentId}-${dayKey}`,
+              channel: "teams",
+              studentId,
+              kind: "deadline",
+              title: "Scholarship renewal submitted",
+              message: `We confirmed your renewal submission (${submittedAtText}). Deadline is ${deadlineText}. No additional action needed right now.`,
+              actionUrl: "/student/alerts",
+            });
+
+            await queueJob({
+              id: `notifjob-outlook-scholarship-submitted-${studentId}-${dayKey}`,
+              channel: "outlook",
+              studentId,
+              kind: "deadline",
+              subject: "Scholarship renewal submission confirmed",
+              textBody: `We confirmed your scholarship renewal submission (${submittedAtText}). Deadline is ${deadlineText}. No additional action is needed right now.`,
+            });
+          } else {
+            await queueJob({
+              id: `notifjob-teams-reminder-scholarship-${studentId}-${dayKey}`,
+              channel: "teams",
+              studentId,
+              kind: "deadline",
+              title: "Scholarship renewal due soon",
+              message:
+                `Your scholarship renewal deadline is on ${deadlineText}. Required documents: GWA certified copy and current Registration Form.`,
+              actionUrl: "/student/appeal",
+            });
+
+            await queueJob({
+              id: `notifjob-outlook-reminder-scholarship-${studentId}-${dayKey}`,
+              channel: "outlook",
+              studentId,
+              kind: "deadline",
+              subject: "Scholarship renewal reminder",
+              textBody:
+                `Your scholarship renewal deadline is on ${deadlineText}.\n` +
+                "Required documents: GWA certified copy and current Registration Form.\n" +
+                "Open Archon to start your renewal process.",
+            });
+          }
         }
       }
     }

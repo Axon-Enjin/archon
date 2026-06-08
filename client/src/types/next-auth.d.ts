@@ -9,6 +9,8 @@ declare module "next-auth" {
       institution_id: string;
       entra_oid: string;
       accessToken?: string;
+      major?: string;
+      year?: string;
     } & DefaultSession["user"];
   }
 
@@ -16,6 +18,8 @@ declare module "next-auth" {
     role?: "Student" | "Agent" | "Admin";
     institution_id?: string;
     entra_oid?: string;
+    major?: string;
+    year?: string;
   }
 }
 
@@ -26,5 +30,7 @@ declare module "next-auth/jwt" {
     institution_id: string;
     entra_oid: string;
     accessToken?: string;
+    major?: string;
+    year?: string;
   }
 }
