@@ -69,22 +69,13 @@ export default function AdminQueuePage() {
   }
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin");
-      return;
-    }
-
-    if (session?.user) {
-      if (session.user.role !== "Admin") {
-        router.push("/auth/signin");
-        return;
-      }
+    if (session?.user?.role === "Admin") {
       const initialTimer = setTimeout(() => {
         void fetchQueue();
       }, 0);
       return () => clearTimeout(initialTimer);
     }
-  }, [session, status, router]);
+  }, [session]);
 
   const handleSelectTicket = async (ticket: TicketItem) => {
     setSelectedTicket(ticket);
@@ -157,300 +148,253 @@ export default function AdminQueuePage() {
     return content;
   };
 
-  if (loading || status === "loading") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-brand-surface">
-        <div className="text-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-sm text-brand-muted font-sans">Loading Queue Console...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex h-screen overflow-hidden bg-brand-surface font-sans">
-      {/* Sidebar */}
-      <aside className="w-64 h-full border-r border-zinc-200 bg-white p-6 hidden md:flex flex-col justify-between shrink-0">
-        <div className="space-y-8">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary text-white font-extrabold text-lg font-display">
-              A
-            </span>
-            <span className="text-lg font-bold tracking-tight text-brand-text font-display">
-              Archon Admin
-            </span>
+    <main className="flex-1 flex overflow-hidden h-screen">
+      {loading ? (
+        <div className="flex flex-1 items-center justify-center bg-zinc-50">
+          <div className="text-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent mx-auto"></div>
+            <p className="mt-3 text-xs text-brand-muted font-sans font-semibold">Loading queue tickets...</p>
           </div>
-
-          <nav className="space-y-1">
-            <Link
-              href="/admin/queue"
-              className="flex items-center gap-3 rounded-lg bg-brand-primary-light/50 px-3 py-2 text-sm font-semibold text-brand-primary font-display"
-            >
-              <Inbox className="w-4 h-4" /> Active Queue
-            </Link>
-            <Link
-              href="/admin"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 font-display"
-            >
-              <BarChart3 className="w-4 h-4" /> Analytics
-            </Link>
-            <Link
-              href="/admin/notifications"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 font-display"
-            >
-              <Bell className="w-4 h-4" /> Notification Ops
-            </Link>
-          </nav>
         </div>
+      ) : (
+        <>
+          {/* Left pane: Queue List */}
+          <section className="w-80 border-r border-zinc-200 bg-white flex flex-col shrink-0">
+            <div className="p-6 border-b border-zinc-100">
+              <h2 className="text-xl font-bold text-brand-text font-display">Support Queue</h2>
+              <p className="text-xs text-brand-muted mt-1">{queue.length} Active Tickets Pending</p>
+            </div>
+            <div className="flex-1 overflow-y-auto divide-y divide-zinc-100 flex flex-col justify-between">
+              <div>
+                {queue
+                  .slice((queuePage - 1) * QUEUE_PER_PAGE, queuePage * QUEUE_PER_PAGE)
+                  .map((ticket) => (
+                    <button
+                      key={ticket.id}
+                      onClick={() => handleSelectTicket(ticket)}
+                      className={`w-full text-left p-4 hover:bg-zinc-50 transition flex flex-col gap-1.5 border-b border-zinc-100 ${
+                        selectedTicket?.id === ticket.id ? "bg-brand-primary-light/20" : ""
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-mono text-brand-muted">{ticket.ticket_id}</span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${
+                            ticket.status === "Pending Agent"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-green-100 text-green-700"
+                          }`}
+                        >
+                          {ticket.status}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-brand-text font-display">{ticket.student_id}</p>
+                      <p className="text-[10px] text-brand-muted">
+                        Created {new Date(ticket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </button>
+                  ))}
+                {queue.length === 0 && (
+                  <div className="text-center py-20 text-sm text-brand-muted">
+                    No pending tickets in the queue. Nice!
+                  </div>
+                )}
+              </div>
 
-        <div>
-          <button
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-error hover:bg-red-50"
-          >
-            <LogOut className="w-4 h-4" /> Sign Out
-          </button>
-        </div>
-      </aside>
-
-      {/* Main split dashboard */}
-      <main className="flex-1 flex overflow-hidden h-screen">
-        {/* Left pane: Queue List */}
-        <section className="w-80 border-r border-zinc-200 bg-white flex flex-col shrink-0">
-          <div className="p-6 border-b border-zinc-100">
-            <h2 className="text-xl font-bold text-brand-text font-display">Support Queue</h2>
-            <p className="text-xs text-brand-muted mt-1">{queue.length} Active Tickets Pending</p>
-          </div>
-          <div className="flex-1 overflow-y-auto divide-y divide-zinc-100 flex flex-col justify-between">
-            <div>
-              {queue
-                .slice((queuePage - 1) * QUEUE_PER_PAGE, queuePage * QUEUE_PER_PAGE)
-                .map((ticket) => (
+              {/* Pagination Controls */}
+              {queue.length > QUEUE_PER_PAGE && (
+                <div className="p-4 border-t border-zinc-100 flex items-center justify-between shrink-0 bg-white">
                   <button
-                    key={ticket.id}
-                    onClick={() => handleSelectTicket(ticket)}
-                    className={`w-full text-left p-4 hover:bg-zinc-50 transition flex flex-col gap-1.5 border-b border-zinc-100 ${
-                      selectedTicket?.id === ticket.id ? "bg-brand-primary-light/20" : ""
-                    }`}
+                    disabled={queuePage === 1}
+                    onClick={() => setQueuePage((p) => p - 1)}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-zinc-200 hover:bg-zinc-50 disabled:opacity-40"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono text-brand-muted">{ticket.ticket_id}</span>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${
-                          ticket.status === "Pending Agent"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-green-100 text-green-700"
-                        }`}
-                      >
-                        {ticket.status}
-                      </span>
-                    </div>
-                    <p className="text-sm font-semibold text-brand-text font-display">{ticket.student_id}</p>
-                    <p className="text-[10px] text-brand-muted">
-                      Created {new Date(ticket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                    Previous
                   </button>
-                ))}
-              {queue.length === 0 && (
-                <div className="text-center py-20 text-sm text-brand-muted">
-                  No pending tickets in the queue. Nice!
+                  <span className="text-xs text-brand-muted font-medium">
+                    Page {queuePage} of {Math.ceil(queue.length / QUEUE_PER_PAGE)}
+                  </span>
+                  <button
+                    disabled={queuePage * QUEUE_PER_PAGE >= queue.length}
+                    onClick={() => setQueuePage((p) => p + 1)}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-zinc-200 hover:bg-zinc-50 disabled:opacity-40"
+                  >
+                    Next
+                  </button>
                 </div>
               )}
             </div>
+          </section>
 
-            {/* Pagination Controls */}
-            {queue.length > QUEUE_PER_PAGE && (
-              <div className="p-4 border-t border-zinc-100 flex items-center justify-between shrink-0 bg-white">
-                <button
-                  disabled={queuePage === 1}
-                  onClick={() => setQueuePage((p) => p - 1)}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-zinc-200 hover:bg-zinc-50 disabled:opacity-40"
-                >
-                  Previous
-                </button>
-                <span className="text-xs text-brand-muted font-medium">
-                  Page {queuePage} of {Math.ceil(queue.length / QUEUE_PER_PAGE)}
-                </span>
-                <button
-                  disabled={queuePage * QUEUE_PER_PAGE >= queue.length}
-                  onClick={() => setQueuePage((p) => p + 1)}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-zinc-200 hover:bg-zinc-50 disabled:opacity-40"
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Right pane: Ticket details & work area */}
-        <section className="flex-1 bg-zinc-50 flex flex-col overflow-hidden h-full">
-          {selectedTicket ? (
-            <div className="flex-1 flex flex-col overflow-hidden h-full">
-              {/* Detail Header */}
-              <div className="p-6 border-b border-zinc-200 bg-white flex justify-between items-center shrink-0">
-                <div>
-                  <h3 className="text-lg font-bold text-brand-text font-display">{selectedTicket.student_id}</h3>
-                  <p className="text-xs text-brand-muted mt-0.5">Ticket ID: {selectedTicket.ticket_id}</p>
+          {/* Right pane: Ticket details & work area */}
+          <section className="flex-1 bg-zinc-50 flex flex-col overflow-hidden h-full">
+            {selectedTicket ? (
+              <div className="flex-1 flex flex-col overflow-hidden h-full">
+                {/* Detail Header */}
+                <div className="p-6 border-b border-zinc-200 bg-white flex justify-between items-center shrink-0">
+                  <div>
+                    <h3 className="text-lg font-bold text-brand-text font-display">{selectedTicket.student_id}</h3>
+                    <p className="text-xs text-brand-muted mt-0.5">Ticket ID: {selectedTicket.ticket_id}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-brand-muted">Status:</span>
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700 uppercase">
+                      {selectedTicket.status}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-brand-muted">Status:</span>
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700 uppercase">
-                    {selectedTicket.status}
-                  </span>
-                </div>
-              </div>
 
-              {/* Handoff Packet Banner */}
-              {handoff && (
-                <div className="m-6 mb-0 p-5 rounded-xl border border-teal-100 bg-teal-50/30 flex gap-4 shrink-0">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-primary text-white shrink-0 shadow-sm">
-                    <Brain className="w-5 h-5" />
-                  </span>
-                  <div className="space-y-2.5 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-brand-primary font-display uppercase tracking-wide text-xs">
-                        Archon AI Handoff Diagnosis
-                      </span>
-                      <span className="h-1.5 w-1.5 rounded-full bg-teal-400"></span>
-                      <span className="text-brand-muted text-xs font-medium">Context Preserved</span>
-                    </div>
-                    <p className="text-brand-text leading-relaxed font-sans">{handoff.handoff_packet.diagnosis}</p>
-                    
-                    <div className="flex flex-wrap gap-4 text-xs font-semibold text-brand-muted pt-1">
-                      <div>
-                        <span className="text-brand-text font-bold">Systems: </span>
-                        {handoff.handoff_packet.systems_queried.join(", ")}
+                {/* Handoff Packet Banner */}
+                {handoff && (
+                  <div className="m-6 mb-0 p-5 rounded-xl border border-teal-100 bg-teal-50/30 flex gap-4 shrink-0">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-primary text-white shrink-0 shadow-sm">
+                      <Brain className="w-5 h-5" />
+                    </span>
+                    <div className="space-y-2.5 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-brand-primary font-display uppercase tracking-wide text-xs">
+                          Archon AI Handoff Diagnosis
+                        </span>
+                        <span className="h-1.5 w-1.5 rounded-full bg-teal-400"></span>
+                        <span className="text-brand-muted text-xs font-medium">Context Preserved</span>
                       </div>
-                      <div>
-                        <span className="text-brand-text font-bold">Actions: </span>
-                        {handoff.handoff_packet.actions_taken.join(", ")}
+                      <p className="text-brand-text leading-relaxed font-sans">{handoff.handoff_packet.diagnosis}</p>
+                      
+                      <div className="flex flex-wrap gap-4 text-xs font-semibold text-brand-muted pt-1">
+                        <div>
+                          <span className="text-brand-text font-bold">Systems: </span>
+                          {handoff.handoff_packet.systems_queried.join(", ")}
+                        </div>
+                        <div>
+                          <span className="text-brand-text font-bold">Actions: </span>
+                          {handoff.handoff_packet.actions_taken.join(", ")}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Main Workspace Body */}
-              <div className="flex-1 flex overflow-hidden p-6 gap-6 min-h-0">
-                {/* Chat Transcript Panel */}
-                <div className="flex-1 flex flex-col rounded-xl border border-zinc-200 bg-white min-w-0 h-full">
-                  <div className="p-4 border-b border-zinc-100 shrink-0">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-brand-muted font-sans">
-                      Conversation History
-                    </h4>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-50/50">
-                    {ticketLoading ? (
-                      <div className="flex h-full items-center justify-center">
-                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-primary border-t-transparent"></div>
-                      </div>
-                    ) : (
-                      messages.map((msg) => (
-                        <div
-                          key={msg.id}
-                          className={`flex flex-col max-w-[80%] ${
-                            msg.role === "user"
-                              ? "ml-auto items-end"
-                              : "mr-auto items-start"
-                          }`}
-                        >
-                          <span className="text-[10px] text-brand-muted mb-1 px-1 font-semibold">
-                            {msg.role === "user" ? "Student" : "Assistant"} ·{" "}
-                            {new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
+                {/* Main Workspace Body */}
+                <div className="flex-1 flex overflow-hidden p-6 gap-6 min-h-0">
+                  {/* Chat Transcript Panel */}
+                  <div className="flex-1 flex flex-col rounded-xl border border-zinc-200 bg-white min-w-0 h-full">
+                    <div className="p-4 border-b border-zinc-100 shrink-0">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-brand-muted font-sans">
+                        Conversation History
+                      </h4>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-50/50">
+                      {ticketLoading ? (
+                        <div className="flex h-full items-center justify-center">
+                          <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-primary border-t-transparent"></div>
+                        </div>
+                      ) : (
+                        messages.map((msg) => (
                           <div
-                            className={`rounded-[20px] px-4 py-2 text-sm shadow-sm border ${
+                            key={msg.id}
+                            className={`flex flex-col max-w-[80%] ${
                               msg.role === "user"
-                                ? "bg-white border-zinc-100 text-brand-text rounded-br-[4px]"
-                                : "bg-brand-primary-light/40 border-teal-50 text-brand-text rounded-bl-[4px]"
+                                ? "ml-auto items-end"
+                                : "mr-auto items-start"
                             }`}
                           >
-                            <MarkdownText text={parseMessageContent(msg.content_scrubbed)} />
+                            <span className="text-[10px] text-brand-muted mb-1 px-1 font-semibold">
+                              {msg.role === "user" ? "Student" : "Assistant"} ·{" "}
+                              {new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            <div
+                              className={`rounded-[20px] px-4 py-2 text-sm shadow-sm border ${
+                                msg.role === "user"
+                                  ? "bg-white border-zinc-100 text-brand-text rounded-br-[4px]"
+                                  : "bg-brand-primary-light/40 border-teal-50 text-brand-text rounded-bl-[4px]"
+                              }`}
+                            >
+                              <MarkdownText text={parseMessageContent(msg.content_scrubbed)} />
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Agent Resolution Action Desk */}
+                  <div className="w-80 rounded-xl border border-zinc-200 bg-white p-5 flex flex-col justify-between shrink-0 h-full">
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-brand-muted font-sans">
+                        Resolution Action Desk
+                      </h4>
+                      
+                      {handoff ? (
+                        <div className="space-y-3">
+                          <div className="rounded-lg bg-zinc-50 p-3.5 border border-zinc-100">
+                            <p className="text-[10px] font-bold text-brand-muted uppercase mb-1">AI Recommendation</p>
+                            <p className="text-xs text-brand-text leading-relaxed font-sans">
+                              {handoff.handoff_packet.recommended_resolution}
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1.5">
+                              Resolution Action Reply
+                            </label>
+                            <textarea
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              placeholder="Draft reply message to student..."
+                              className="w-full rounded-xl border border-zinc-200 p-3 text-xs bg-zinc-50/50 focus:border-brand-primary focus:outline-none min-h-[100px] font-sans"
+                            />
                           </div>
                         </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* Agent Resolution Action Desk */}
-                <div className="w-80 rounded-xl border border-zinc-200 bg-white p-5 flex flex-col justify-between shrink-0 h-full">
-                  <div className="space-y-4">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-brand-muted font-sans">
-                      Resolution Action Desk
-                    </h4>
-                    
-                    {handoff ? (
-                      <div className="space-y-3">
-                        <div className="rounded-lg bg-zinc-50 p-3.5 border border-zinc-100">
-                          <p className="text-[10px] font-bold text-brand-muted uppercase mb-1">AI Recommendation</p>
-                          <p className="text-xs text-brand-text leading-relaxed font-sans">
-                            {handoff.handoff_packet.recommended_resolution}
+                      ) : (
+                        <div className="rounded-lg bg-zinc-50 p-4 text-center border border-zinc-100">
+                          <p className="text-xs text-brand-muted leading-relaxed font-sans">
+                            No handoff summary needed. Provide direct staff reply below.
                           </p>
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1.5">
-                            Resolution Action Reply
-                          </label>
                           <textarea
                             value={replyText}
                             onChange={(e) => setReplyText(e.target.value)}
                             placeholder="Draft reply message to student..."
-                            className="w-full rounded-xl border border-zinc-200 p-3 text-xs bg-zinc-50/50 focus:border-brand-primary focus:outline-none min-h-[100px] font-sans"
+                            className="w-full rounded-xl border border-zinc-200 p-3 text-xs bg-white focus:border-brand-primary focus:outline-none min-h-[120px] font-sans mt-3"
                           />
                         </div>
-                      </div>
-                    ) : (
-                      <div className="rounded-lg bg-zinc-50 p-4 text-center border border-zinc-100">
-                        <p className="text-xs text-brand-muted leading-relaxed font-sans">
-                          No handoff summary needed. Provide direct staff reply below.
-                        </p>
-                        <textarea
-                          value={replyText}
-                          onChange={(e) => setReplyText(e.target.value)}
-                          placeholder="Draft reply message to student..."
-                          className="w-full rounded-xl border border-zinc-200 p-3 text-xs bg-white focus:border-brand-primary focus:outline-none min-h-[120px] font-sans mt-3"
-                        />
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
 
-                  <div className="space-y-2 pt-4 border-t border-zinc-100 shrink-0">
-                    <button
-                      disabled={resolving || !replyText.trim()}
-                      onClick={() => handleResolveTicket("approve")}
-                      className="w-full flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-primary text-white font-semibold hover:bg-teal-700 disabled:opacity-50 text-sm shadow-sm transition"
-                    >
-                      <Check className="w-4 h-4" />
-                      {resolving ? "Resolving..." : "Approve & Lift Hold"}
-                    </button>
-                    <button
-                      disabled={resolving || !replyText.trim()}
-                      onClick={() => handleResolveTicket("reject")}
-                      className="w-full flex h-11 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white text-brand-text font-semibold hover:bg-zinc-50 disabled:opacity-50 text-sm transition"
-                    >
-                      Send Message Only
-                    </button>
+                    <div className="space-y-2 pt-4 border-t border-zinc-100 shrink-0">
+                      <button
+                        disabled={resolving || !replyText.trim()}
+                        onClick={() => handleResolveTicket("approve")}
+                        className="w-full flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-primary text-white font-semibold hover:bg-teal-700 disabled:opacity-50 text-sm shadow-sm transition"
+                      >
+                        <Check className="w-4 h-4" />
+                        {resolving ? "Resolving..." : "Approve & Lift Hold"}
+                      </button>
+                      <button
+                        disabled={resolving || !replyText.trim()}
+                        onClick={() => handleResolveTicket("reject")}
+                        className="w-full flex h-11 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white text-brand-text font-semibold hover:bg-zinc-50 disabled:opacity-50 text-sm transition"
+                      >
+                        Send Message Only
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex h-full items-center justify-center text-center">
-              <div>
-                <Inbox className="w-12 h-12 text-zinc-300 mx-auto mb-3" />
-                <h3 className="text-sm font-bold text-brand-text font-display">No Ticket Selected</h3>
-                <p className="text-xs text-brand-muted mt-1 font-sans">
-                  Select a student's ticket from the active queue list to get started.
-                </p>
+            ) : (
+              <div className="flex h-full items-center justify-center text-center">
+                <div>
+                  <Inbox className="w-12 h-12 text-zinc-300 mx-auto mb-3" />
+                  <h3 className="text-sm font-bold text-brand-text font-display">No Ticket Selected</h3>
+                  <p className="text-xs text-brand-muted mt-1 font-sans">
+                    Select a student's ticket from the active queue list to get started.
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
-        </section>
-      </main>
-    </div>
+            )}
+          </section>
+        </>
+      )}
+    </main>
   );
 }

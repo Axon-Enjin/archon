@@ -238,17 +238,7 @@ export default function AdminNotificationOpsPage() {
   };
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin");
-      return;
-    }
-
-    if (session?.user && session.user.role !== "Admin") {
-      router.push("/auth/signin");
-      return;
-    }
-
-    if (status === "authenticated" && session?.user?.role === "Admin") {
+    if (session?.user?.role === "Admin") {
       const initialTimer = setTimeout(() => {
         void fetchJobs();
       }, 0);
@@ -261,7 +251,7 @@ export default function AdminNotificationOpsPage() {
         clearTimeout(initialTimer);
       };
     }
-  }, [session, status, router]);
+  }, [session]);
 
   const filteredJobs = useMemo(() => {
     return jobs.filter((job) => {
@@ -279,343 +269,298 @@ export default function AdminNotificationOpsPage() {
     return summary;
   }, [jobs]);
 
-  if (status === "loading" || loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-brand-surface">
-        <div className="text-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-sm text-brand-muted">Loading Notification Ops...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex h-screen overflow-hidden bg-brand-surface font-sans">
-      <aside className="w-64 h-full border-r border-zinc-200 bg-white p-6 hidden md:flex flex-col justify-between shrink-0">
-        <div className="space-y-8">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary text-white font-extrabold text-lg font-display">
-              A
-            </span>
-            <span className="text-lg font-bold tracking-tight text-brand-text font-display">
-              {session?.user?.role === "Admin" ? "Archon Admin" : "Archon Agent"}
-            </span>
-          </div>
-
-          <nav className="space-y-1">
-            <Link
-              href="/admin/queue"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 font-display"
-            >
-              <Inbox className="w-4 h-4" /> Active Queue
-            </Link>
-            <Link
-              href="/admin"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-zinc-50 font-display"
-            >
-              <BarChart3 className="w-4 h-4" /> Analytics
-            </Link>
-            <Link
-              href="/admin/notifications"
-              className="flex items-center gap-3 rounded-lg bg-brand-primary-light/50 px-3 py-2 text-sm font-semibold text-brand-primary font-display"
-            >
-              <Bell className="w-4 h-4" /> Notification Ops
-            </Link>
-          </nav>
-        </div>
-
+    <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto overflow-y-auto space-y-6">
+      <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-zinc-200 pb-6 gap-4">
         <div>
-          <button
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-error hover:bg-red-50"
-          >
-            <LogOut className="w-4 h-4" /> Sign Out
-          </button>
+          <h1 className="text-3xl font-bold font-display text-brand-text">Notification Ops</h1>
+          <p className="text-brand-muted text-sm mt-1">
+            {`Administrator: ${session?.user?.name || "Admin"} · Tenant: ${session?.user?.institution_id || "N/A"}`}
+          </p>
         </div>
-      </aside>
+        <button
+          onClick={() => void fetchJobs(true)}
+          disabled={refreshing || loading}
+          className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-brand-text hover:bg-zinc-50 disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing || loading ? "animate-spin" : ""}`} />
+          Refresh
+        </button>
+      </section>
 
-      <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto overflow-y-auto space-y-6">
-        <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-zinc-200 pb-6 gap-4">
-          <div>
-            <h1 className="text-3xl font-bold font-display text-brand-text">Notification Ops</h1>
-            <p className="text-brand-muted text-sm mt-1">
-              {`Administrator: ${session?.user?.name || "Admin"} · Tenant: ${session?.user?.institution_id || "N/A"}`}
-            </p>
+      {loading ? (
+        <div className="flex h-64 items-center justify-center">
+          <div className="text-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent mx-auto"></div>
+            <p className="mt-3 text-xs text-brand-muted font-sans font-semibold">Loading notification jobs...</p>
           </div>
-          <button
-            onClick={() => void fetchJobs(true)}
-            disabled={refreshing}
-            className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-brand-text hover:bg-zinc-50 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-            Refresh
-          </button>
-        </section>
+        </div>
+      ) : (
+        <>
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+          {successMessage && (
+            <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              {successMessage}
+            </div>
+          )}
 
-        {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-        {successMessage && (
-          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            {successMessage}
-          </div>
-        )}
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl bg-white border border-zinc-200 p-4">
+              <p className="text-xs text-brand-muted">Pending</p>
+              <p className="text-2xl font-bold text-amber-600">{counts.pending}</p>
+            </div>
+            <div className="rounded-xl bg-white border border-zinc-200 p-4">
+              <p className="text-xs text-brand-muted">Processing</p>
+              <p className="text-2xl font-bold text-blue-600">{counts.processing}</p>
+            </div>
+            <div className="rounded-xl bg-white border border-zinc-200 p-4">
+              <p className="text-xs text-brand-muted">Sent</p>
+              <p className="text-2xl font-bold text-green-600">{counts.sent}</p>
+            </div>
+            <div className="rounded-xl bg-white border border-zinc-200 p-4">
+              <p className="text-xs text-brand-muted">Failed</p>
+              <p className="text-2xl font-bold text-red-600">{counts.failed}</p>
+            </div>
+          </section>
 
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl bg-white border border-zinc-200 p-4">
-            <p className="text-xs text-brand-muted">Pending</p>
-            <p className="text-2xl font-bold text-amber-600">{counts.pending}</p>
-          </div>
-          <div className="rounded-xl bg-white border border-zinc-200 p-4">
-            <p className="text-xs text-brand-muted">Processing</p>
-            <p className="text-2xl font-bold text-blue-600">{counts.processing}</p>
-          </div>
-          <div className="rounded-xl bg-white border border-zinc-200 p-4">
-            <p className="text-xs text-brand-muted">Sent</p>
-            <p className="text-2xl font-bold text-green-600">{counts.sent}</p>
-          </div>
-          <div className="rounded-xl bg-white border border-zinc-200 p-4">
-            <p className="text-xs text-brand-muted">Failed</p>
-            <p className="text-2xl font-bold text-red-600">{counts.failed}</p>
-          </div>
-        </section>
-
-        <section className="rounded-xl bg-white border border-zinc-200 p-4 md:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-brand-text font-display">Scheduled Reminder Generator</h2>
-            <p className="text-sm text-brand-muted">
-              Creates daily pending Teams/Outlook reminder jobs from active holds and upcoming deadlines.
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <button
-              onClick={() => void handleRunReminders()}
-              disabled={runningReminders}
-              className="rounded-lg bg-brand-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
-            >
-              {runningReminders ? "Generating..." : "Run Reminder Generation"}
-            </button>
-            <button
-              onClick={() => void handleSyncPowerAutomateOutbox()}
-              disabled={syncingOutbox}
-              className="rounded-lg border border-brand-primary text-brand-primary px-4 py-2 text-sm font-semibold hover:bg-brand-primary-light/40 disabled:opacity-50"
-            >
-              {syncingOutbox ? "Syncing Outbox..." : "Sync Pending to PA Outbox"}
-            </button>
-          </div>
-        </section>
-
-        <section className="rounded-xl bg-white border border-zinc-200 p-4 md:p-6 flex flex-col gap-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <section className="rounded-xl bg-white border border-zinc-200 p-4 md:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-brand-text font-display">Power Automate Diagnostics</h2>
+              <h2 className="text-lg font-bold text-brand-text font-display">Scheduled Reminder Generator</h2>
               <p className="text-sm text-brand-muted">
-                Probes Graph token claims, site access, list access, and list columns access.
+                Creates daily pending Teams/Outlook reminder jobs from active holds and upcoming deadlines.
               </p>
             </div>
-            <button
-              onClick={() => void handleRunPowerAutomateDiagnostics()}
-              disabled={runningDiagnostics}
-              className="rounded-lg border border-zinc-300 text-brand-text px-4 py-2 text-sm font-semibold hover:bg-zinc-50 disabled:opacity-50"
-            >
-              {runningDiagnostics ? "Running Diagnostics..." : "Run PA Diagnostics"}
-            </button>
-          </div>
-          {diagnosticsOutput && (
-            <pre className="rounded-lg bg-zinc-950 text-zinc-100 text-xs p-4 overflow-x-auto">
-              {diagnosticsOutput}
-            </pre>
-          )}
-        </section>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={() => void handleRunReminders()}
+                disabled={runningReminders}
+                className="rounded-lg bg-brand-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+              >
+                {runningReminders ? "Generating..." : "Run Reminder Generation"}
+              </button>
+              <button
+                onClick={() => void handleSyncPowerAutomateOutbox()}
+                disabled={syncingOutbox}
+                className="rounded-lg border border-brand-primary text-brand-primary px-4 py-2 text-sm font-semibold hover:bg-brand-primary-light/40 disabled:opacity-50"
+              >
+                {syncingOutbox ? "Syncing Outbox..." : "Sync Pending to PA Outbox"}
+              </button>
+            </div>
+          </section>
 
-        <section className="rounded-xl bg-white border border-zinc-200 p-4 flex flex-col sm:flex-row gap-3">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-          >
-            <option value="all">All statuses</option>
-            <option value="pending">Pending</option>
-            <option value="processing">Processing</option>
-            <option value="sent">Sent</option>
-            <option value="failed">Failed</option>
-          </select>
+          <section className="rounded-xl bg-white border border-zinc-200 p-4 md:p-6 flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-brand-text font-display">Power Automate Diagnostics</h2>
+                <p className="text-sm text-brand-muted">
+                  Probes Graph token claims, site access, list access, and list columns access.
+                </p>
+              </div>
+              <button
+                onClick={() => void handleRunPowerAutomateDiagnostics()}
+                disabled={runningDiagnostics}
+                className="rounded-lg border border-zinc-300 text-brand-text px-4 py-2 text-sm font-semibold hover:bg-zinc-50 disabled:opacity-50"
+              >
+                {runningDiagnostics ? "Running Diagnostics..." : "Run PA Diagnostics"}
+              </button>
+            </div>
+            {diagnosticsOutput && (
+              <pre className="rounded-lg bg-zinc-950 text-zinc-100 text-xs p-4 overflow-x-auto">
+                {diagnosticsOutput}
+              </pre>
+            )}
+          </section>
 
-          <select
-            value={channelFilter}
-            onChange={(e) => setChannelFilter(e.target.value as ChannelFilter)}
-            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-          >
-            <option value="all">All channels</option>
-            <option value="teams">Teams</option>
-            <option value="outlook">Outlook</option>
-          </select>
-        </section>
-
-        <section className="rounded-xl bg-white border border-zinc-200 p-4 md:p-6 space-y-4">
-          <div>
-            <h2 className="text-lg font-bold text-brand-text font-display">Send Test Notification</h2>
-            <p className="text-sm text-brand-muted">Queue a test job to validate your Power Automate flow.</p>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-3">
+          <section className="rounded-xl bg-white border border-zinc-200 p-4 flex flex-col sm:flex-row gap-3">
             <select
-              value={testChannel}
-              onChange={(e) => setTestChannel(e.target.value as NotificationChannel)}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
               className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
             >
-              <option value="teams">Teams</option>
-              <option value="outlook">Outlook Email</option>
+              <option value="all">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="processing">Processing</option>
+              <option value="sent">Sent</option>
+              <option value="failed">Failed</option>
             </select>
-            <input
-              value={recipientEntraOid}
-              onChange={(e) => setRecipientEntraOid(e.target.value)}
-              placeholder="Recipient Entra OID (optional)"
-              className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-            />
-            <input
-              value={ticketId}
-              onChange={(e) => setTicketId(e.target.value)}
-              placeholder="Ticket ID (optional)"
-              className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-            />
-          </div>
 
-          {testChannel === "teams" ? (
-            <div className="grid gap-3 md:grid-cols-2">
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Title"
-                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-              />
-              <input
-                value={actionUrl}
-                onChange={(e) => setActionUrl(e.target.value)}
-                placeholder="Action URL (optional)"
-                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-              />
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Message"
-                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm md:col-span-2 min-h-24"
-              />
-            </div>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              <input
-                value={recipientEmail}
-                onChange={(e) => setRecipientEmail(e.target.value)}
-                placeholder="Recipient Email (optional)"
-                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-              />
-              <input
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="Subject"
-                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-              />
-              <textarea
-                value={textBody}
-                onChange={(e) => setTextBody(e.target.value)}
-                placeholder="Email Body"
-                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm md:col-span-2 min-h-24"
-              />
-            </div>
-          )}
-
-          <div>
-            <button
-              onClick={() => void handleSendTest()}
-              disabled={sendingTest}
-              className="rounded-lg bg-brand-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+            <select
+              value={channelFilter}
+              onChange={(e) => setChannelFilter(e.target.value as ChannelFilter)}
+              className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
             >
-              {sendingTest ? "Queueing..." : "Queue Test Notification"}
-            </button>
-          </div>
-        </section>
+              <option value="all">All channels</option>
+              <option value="teams">Teams</option>
+              <option value="outlook">Outlook</option>
+            </select>
+          </section>
 
-        <section className="rounded-xl bg-white border border-zinc-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-zinc-200">
-              <thead className="bg-zinc-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase">Channel</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase">Recipient</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase">Message</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase">Attempts</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase">Updated</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100">
-                {filteredJobs.length === 0 && (
+          <section className="rounded-xl bg-white border border-zinc-200 p-4 md:p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-bold text-brand-text font-display">Send Test Notification</h2>
+              <p className="text-sm text-brand-muted">Queue a test job to validate your Power Automate flow.</p>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <select
+                value={testChannel}
+                onChange={(e) => setTestChannel(e.target.value as NotificationChannel)}
+                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              >
+                <option value="teams">Teams</option>
+                <option value="outlook">Outlook Email</option>
+              </select>
+              <input
+                value={recipientEntraOid}
+                onChange={(e) => setRecipientEntraOid(e.target.value)}
+                placeholder="Recipient Entra OID (optional)"
+                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              />
+              <input
+                value={ticketId}
+                onChange={(e) => setTicketId(e.target.value)}
+                placeholder="Ticket ID (optional)"
+                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              />
+            </div>
+
+            {testChannel === "teams" ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Title"
+                  className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                />
+                <input
+                  value={actionUrl}
+                  onChange={(e) => setActionUrl(e.target.value)}
+                  placeholder="Action URL (optional)"
+                  className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                />
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Message"
+                  className="rounded-lg border border-zinc-300 px-3 py-2 text-sm md:col-span-2 min-h-24 font-sans"
+                />
+              </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                <input
+                  value={recipientEmail}
+                  onChange={(e) => setRecipientEmail(e.target.value)}
+                  placeholder="Recipient Email (optional)"
+                  className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                />
+                <input
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="Subject"
+                  className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                />
+                <textarea
+                  value={textBody}
+                  onChange={(e) => setTextBody(e.target.value)}
+                  placeholder="Email Body"
+                  className="rounded-lg border border-zinc-300 px-3 py-2 text-sm md:col-span-2 min-h-24 font-sans"
+                />
+              </div>
+            )}
+
+            <div>
+              <button
+                onClick={() => void handleSendTest()}
+                disabled={sendingTest}
+                className="rounded-lg bg-brand-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50 font-display"
+              >
+                {sendingTest ? "Queueing..." : "Queue Test Notification"}
+              </button>
+            </div>
+          </section>
+
+          <section className="rounded-xl bg-white border border-zinc-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-zinc-200">
+                <thead className="bg-zinc-50">
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-brand-muted">
-                      No jobs found for the selected filters.
-                    </td>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase">Channel</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase">Recipient</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase">Message</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase">Attempts</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase">Updated</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase">Actions</th>
                   </tr>
-                )}
-                {filteredJobs.map((job) => (
-                  <tr key={job.id} className="hover:bg-zinc-50">
-                    <td className="px-4 py-3 text-sm font-medium text-brand-text uppercase">{job.channel}</td>
-                    <td className="px-4 py-3 text-sm text-brand-text">
-                      <p>{job.recipient_email || "N/A"}</p>
-                      <p className="text-xs text-brand-muted">{job.recipient_entra_oid}</p>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-brand-text">
-                      <p className="font-medium">{job.payload.subject || job.payload.title || "Notification"}</p>
-                      {job.payload.ticket_id && (
-                        <p className="text-xs text-brand-muted">Ticket: {job.payload.ticket_id}</p>
-                      )}
-                      {job.error_message && (
-                        <p className="text-xs text-red-600 mt-1">Error: {job.error_message}</p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          job.status === "sent"
-                            ? "bg-green-100 text-green-700"
-                            : job.status === "failed"
-                              ? "bg-red-100 text-red-700"
-                              : job.status === "processing"
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-amber-100 text-amber-700"
-                        }`}
-                      >
-                        {job.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-brand-text">{job.attempts}</td>
-                    <td className="px-4 py-3 text-sm text-brand-text">
-                      {new Date(job.updated_at || job.created_at).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {job.status === "failed" ? (
-                        <button
-                          onClick={() => void handleRetry(job)}
-                          disabled={Boolean(retryingIds[job.id])}
-                          className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-brand-text hover:bg-zinc-100 disabled:opacity-50"
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {filteredJobs.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-sm text-brand-muted">
+                        No jobs found for the selected filters.
+                      </td>
+                    </tr>
+                  )}
+                  {filteredJobs.map((job) => (
+                    <tr key={job.id} className="hover:bg-zinc-50">
+                      <td className="px-4 py-3 text-sm font-medium text-brand-text uppercase">{job.channel}</td>
+                      <td className="px-4 py-3 text-sm text-brand-text">
+                        <p>{job.recipient_email || "N/A"}</p>
+                        <p className="text-xs text-brand-muted">{job.recipient_entra_oid}</p>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-brand-text">
+                        <p className="font-medium">{job.payload.subject || job.payload.title || "Notification"}</p>
+                        {job.payload.ticket_id && (
+                          <p className="text-xs text-brand-muted">Ticket: {job.payload.ticket_id}</p>
+                        )}
+                        {job.error_message && (
+                          <p className="text-xs text-red-600 mt-1">Error: {job.error_message}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            job.status === "sent"
+                              ? "bg-green-100 text-green-700"
+                              : job.status === "failed"
+                                ? "bg-red-100 text-red-700"
+                                : job.status === "processing"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : "bg-amber-100 text-amber-700"
+                          }`}
                         >
-                          {retryingIds[job.id] ? "Retrying..." : "Retry"}
-                        </button>
-                      ) : (
-                        <span className="text-xs text-brand-muted">-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </main>
-    </div>
+                          {job.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-brand-text">{job.attempts}</td>
+                      <td className="px-4 py-3 text-sm text-brand-text">
+                        {new Date(job.updated_at || job.created_at).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {job.status === "failed" ? (
+                          <button
+                            onClick={() => void handleRetry(job)}
+                            disabled={Boolean(retryingIds[job.id])}
+                            className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-brand-text hover:bg-zinc-100 disabled:opacity-50"
+                          >
+                            {retryingIds[job.id] ? "Retrying..." : "Retry"}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-brand-muted">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      )}
+    </main>
   );
 }
