@@ -595,6 +595,25 @@ class CosmosDBService {
     return resource as HandoffDoc;
   }
 
+  async upsertHandoff(handoff: HandoffDoc): Promise<HandoffDoc> {
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      db.handoffs = db.handoffs.filter(
+        (h) => !(h.id === handoff.id && h.institution_id === handoff.institution_id)
+      );
+      db.handoffs.push(handoff);
+      this.writeMockDB(db);
+      return handoff;
+    }
+
+    const container = await this.getContainer("handoffs");
+    const { resource } = await container.items.upsert<HandoffDoc>({
+      ...handoff,
+      ttl: 90 * 24 * 60 * 60,
+    });
+    return resource || handoff;
+  }
+
   async getHandoffByTicketId(ticketId: string, institutionId: string): Promise<HandoffDoc | null> {
     if (this.isMockMode) {
       const db = this.readMockDB();

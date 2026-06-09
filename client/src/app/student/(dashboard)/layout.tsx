@@ -4,7 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, MessageCircle, FileText, LogOut, Bell, ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutDashboard, MessageCircle, FileText, LogOut, Bell, ChevronLeft, ChevronRight, Settings } from "lucide-react";
 
 export default function DashboardLayout({
   children,
@@ -57,6 +57,7 @@ export default function DashboardLayout({
   const isDashboardActive = pathname === "/student";
   const isAlertsActive = pathname === "/student/alerts";
   const isAppealActive = pathname === "/student/appeal";
+  const isSettingsActive = pathname === "/student/settings";
 
   return (
     <div className="flex min-h-screen bg-brand-surface font-sans">
@@ -154,6 +155,20 @@ export default function DashboardLayout({
             >
               <FileText className="w-4 h-4 shrink-0" />
               {!isCollapsed && <span>SAP Appeal Wizard</span>}
+            </Link>
+            <Link
+              href="/student/settings"
+              title={isCollapsed ? "Settings" : undefined}
+              className={`flex items-center rounded-lg px-3 py-2 text-sm transition-all duration-200 ${
+                isCollapsed ? "justify-center" : "gap-3"
+              } ${
+                isSettingsActive
+                  ? "bg-brand-primary-light/50 font-semibold text-brand-primary"
+                  : "font-medium text-brand-text hover:bg-zinc-50"
+              }`}
+            >
+              <Settings className="w-4 h-4 shrink-0" />
+              {!isCollapsed && <span>Settings</span>}
             </Link>
           </nav>
         </div>

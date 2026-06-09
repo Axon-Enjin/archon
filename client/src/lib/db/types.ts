@@ -42,6 +42,8 @@ export interface HandoffDoc extends BaseCosmosDocument {
     systems_queried: string[];
     actions_taken: string[];
     recommended_resolution: string;
+    resolution_summary?: string;
+    wrap_up_status?: "pending" | "completed";
   };
   agent_id?: string;
   resolved_at?: string;

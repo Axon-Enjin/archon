@@ -34,8 +34,11 @@ interface HandoffPacket {
     systems_queried: string[];
     actions_taken: string[];
     recommended_resolution: string;
+    resolution_summary?: string;
+    wrap_up_status?: "pending" | "completed";
   };
-  agent_id: string;
+  agent_id?: string;
+  resolved_at?: string;
 }
 
 export default function AgentDashboard() {
@@ -317,6 +320,17 @@ export default function AgentDashboard() {
                         <div className="flex items-center gap-2 text-brand-primary font-bold font-display">
                           <Brain className="w-5 h-5 text-brand-primary shrink-0" />
                           <h2>AI-Generated Handoff Packet (PRD-F4)</h2>
+                          {handoff.handoff_packet.wrap_up_status && (
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                handoff.handoff_packet.wrap_up_status === "completed"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-amber-100 text-amber-700"
+                              }`}
+                            >
+                              Wrap-up {handoff.handoff_packet.wrap_up_status}
+                            </span>
+                          )}
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2 text-xs">
                           <div>
@@ -338,6 +352,20 @@ export default function AgentDashboard() {
                             {handoff.handoff_packet.diagnosis}
                           </p>
                         </div>
+                        {(handoff.handoff_packet.resolution_summary || handoff.resolved_at || handoff.agent_id) && (
+                          <div className="rounded-lg bg-white border border-zinc-200 p-3 text-xs space-y-1">
+                            <p className="font-bold uppercase tracking-wide text-brand-muted text-[10px]">Wrap-up Details</p>
+                            {handoff.handoff_packet.resolution_summary && (
+                              <p className="text-brand-text">{handoff.handoff_packet.resolution_summary}</p>
+                            )}
+                            {handoff.agent_id && (
+                              <p className="text-brand-muted">Resolved by: {handoff.agent_id}</p>
+                            )}
+                            {handoff.resolved_at && (
+                              <p className="text-brand-muted">Resolved at: {new Date(handoff.resolved_at).toLocaleString()}</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
 

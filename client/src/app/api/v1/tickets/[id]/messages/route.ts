@@ -7,7 +7,7 @@ import { enqueueOutlookNotification, enqueueTeamsNotification } from "@/lib/noti
 import { generateFoundryReply, isFoundryConfigured } from "@/lib/azure-foundry";
 import { SYSTEM_PROMPT } from "@/lib/ai-prompt-templates";
 import { getUniversityAdapter } from "@/lib/adapters";
-import type { AdapterContext, FinancialStatus } from "@/lib/adapters/types";
+import type { AdapterContext, FinancialStatus, StatusAggregate } from "@/lib/adapters/types";
 
 type UserLanguage = "en" | "fil" | "ceb";
 
@@ -167,6 +167,9 @@ export async function POST(
 
       const conversation = await cosmosDbService.getConversation(conversationId, authUser.institution_id);
       if (conversation) {
+        const resolvedAt = new Date().toISOString();
+        const wrapUpSummary = `Resolved by ${authUser.name || "Support Staff"}: ${String(content).slice(0, 280)}`;
+
         const recipientEmail =
           conversation.student_email ||
           (await cosmosDbService.getStudentEmail(conversation.student_id, authUser.institution_id));
@@ -176,6 +179,55 @@ export async function POST(
           "Resolved",
           authUser.entra_oid
         );
+        await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
+
+        const existingHandoff = await cosmosDbService.getHandoffByTicketId(conversationId, authUser.institution_id);
+        if (existingHandoff) {
+          await cosmosDbService.upsertHandoff({
+            ...existingHandoff,
+            handoff_packet: {
+              ...existingHandoff.handoff_packet,
+              resolution_summary: wrapUpSummary,
+              wrap_up_status: "completed",
+            },
+            agent_id: authUser.entra_oid,
+            resolved_at: resolvedAt,
+          });
+        } else {
+          await cosmosDbService.upsertHandoff({
+            id: `handoff-${conversationId}`,
+            institution_id: authUser.institution_id,
+            ticket_id: conversationId,
+            handoff_packet: {
+              student_profile: {
+                name: conversation.student_id,
+                student_id: conversation.student_id,
+                major: authUser.major || "Not available",
+                year: authUser.year || "Not available",
+              },
+              diagnosis: "Direct staff resolution without prior autonomous handoff packet.",
+              systems_queried: ["Staff Review"],
+              actions_taken: ["Staff resolution posted"],
+              recommended_resolution: "Completed by support staff.",
+              resolution_summary: wrapUpSummary,
+              wrap_up_status: "completed",
+            },
+            agent_id: authUser.entra_oid,
+            resolved_at: resolvedAt,
+          });
+        }
+
+        await cosmosDbService.createMessage({
+          id: `msg-${Date.now()}-wrapup`,
+          institution_id: authUser.institution_id,
+          conversation_id: conversationId,
+          role: "system",
+          content_scrubbed: JSON.stringify({
+            text: `Zero-touch wrap-up recorded. ${wrapUpSummary}`,
+            toolCalls: ["ZeroTouchWrapUp"],
+          }),
+          ts: resolvedAt,
+        });
 
         await enqueueOutlookNotification({
           institutionId: authUser.institution_id,
@@ -242,6 +294,11 @@ export async function POST(
     // 2. Fetch active holds/billing to make the AI responses data-driven
     let holds = await adapter.getHolds(adapterContext);
     const activeHoldsCount = holds.filter((h) => h.status === "Active").length;
+    const statusAggregate: StatusAggregate = await adapter.getStatusAggregate(adapterContext);
+    const activeFinancialHold = statusAggregate.financial.holds.find((hold) => hold.status === "Active");
+    const canAutoLiftFinancial =
+      Boolean(activeFinancialHold) &&
+      statusAggregate.financial.pending_financial_aid >= statusAggregate.financial.balance_due;
 
     const triggerEscalation = async () => {
       await cosmosDbService.updateConversationStatus(conversationId, authUser.institution_id, "Pending Agent");
@@ -255,18 +312,28 @@ export async function POST(
           student_profile: {
             name: authUser.name || "Student",
             student_id: authUser.entra_oid,
-            major: authUser.major || "Not available",
-            year: authUser.year || "Not available",
+            major: statusAggregate.academic.profile.major || authUser.major || "Not available",
+            year: statusAggregate.academic.profile.year || authUser.year || "Not available",
           },
-          diagnosis: "Student queries holds or requested escalation. Financial holds or other assistance required.",
+          diagnosis:
+            activeHoldsCount > 0
+              ? `Student has ${activeHoldsCount} active hold(s). Escalation requested or autonomous attempts exhausted.`
+              : "Escalation requested or autonomous attempts exhausted without full autonomous resolution.",
           systems_queried: ["RegistrarHolds", "BursarTuition", "CHEDUniFASTStatus"],
-          actions_taken: ["Escalated to human support queue"],
-          recommended_resolution: "Review student's billing records, SAP status, and holds history to assist with registration or waivers.",
+          actions_taken: [
+            "Generated status aggregate snapshot",
+            "Escalated to human support queue",
+          ],
+          recommended_resolution:
+            `Review balance due (${pesoFormatter.format(statusAggregate.financial.balance_due)}), ` +
+            `financial aid pending (${pesoFormatter.format(statusAggregate.financial.pending_financial_aid)}), ` +
+            "and hold policy constraints before issuing a final resolution.",
+          wrap_up_status: "pending",
         },
         agent_id: undefined,
         resolved_at: undefined,
       };
-      await cosmosDbService.createHandoff(handoffDoc);
+      await cosmosDbService.upsertHandoff(handoffDoc);
 
       await enqueueTeamsNotification({
         institutionId: authUser.institution_id,
@@ -291,6 +358,11 @@ export async function POST(
               .map((hold) => `${hold.type} hold (${hold.status}): ${hold.reason}. Resolution: ${hold.resolution_steps}`)
               .join("\n")
           : "No active hold data available.";
+      const financialSnapshot =
+        `Balance Due: ${pesoFormatter.format(statusAggregate.financial.balance_due)}\n` +
+        `Pending Financial Aid: ${pesoFormatter.format(statusAggregate.financial.pending_financial_aid)}\n` +
+        `Payment Deadline: ${statusAggregate.financial.payment_deadline}\n` +
+        `Academic SAP Status: ${statusAggregate.academic.profile.sap_status}\n`;
 
       const foundryResult = await generateFoundryReply({
         systemPrompt:
@@ -301,7 +373,9 @@ export async function POST(
           `Role: ${authUser.role}.\n` +
           `Current AI resolution attempts: ${currentAiAttempts}.\n` +
           "Output JSON only with shape: {\"text\":\"...\", \"toolCalls\":[\"...\"]}\n" +
+          `Status aggregate JSON: ${JSON.stringify(statusAggregate)}\n` +
           `Hold summary:\n${holdSummary}\n` +
+          `Financial summary:\n${financialSnapshot}\n` +
           "\n---\nOUT-OF-SCOPE GUARDRAIL\n" +
           "If the student asks for ANYTHING unrelated to university services (registration, holds, billing, financial aid, M365 schedules, SAP appeals), you MUST respond ONLY with:\n" +
           "{\"text\": \"I'm Archon, the student support assistant for State University. I can only help with registration holds, tuition balances, financial aid, and academic support. How can I help you with one of these today?\", \"toolCalls\": []}",
@@ -310,6 +384,7 @@ export async function POST(
 
       if (foundryResult?.text) {
         const finalToolCalls = foundryResult.toolCalls || [];
+        let finalText = foundryResult.text;
         
         // Execute tool calls on the server
         if (finalToolCalls.includes("EscalateToHuman")) {
@@ -317,7 +392,19 @@ export async function POST(
         }
         
         if (finalToolCalls.includes("requestHoldLift")) {
-          await adapter.requestHoldLift(adapterContext, "hold-financial");
+          if (canAutoLiftFinancial) {
+            await adapter.requestHoldLift(adapterContext, "hold-financial");
+          } else {
+            finalText =
+              userLanguage === "fil"
+                ? "Na-check ko ang financial status mo. Hindi pa eligible for temporary financial hold lift dahil kulang pa ang pending aid coverage. I-escalate ko ito sa support staff para ma-review at ma-actionan agad."
+                : userLanguage === "ceb"
+                ? "Na-check nako imong financial status. Dili pa eligible sa temporary financial hold lift kay kulang pa ang pending aid coverage. I-escalate nako ni sa support staff para ma-review dayon."
+                : "I checked your financial status. You're not yet eligible for a temporary financial hold lift because pending aid does not fully cover the balance yet. I will escalate this to support staff for immediate review.";
+            if (!finalToolCalls.includes("EscalateToHuman")) {
+              await triggerEscalation();
+            }
+          }
         }
 
         await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
@@ -327,7 +414,7 @@ export async function POST(
           conversation_id: conversationId,
           role: "assistant",
           content_scrubbed: JSON.stringify({
-            text: foundryResult.text,
+            text: finalText,
             toolCalls: finalToolCalls,
           }),
           ts: new Date(Date.now() + 1000).toISOString(),
@@ -449,16 +536,27 @@ export async function POST(
           .map((h, i: number) => `${i + 1}. **${h.type} Hold** (${h.status}): ${h.reason}\n   *Resolution:* ${h.resolution_steps}`)
           .join("\n\n");
         if (userLanguage === "fil") {
-          aiContent = `May nakita akong **${activeHoldsCount}** active hold(s) sa account mo:\n\n${holdLines}\n\nPara sa Financial Hold mo, puwede kong i-request ang temporary lift para makapag-enroll ka kung may pending scholarship ka. Gusto mo bang gawin ko iyon?`;
+          aiContent =
+            `May nakita akong **${activeHoldsCount}** active hold(s) sa account mo:\n\n${holdLines}\n\n` +
+            (canAutoLiftFinancial
+              ? "Eligible ka sa autonomous temporary financial hold lift batay sa current pending aid mo. Gusto mo bang gawin ko iyon ngayon?"
+              : "Sa ngayon, hindi pa sapat ang pending aid para ma-autonomous lift ang financial hold. Puwede kitang i-escalate sa support staff para manual review.");
         } else if (userLanguage === "ceb") {
-          aiContent = `Naa koy nakita nga **${activeHoldsCount}** active hold(s) sa imong account:\n\n${holdLines}\n\nPara sa imong Financial Hold, pwede nako i-request og temporary lift aron maka-enroll ka kung naa kay pending scholarship. Gusto nimo buhaton nako ni?`;
+          aiContent =
+            `Naa koy nakita nga **${activeHoldsCount}** active hold(s) sa imong account:\n\n${holdLines}\n\n` +
+            (canAutoLiftFinancial
+              ? "Eligible ka sa autonomous temporary financial hold lift base sa imong current pending aid. Gusto nimo buhaton nako karon?"
+              : "Sa karon, kulang pa ang pending aid para ma-autonomous lift ang financial hold. Pwede tika i-escalate sa support staff para manual review.");
         } else {
-          aiContent = `I found **${activeHoldsCount}** active hold(s) on your account:\n\n${holdLines}\n\nFor your Financial Hold, I can temporarily lift it so you can enroll if you have a pending scholarship. Would you like me to do that?`;
+          aiContent =
+            `I found **${activeHoldsCount}** active hold(s) on your account:\n\n${holdLines}\n\n` +
+            (canAutoLiftFinancial
+              ? "You are eligible for an autonomous temporary financial hold lift based on your current pending aid coverage. Would you like me to do that now?"
+              : "At the moment, pending aid coverage is not enough for an autonomous financial hold lift. I can escalate this to support staff for manual review.");
         }
       }
     } else if (normalizedContent.includes("lift") || normalizedContent.includes("remove") || normalizedContent.includes("yes") || normalizedContent.includes("please") || normalizedContent.includes("do it")) {
-      const financialHold = holds.find((h) => h.id === "hold-financial" && h.status === "Active");
-      if (financialHold) {
+      if (activeFinancialHold && canAutoLiftFinancial) {
         toolCalls.push("CheckFinancialAidStatus");
         toolCalls.push("requestHoldLift");
         nextAiAttempts = 0;
@@ -471,6 +569,16 @@ export async function POST(
           aiContent = "Na-check nako imong Financial Aid records. Nakita nako ang pending CHED UniFAST grant nimo nga ₱15,000. Tungod ani, naka-request nako sa Bursar ug Registrar nga i-temporarily lift ang imong **Financial Hold**.\n\nSuccessful ang lift! Cleared na ni sa sunod 14 ka adlaw aron maka-enroll ka. Makita nimo ni sa imong Student Dashboard. Naa pa ba koy matabang?";
         } else {
           aiContent = "Checking your Financial Aid records... I can see your pending CHED UniFAST grant of ₱15,000. Because of this, I have requested the Bursar and Registrar to temporarily lift your **Financial Hold**.\n\nThe lift was successful! This hold is cleared for the next 14 days so you can enroll. You can see this reflected on your Student Dashboard. Is there anything else I can help you with?";
+        }
+      } else if (activeFinancialHold && !canAutoLiftFinancial) {
+        nextAiAttempts = 0;
+        await escalateToHuman();
+        if (userLanguage === "fil") {
+          aiContent = "Na-check ko ang financial status mo. Hindi pa sapat ang pending aid coverage para ma-autonomous lift ang financial hold, kaya in-escalate ko na ito sa support staff para ma-review at ma-actionan agad.";
+        } else if (userLanguage === "ceb") {
+          aiContent = "Na-check nako imong financial status. Dili pa igo ang pending aid coverage para ma-autonomous lift ang financial hold, mao nga gi-escalate na nako ni sa support staff para ma-review dayon.";
+        } else {
+          aiContent = "I checked your financial status. Pending aid coverage is not yet sufficient for an autonomous financial hold lift, so I have escalated this to support staff for immediate review.";
         }
       } else {
         nextAiAttempts = 0;
