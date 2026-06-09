@@ -369,6 +369,38 @@ class CosmosDBService {
     return Array.from(ids);
   }
 
+  async getSupportStaffIdentifiers(institutionId: string): Promise<string[]> {
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      const ids = new Set<string>();
+      for (const user of db.users) {
+        if (
+          user.institution_id === institutionId &&
+          (user.role === "Agent" || user.role === "Admin") &&
+          user.entra_oid
+        ) {
+          ids.add(user.entra_oid);
+        }
+      }
+      return Array.from(ids);
+    }
+
+    const container = await this.getContainer("users");
+    const querySpec = {
+      query:
+        "SELECT c.entra_oid FROM c WHERE IS_DEFINED(c.entra_oid) AND (c.role = 'Agent' OR c.role = 'Admin')",
+    };
+    const { resources } = await container.items
+      .query<{ entra_oid?: string }>(querySpec, { partitionKey: institutionId })
+      .fetchAll();
+
+    const ids = new Set<string>();
+    for (const resource of resources) {
+      if (resource.entra_oid) ids.add(resource.entra_oid);
+    }
+    return Array.from(ids);
+  }
+
   // CONVERSATIONS
   async getConversation(id: string, institutionId: string): Promise<ConversationDoc | null> {
     if (this.isMockMode) {

@@ -1,10 +1,8 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Inbox, BarChart3, LogOut, Brain, Check, Bell } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { useEffect, useRef, useState } from "react";
+import { Inbox, Brain, Check } from "lucide-react";
 import MarkdownText from "@/components/MarkdownText";
 
 interface TicketItem {
@@ -42,8 +40,9 @@ interface HandoffPacket {
 }
 
 export default function AdminQueuePage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+  const { data: session } = useSession();
+  const preselectedTicketId =
+    typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("ticketId") : null;
 
   const [queue, setQueue] = useState<TicketItem[]>([]);
   const [queuePage, setQueuePage] = useState(1);
@@ -55,6 +54,7 @@ export default function AdminQueuePage() {
   const [loading, setLoading] = useState(true);
   const [ticketLoading, setTicketLoading] = useState(false);
   const [resolving, setResolving] = useState(false);
+  const handledPreselectIds = useRef<Set<string>>(new Set());
 
   async function fetchQueue() {
     try {
@@ -79,6 +79,43 @@ export default function AdminQueuePage() {
       return () => clearTimeout(initialTimer);
     }
   }, [session]);
+
+  useEffect(() => {
+    if (!preselectedTicketId || queue.length === 0) return;
+    if (handledPreselectIds.current.has(preselectedTicketId)) return;
+
+    const ticket = queue.find((item) => item.id === preselectedTicketId);
+    if (!ticket) return;
+    handledPreselectIds.current.add(preselectedTicketId);
+
+    void (async () => {
+      setSelectedTicket(ticket);
+      setTicketLoading(true);
+      setHandoff(null);
+      setReplyText("");
+
+      try {
+        const msgRes = await fetch(`/api/v1/tickets/${ticket.id}/messages`);
+        const msgData = await msgRes.json();
+        if (msgData.success) {
+          setMessages(msgData.data);
+        }
+
+        if (ticket.status === "Pending Agent") {
+          const handoffRes = await fetch(`/api/v1/tickets/${ticket.id}/handoff`);
+          const handoffData = await handoffRes.json();
+          if (handoffData.success) {
+            setHandoff(handoffData.data);
+            setReplyText(handoffData.data.handoff_packet.recommended_resolution);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading ticket details:", err);
+      } finally {
+        setTicketLoading(false);
+      }
+    })();
+  }, [preselectedTicketId, queue]);
 
   const handleSelectTicket = async (ticket: TicketItem) => {
     setSelectedTicket(ticket);
@@ -423,7 +460,7 @@ export default function AdminQueuePage() {
                   <Inbox className="w-12 h-12 text-zinc-300 mx-auto mb-3" />
                   <h3 className="text-sm font-bold text-brand-text font-display">No Ticket Selected</h3>
                   <p className="text-xs text-brand-muted mt-1 font-sans">
-                    Select a student's ticket from the active queue list to get started.
+                    Select a student&apos;s ticket from the active queue list to get started.
                   </p>
                 </div>
               </div>

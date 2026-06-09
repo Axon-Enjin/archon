@@ -128,6 +128,32 @@ function extractMessageText(content: string): string {
   return content;
 }
 
+function parseCsv(value: string | undefined): string[] {
+  return (value || "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function getSupportQueueActionUrl(ticketId: string): string {
+  const overridePath = process.env.ARCHON_SUPPORT_QUEUE_PATH?.trim();
+  if (overridePath) {
+    const separator = overridePath.includes("?") ? "&" : "?";
+    return `${overridePath}${separator}ticketId=${encodeURIComponent(ticketId)}`;
+  }
+  return `/admin/queue?ticketId=${encodeURIComponent(ticketId)}`;
+}
+
+async function resolveSupportRecipients(institutionId: string, excludeIds: string[] = []): Promise<string[]> {
+  const configured = parseCsv(process.env.ARCHON_SUPPORT_RECIPIENTS);
+  if (configured.length > 0) {
+    return configured.filter((id) => !excludeIds.includes(id));
+  }
+
+  const staffIds = await cosmosDbService.getSupportStaffIdentifiers(institutionId);
+  return staffIds.filter((id) => !excludeIds.includes(id));
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -255,12 +281,30 @@ export async function POST(
     };
     await cosmosDbService.createMessage(userMsg);
 
+    const conversation = await cosmosDbService.getConversation(conversationId, authUser.institution_id);
+    const ticketLabel = conversation?.ticket_id || conversationId;
+    const supportRecipients = await resolveSupportRecipients(authUser.institution_id, [authUser.entra_oid]);
+    const primarySupportRecipient = supportRecipients[0];
+
     if (!isAiEnabled()) {
       await cosmosDbService.updateConversationStatus(
         conversationId,
         authUser.institution_id,
-        "Pending Agent"
+        "Pending Agent",
+        primarySupportRecipient
       );
+
+      for (const recipient of supportRecipients) {
+        await enqueueTeamsNotification({
+          institutionId: authUser.institution_id,
+          recipientEntraOid: recipient,
+          title: `New escalated ticket: ${ticketLabel}`,
+          message:
+            `${authUser.name || "Student"} requires staff assistance. Open Archon queue to continue the support session.`,
+          actionUrl: getSupportQueueActionUrl(conversationId),
+          ticketId: conversationId,
+        });
+      }
 
       const assistantMsg: MessageDoc = {
         id: `msg-${Date.now()}-assistant`,
@@ -277,8 +321,6 @@ export async function POST(
 
       return NextResponse.json({ success: true, data: assistantMsg });
     }
-
-    const conversation = await cosmosDbService.getConversation(conversationId, authUser.institution_id);
     const currentAiAttempts = conversation?.ai_resolution_attempts || 0;
     let nextAiAttempts = currentAiAttempts;
     const adapter = getUniversityAdapter(authUser.institution_id);
@@ -301,7 +343,12 @@ export async function POST(
       statusAggregate.financial.pending_financial_aid >= statusAggregate.financial.balance_due;
 
     const triggerEscalation = async () => {
-      await cosmosDbService.updateConversationStatus(conversationId, authUser.institution_id, "Pending Agent");
+      await cosmosDbService.updateConversationStatus(
+        conversationId,
+        authUser.institution_id,
+        "Pending Agent",
+        primarySupportRecipient
+      );
       await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
 
       const handoffDoc: HandoffDoc = {
@@ -343,6 +390,18 @@ export async function POST(
         actionUrl: `/student/chat?ticketId=${conversationId}`,
         ticketId: conversationId,
       });
+
+      for (const recipient of supportRecipients) {
+        await enqueueTeamsNotification({
+          institutionId: authUser.institution_id,
+          recipientEntraOid: recipient,
+          title: `New escalated ticket: ${ticketLabel}`,
+          message:
+            `${authUser.name || "Student"} requires staff assistance. Open Archon queue to continue the support session.`,
+          actionUrl: getSupportQueueActionUrl(conversationId),
+          ticketId: conversationId,
+        });
+      }
     };
 
     if (isFoundryConfigured()) {
