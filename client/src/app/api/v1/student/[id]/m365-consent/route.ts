@@ -6,6 +6,7 @@ import {
   forbiddenResponse,
 } from "@/lib/auth-helper";
 import { isM365Enabled } from "@/lib/feature-flags";
+import { cosmosDbService } from "@/lib/db/cosmos";
 
 interface ConsentStatusPayload {
   m365Enabled: boolean;
@@ -17,6 +18,10 @@ interface ConsentStatusPayload {
 
 function buildResponse(data: ConsentStatusPayload) {
   return NextResponse.json({ success: true, data });
+}
+
+async function persistConsentSnapshot(institutionId: string, studentOid: string, data: ConsentStatusPayload) {
+  await cosmosDbService.setCacheData(`m365-consent:${studentOid}`, data, institutionId, 24 * 60 * 60);
 }
 
 async function probeCalendarConsent(accessToken: string): Promise<ConsentStatusPayload["calendarConsent"]> {
@@ -54,23 +59,27 @@ export async function GET(
 
   const lastCheckedAt = new Date().toISOString();
   if (!isM365Enabled()) {
-    return buildResponse({
+    const payload = {
       m365Enabled: false,
       accessTokenPresent: Boolean(authUser.accessToken),
       calendarConsent: "unavailable",
       message: "M365 integration is currently disabled by configuration.",
       lastCheckedAt,
-    });
+    } as const;
+    await persistConsentSnapshot(authUser.institution_id, studentOid, payload);
+    return buildResponse(payload);
   }
 
   if (!authUser.accessToken) {
-    return buildResponse({
+    const payload = {
       m365Enabled: true,
       accessTokenPresent: false,
       calendarConsent: "token_missing",
       message: "Reconnect your Microsoft account to refresh Calendars.Read consent.",
       lastCheckedAt,
-    });
+    } as const;
+    await persistConsentSnapshot(authUser.institution_id, studentOid, payload);
+    return buildResponse(payload);
   }
 
   try {
@@ -85,20 +94,24 @@ export async function GET(
         ? "Your M365 session token is expired or invalid. Reconnect your account."
         : "Unable to verify M365 consent right now. Try again shortly.";
 
-    return buildResponse({
+    const payload = {
       m365Enabled: true,
       accessTokenPresent: true,
       calendarConsent: consentStatus,
       message,
       lastCheckedAt,
-    });
+    } as const;
+    await persistConsentSnapshot(authUser.institution_id, studentOid, payload);
+    return buildResponse(payload);
   } catch {
-    return buildResponse({
+    const payload = {
       m365Enabled: true,
       accessTokenPresent: true,
       calendarConsent: "unavailable",
       message: "Unable to verify M365 consent right now. Try again shortly.",
       lastCheckedAt,
-    });
+    } as const;
+    await persistConsentSnapshot(authUser.institution_id, studentOid, payload);
+    return buildResponse(payload);
   }
 }

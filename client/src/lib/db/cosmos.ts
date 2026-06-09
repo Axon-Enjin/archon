@@ -417,6 +417,26 @@ class CosmosDBService {
     return resources;
   }
 
+  async getConversations(institutionId: string, limit: number = 1000): Promise<ConversationDoc[]> {
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      return db.conversations
+        .filter((c) => c.institution_id === institutionId)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, limit);
+    }
+
+    const container = await this.getContainer("conversations");
+    const querySpec = {
+      query: "SELECT TOP @limit * FROM c ORDER BY c.created_at DESC",
+      parameters: [{ name: "@limit", value: limit }],
+    };
+    const { resources } = await container.items
+      .query<ConversationDoc>(querySpec, { partitionKey: institutionId })
+      .fetchAll();
+    return resources;
+  }
+
   async getStudentEmail(studentId: string, institutionId: string): Promise<string | undefined> {
     if (this.isMockMode) {
       const db = this.readMockDB();
@@ -629,6 +649,30 @@ class CosmosDBService {
       .query<HandoffDoc>(querySpec, { partitionKey: institutionId })
       .fetchAll();
     return resources[0] || null;
+  }
+
+  async getHandoffs(institutionId: string, limit: number = 1000): Promise<HandoffDoc[]> {
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      return db.handoffs
+        .filter((h) => h.institution_id === institutionId)
+        .sort((a, b) => {
+          const aTs = new Date(a.resolved_at || 0).getTime();
+          const bTs = new Date(b.resolved_at || 0).getTime();
+          return bTs - aTs;
+        })
+        .slice(0, limit);
+    }
+
+    const container = await this.getContainer("handoffs");
+    const querySpec = {
+      query: "SELECT TOP @limit * FROM c",
+      parameters: [{ name: "@limit", value: limit }],
+    };
+    const { resources } = await container.items
+      .query<HandoffDoc>(querySpec, { partitionKey: institutionId })
+      .fetchAll();
+    return resources;
   }
 
   // POLICY EMBEDDINGS (RAG)
