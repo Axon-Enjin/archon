@@ -392,7 +392,7 @@ export async function POST(
         institutionId: authUser.institution_id,
         recipientEntraOid: authUser.entra_oid,
         title: "Ticket escalated to support queue",
-        message: "Your ticket has been escalated. A support staff member will assist you shortly.",
+        message: "A student has requested for a support staff member. Please open the Archon support queue and continue this ticket.",
         actionUrl: `/student/chat?ticketId=${conversationId}`,
         ticketId: conversationId,
       });
