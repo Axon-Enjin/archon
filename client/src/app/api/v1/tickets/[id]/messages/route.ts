@@ -225,6 +225,9 @@ export async function POST(
 
       const conversation = await cosmosDbService.getConversation(conversationId, authUser.institution_id);
       if (conversation) {
+        const recipientEmail =
+          conversation.student_email ||
+          (await cosmosDbService.getStudentEmail(conversation.student_id, authUser.institution_id));
         await cosmosDbService.updateConversationStatus(
           conversationId,
           authUser.institution_id,
@@ -235,7 +238,7 @@ export async function POST(
         await enqueueOutlookNotification({
           institutionId: authUser.institution_id,
           recipientEntraOid: conversation.student_id,
-          recipientEmail: conversation.student_email,
+          recipientEmail,
           subject: `Ticket ${conversation.ticket_id} has been resolved`,
           textBody:
             `Your support ticket ${conversation.ticket_id} has been marked as resolved by ${authUser.name || "Student Support"}. ` +
