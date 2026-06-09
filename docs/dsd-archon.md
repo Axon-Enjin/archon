@@ -143,6 +143,8 @@ Motion should be subtle and serve to provide feedback or smooth transitions, nev
 - **CSS Framework:** Tailwind CSS v4 is the standard styling framework. All design tokens are implemented as Tailwind utilities and CSS variables in the client application.
 - **Icon Library:** Lucide React (`lucide-react`) is the standard package for all generic UI icons. Emojis must not be used for interface indicators.
 - **M365 Icons:** Use the official Microsoft 365 product icons (available under Microsoft's brand usage guidelines) for Teams, Outlook, and Entra ID UI elements. Do not use generic alternatives.
+- **Persistent Staff Sidebar & Layouts:** Staff sidebars (Admin and Agent) must be implemented at the layout-level or root-page level rather than inside sub-page components. Transitions between tabs or routes must not re-render the sidebar container, ensuring zero visual layout flashing.
+- **Localized Loading States:** Data fetches (such as ticket queues or job logs) must isolate loading spinners to their content panes. The sidebar navigation and app frame must remain fully visible, rendered, and interactive during data loading to prevent full-page flashing.
 - **Theme Support:** V1 is Light Mode only (with warm tones). Dark Mode is deferred to V2 to reduce initial design complexity, as the primary persona (students) typically access these services during daytime hours.
 
 ---

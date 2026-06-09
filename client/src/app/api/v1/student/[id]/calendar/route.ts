@@ -255,7 +255,7 @@ export async function GET(
 
   try {
     const calendarEvents = await fetchOutlookCalendarEvents(authUser.accessToken);
-    await cosmosDbService.setCacheData(cacheKey, calendarEvents, authUser.institution_id);
+    await cosmosDbService.setCacheData(cacheKey, calendarEvents, authUser.institution_id, 900);
 
     return NextResponse.json({
       success: true,

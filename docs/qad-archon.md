@@ -101,4 +101,5 @@ No code merges to `main` or deploys to production unless:
 - [ ] Load test verifies 500 concurrent users without backend crash and Cosmos DB P95 < 50ms.
 - [ ] Code coverage >80% on Next.js API Routes (including Graph API proxy and adapter modules).
 - [ ] `SAD-A4` (Compliance Checker) has approved the PR: no PII in Cosmos DB logs, no raw Graph tokens persisted, all TTLs enforced.
+- [ ] UI transition and layout shift testing: verified that staff page routing (/admin/analytics, /admin/queue, /admin/notifications, /agent) retains persistent sidebars without flashes, and loading spinners are isolated to content panels.
 - [ ] M365 admin consent verified granted in the partner university's Entra ID tenant before M365 features are enabled in production.
