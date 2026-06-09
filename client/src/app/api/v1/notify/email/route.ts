@@ -24,6 +24,13 @@ export async function POST(request: NextRequest) {
     const htmlBody: string | undefined = body.htmlBody;
     const ticketId: string | undefined = body.ticketId;
 
+    if (!recipientEmail) {
+      return NextResponse.json(
+        { success: false, error: "recipientEmail is required for Outlook notifications." },
+        { status: 400 }
+      );
+    }
+
     if (authUser.role === "Student" && recipientEntraOid !== authUser.entra_oid) {
       return forbiddenResponse("Students can only send notifications to their own account.");
     }
