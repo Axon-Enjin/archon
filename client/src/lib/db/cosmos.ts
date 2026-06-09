@@ -417,6 +417,76 @@ class CosmosDBService {
     return resources;
   }
 
+  async getConversations(institutionId: string, limit: number = 1000): Promise<ConversationDoc[]> {
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      return db.conversations
+        .filter((c) => c.institution_id === institutionId)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, limit);
+    }
+
+    const container = await this.getContainer("conversations");
+    const querySpec = {
+      query: "SELECT TOP @limit * FROM c ORDER BY c.created_at DESC",
+      parameters: [{ name: "@limit", value: limit }],
+    };
+    const { resources } = await container.items
+      .query<ConversationDoc>(querySpec, { partitionKey: institutionId })
+      .fetchAll();
+    return resources;
+  }
+
+  async getStudentEmail(studentId: string, institutionId: string): Promise<string | undefined> {
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      const latestConversation = db.conversations
+        .filter(
+          (c) =>
+            c.student_id === studentId &&
+            c.institution_id === institutionId &&
+            typeof c.student_email === "string" &&
+            c.student_email.trim().length > 0
+        )
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+      if (latestConversation?.student_email) return latestConversation.student_email;
+
+      const matchedUser = db.users.find(
+        (u) =>
+          u.entra_oid === studentId &&
+          u.institution_id === institutionId &&
+          typeof (u as UserDoc & { email?: string }).email === "string" &&
+          ((u as UserDoc & { email?: string }).email || "").trim().length > 0
+      ) as (UserDoc & { email?: string }) | undefined;
+      return matchedUser?.email;
+    }
+
+    const conversations = await this.getContainer("conversations");
+    const convoQuerySpec = {
+      query:
+        "SELECT TOP 1 c.student_email FROM c WHERE c.student_id = @studentId " +
+        "AND IS_DEFINED(c.student_email) AND c.student_email != '' ORDER BY c.created_at DESC",
+      parameters: [{ name: "@studentId", value: studentId }],
+    };
+    const { resources: convoResources } = await conversations.items
+      .query<{ student_email?: string }>(convoQuerySpec, { partitionKey: institutionId })
+      .fetchAll();
+    const fromConversation = convoResources[0]?.student_email;
+    if (fromConversation) return fromConversation;
+
+    const users = await this.getContainer("users");
+    const userQuerySpec = {
+      query:
+        "SELECT TOP 1 c.email FROM c WHERE c.entra_oid = @studentId " +
+        "AND IS_DEFINED(c.email) AND c.email != ''",
+      parameters: [{ name: "@studentId", value: studentId }],
+    };
+    const { resources: userResources } = await users.items
+      .query<{ email?: string }>(userQuerySpec, { partitionKey: institutionId })
+      .fetchAll();
+    return userResources[0]?.email;
+  }
+
   async getOpenConversations(institutionId: string): Promise<ConversationDoc[]> {
     if (this.isMockMode) {
       const db = this.readMockDB();
@@ -545,6 +615,25 @@ class CosmosDBService {
     return resource as HandoffDoc;
   }
 
+  async upsertHandoff(handoff: HandoffDoc): Promise<HandoffDoc> {
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      db.handoffs = db.handoffs.filter(
+        (h) => !(h.id === handoff.id && h.institution_id === handoff.institution_id)
+      );
+      db.handoffs.push(handoff);
+      this.writeMockDB(db);
+      return handoff;
+    }
+
+    const container = await this.getContainer("handoffs");
+    const { resource } = await container.items.upsert<HandoffDoc>({
+      ...handoff,
+      ttl: 90 * 24 * 60 * 60,
+    });
+    return resource || handoff;
+  }
+
   async getHandoffByTicketId(ticketId: string, institutionId: string): Promise<HandoffDoc | null> {
     if (this.isMockMode) {
       const db = this.readMockDB();
@@ -560,6 +649,30 @@ class CosmosDBService {
       .query<HandoffDoc>(querySpec, { partitionKey: institutionId })
       .fetchAll();
     return resources[0] || null;
+  }
+
+  async getHandoffs(institutionId: string, limit: number = 1000): Promise<HandoffDoc[]> {
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      return db.handoffs
+        .filter((h) => h.institution_id === institutionId)
+        .sort((a, b) => {
+          const aTs = new Date(a.resolved_at || 0).getTime();
+          const bTs = new Date(b.resolved_at || 0).getTime();
+          return bTs - aTs;
+        })
+        .slice(0, limit);
+    }
+
+    const container = await this.getContainer("handoffs");
+    const querySpec = {
+      query: "SELECT TOP @limit * FROM c",
+      parameters: [{ name: "@limit", value: limit }],
+    };
+    const { resources } = await container.items
+      .query<HandoffDoc>(querySpec, { partitionKey: institutionId })
+      .fetchAll();
+    return resources;
   }
 
   // POLICY EMBEDDINGS (RAG)

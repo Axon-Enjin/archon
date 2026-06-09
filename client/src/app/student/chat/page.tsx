@@ -184,6 +184,8 @@ function StudentChatContent() {
         return "⚡ Submitting request for temporary financial hold lift...";
       case "EscalateToHuman":
         return "🚨 Routing your chat to the support queue...";
+      case "ZeroTouchWrapUp":
+        return "✅ Finalizing resolution summary and wrap-up artifacts...";
       default:
         return `🛠️ Running tool: ${tool}...`;
     }

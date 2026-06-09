@@ -34,8 +34,11 @@ interface HandoffPacket {
     systems_queried: string[];
     actions_taken: string[];
     recommended_resolution: string;
+    resolution_summary?: string;
+    wrap_up_status?: "pending" | "completed";
   };
-  agent_id: string;
+  agent_id?: string;
+  resolved_at?: string;
 }
 
 export default function AdminQueuePage() {
@@ -258,6 +261,17 @@ export default function AdminQueuePage() {
                         </span>
                         <span className="h-1.5 w-1.5 rounded-full bg-teal-400"></span>
                         <span className="text-brand-muted text-xs font-medium">Context Preserved</span>
+                        {handoff.handoff_packet.wrap_up_status && (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                              handoff.handoff_packet.wrap_up_status === "completed"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-amber-100 text-amber-700"
+                            }`}
+                          >
+                            Wrap-up {handoff.handoff_packet.wrap_up_status}
+                          </span>
+                        )}
                       </div>
                       <p className="text-brand-text leading-relaxed font-sans">{handoff.handoff_packet.diagnosis}</p>
                       
@@ -270,7 +284,29 @@ export default function AdminQueuePage() {
                           <span className="text-brand-text font-bold">Actions: </span>
                           {handoff.handoff_packet.actions_taken.join(", ")}
                         </div>
+                        {handoff.agent_id && (
+                          <div>
+                            <span className="text-brand-text font-bold">Resolved By: </span>
+                            {handoff.agent_id}
+                          </div>
+                        )}
+                        {handoff.resolved_at && (
+                          <div>
+                            <span className="text-brand-text font-bold">Resolved At: </span>
+                            {new Date(handoff.resolved_at).toLocaleString()}
+                          </div>
+                        )}
                       </div>
+                      {handoff.handoff_packet.resolution_summary && (
+                        <div className="rounded-lg bg-white/80 border border-zinc-200 p-3">
+                          <p className="text-[10px] font-bold uppercase text-brand-muted mb-1">
+                            Resolution Summary
+                          </p>
+                          <p className="text-xs text-brand-text leading-relaxed font-sans">
+                            {handoff.handoff_packet.resolution_summary}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

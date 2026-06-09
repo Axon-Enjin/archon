@@ -53,12 +53,14 @@ export async function POST() {
   const dayKey = toDayKey(now);
   const queuedIds = new Set<string>();
   const queuedJobs: Array<{ id: string; channel: "teams" | "outlook"; studentId: string; kind: string }> = [];
+  const skippedOutlookJobs: Array<{ id: string; studentId: string; reason: string }> = [];
 
   const queueJob = async (
     job: {
       id: string;
       channel: "teams" | "outlook";
       studentId: string;
+      recipientEmail?: string;
       kind: string;
       title?: string;
       message?: string;
@@ -69,6 +71,14 @@ export async function POST() {
     }
   ) => {
     if (queuedIds.has(job.id)) return;
+    if (job.channel === "outlook" && !job.recipientEmail) {
+      skippedOutlookJobs.push({
+        id: job.id,
+        studentId: job.studentId,
+        reason: "Missing recipient email",
+      });
+      return;
+    }
     queuedIds.add(job.id);
 
     const nowIso = new Date().toISOString();
@@ -77,6 +87,7 @@ export async function POST() {
       institution_id: authUser.institution_id,
       channel: job.channel,
       recipient_entra_oid: job.studentId,
+      recipient_email: job.recipientEmail,
       status: "pending",
       attempts: 0,
       payload: {
@@ -103,6 +114,7 @@ export async function POST() {
     const studentIds = await cosmosDbService.getStudentIdentifiers(authUser.institution_id);
 
     for (const studentId of studentIds) {
+      const studentEmail = await cosmosDbService.getStudentEmail(studentId, authUser.institution_id);
       const [holds, events, financial] = await Promise.all([
         cosmosDbService.getCacheData<HoldItem[]>(`holds:${studentId}`, authUser.institution_id),
         cosmosDbService.getCacheData<CalendarEvent[]>(`calendar:${studentId}`, authUser.institution_id),
@@ -126,6 +138,7 @@ export async function POST() {
           id: `notifjob-outlook-reminder-hold-${studentId}-${holdTag}-${dayKey}`,
           channel: "outlook",
           studentId,
+          recipientEmail: studentEmail,
           kind: "hold",
           subject: `${hold.type} hold reminder`,
           textBody: `${hold.reason}\n\nPlease check your Archon dashboard for next steps.`,
@@ -162,6 +175,7 @@ export async function POST() {
           id: `notifjob-outlook-reminder-event-${studentId}-${eventTag}-${dayKey}`,
           channel: "outlook",
           studentId,
+          recipientEmail: studentEmail,
           kind: "deadline",
           subject: `Reminder: ${event.title}`,
           textBody: `Upcoming event on ${eventDate}: ${event.title}`,
@@ -176,6 +190,7 @@ export async function POST() {
             id: `notifjob-outlook-reminder-financial-payment-${studentId}-${dayKey}`,
             channel: "outlook",
             studentId,
+            recipientEmail: studentEmail,
             kind: "deadline",
             subject: "Payment deadline reminder",
             textBody: `Your payment deadline is on ${new Date(paymentDeadline).toLocaleDateString()}.`,
@@ -211,6 +226,7 @@ export async function POST() {
               id: `notifjob-outlook-scholarship-submitted-${studentId}-${dayKey}`,
               channel: "outlook",
               studentId,
+              recipientEmail: studentEmail,
               kind: "deadline",
               subject: "Scholarship renewal submission confirmed",
               textBody: `We confirmed your scholarship renewal submission (${submittedAtText}). Deadline is ${deadlineText}. No additional action is needed right now.`,
@@ -231,6 +247,7 @@ export async function POST() {
               id: `notifjob-outlook-reminder-scholarship-${studentId}-${dayKey}`,
               channel: "outlook",
               studentId,
+              recipientEmail: studentEmail,
               kind: "deadline",
               subject: "Scholarship renewal reminder",
               textBody:
@@ -253,6 +270,8 @@ export async function POST() {
         queuedTotal: queuedJobs.length,
         queuedTeams,
         queuedOutlook,
+        skippedOutlook: skippedOutlookJobs.length,
+        skippedOutlookJobs,
         queuedJobs,
       },
     });

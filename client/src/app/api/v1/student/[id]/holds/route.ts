@@ -1,40 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, verifyStudentAccess, unauthorizedResponse, forbiddenResponse } from "@/lib/auth-helper";
+import { getUniversityAdapter } from "@/lib/adapters";
+import type { AdapterContext } from "@/lib/adapters/types";
 import { cosmosDbService } from "@/lib/db/cosmos";
-
-interface HoldItem {
-  id: string;
-  type: string;
-  reason: string;
-  status: "Active" | "Lifting" | "Resolved";
-  resolution_steps: string;
-}
-
-// Helper to get holds from the cache or return initial mock list
-async function getHoldsList(studentOid: string, institutionId: string): Promise<HoldItem[]> {
-  const cacheKey = `holds:${studentOid}`;
-  let holds = await cosmosDbService.getCacheData<HoldItem[]>(cacheKey, institutionId);
-  if (!holds) {
-    holds = [
-      {
-        id: "hold-financial",
-        type: "Financial",
-        reason: "Pending tuition balance of ₱12,500.00",
-        status: "Active",
-        resolution_steps: "Pay the remaining balance at the Bursar counter, or submit your CHED UniFAST clearance.",
-      },
-      {
-        id: "hold-academic",
-        type: "Academic",
-        reason: "Satisfactory Academic Progress (SAP) GPA deficiency (GWA is 2.65, required is 2.50)",
-        status: "Active",
-        resolution_steps: "Submit an SAP Appeal narrative and study plan to the Academic Advisory Panel.",
-      },
-    ];
-    await cosmosDbService.setCacheData(cacheKey, holds, institutionId);
-  }
-  return holds;
-}
 
 export async function GET(
   request: NextRequest,
@@ -48,7 +16,16 @@ export async function GET(
     return forbiddenResponse("Forbidden: You cannot access this student's holds.");
   }
 
-  const holds = await getHoldsList(studentOid, authUser.institution_id);
+  const adapter = getUniversityAdapter(authUser.institution_id);
+  const context: AdapterContext = {
+    institutionId: authUser.institution_id,
+    studentOid,
+    major: authUser.major,
+    year: authUser.year,
+    name: authUser.name,
+    email: authUser.email,
+  };
+  const holds = await adapter.getHolds(context);
 
   return NextResponse.json({
     success: true,
@@ -70,8 +47,16 @@ export async function POST(
 
   try {
     const { holdId, action } = await request.json();
-    const cacheKey = `holds:${studentOid}`;
-    const holds = await getHoldsList(studentOid, authUser.institution_id);
+    const adapter = getUniversityAdapter(authUser.institution_id);
+    const context: AdapterContext = {
+      institutionId: authUser.institution_id,
+      studentOid,
+      major: authUser.major,
+      year: authUser.year,
+      name: authUser.name,
+      email: authUser.email,
+    };
+    const holds = await adapter.getHolds(context);
 
     const holdIndex = holds.findIndex((h) => h.id === holdId);
     if (holdIndex === -1) {
@@ -79,17 +64,20 @@ export async function POST(
     }
 
     if (action === "lift") {
-      holds[holdIndex].status = "Resolved";
+      await adapter.requestHoldLift(context, holdId);
     } else if (action === "request-lift") {
       holds[holdIndex].status = "Lifting";
+      const cacheKey = `holds:${studentOid}`;
+      const updated = [...holds];
+      await cosmosDbService.setCacheData(cacheKey, updated, authUser.institution_id);
     }
 
-    await cosmosDbService.setCacheData(cacheKey, holds, authUser.institution_id);
+    const updatedHolds = await adapter.getHolds(context);
 
     return NextResponse.json({
       success: true,
       message: `Hold action '${action}' processed successfully.`,
-      data: holds,
+      data: updatedHolds,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error while processing hold action.";

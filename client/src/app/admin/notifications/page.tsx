@@ -35,6 +35,26 @@ interface NotificationJob {
 type StatusFilter = "all" | NotificationStatus;
 type ChannelFilter = "all" | NotificationChannel;
 
+interface AnalyticsSummary {
+  totals: {
+    handoffs: number;
+    wrapUpCompleted: number;
+    wrapUpPending: number;
+  };
+  rates: {
+    wrapUpCompletionRate: number;
+    consentCoverageRate: number;
+    notificationActionRate: number;
+  };
+  consent: {
+    trackedStudents: number;
+    snapshotsAvailable: number;
+    granted: number;
+    missing: number;
+    tokenMissing: number;
+  };
+}
+
 export default function AdminNotificationOpsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -60,6 +80,19 @@ export default function AdminNotificationOpsPage() {
   const [syncingOutbox, setSyncingOutbox] = useState(false);
   const [runningDiagnostics, setRunningDiagnostics] = useState(false);
   const [diagnosticsOutput, setDiagnosticsOutput] = useState<string | null>(null);
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+
+  const fetchSummary = async () => {
+    try {
+      const res = await fetch("/api/v1/admin/analytics/summary?limit=2000");
+      const data = await res.json();
+      if (data.success) {
+        setSummary(data.data);
+      }
+    } catch (err) {
+      console.warn("Failed to load admin analytics summary", err);
+    }
+  };
 
   const fetchJobs = async (isRefresh = false) => {
     try {
@@ -77,6 +110,7 @@ export default function AdminNotificationOpsPage() {
 
       setJobs(data.data || []);
       setError(null);
+      await fetchSummary();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load notification jobs.";
       setError(message);
@@ -326,6 +360,38 @@ export default function AdminNotificationOpsPage() {
               <p className="text-2xl font-bold text-red-600">{counts.failed}</p>
             </div>
           </section>
+
+          {summary && (
+            <section className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-xl bg-white border border-zinc-200 p-4">
+                <p className="text-xs text-brand-muted">Wrap-up Completion</p>
+                <p className="text-2xl font-bold text-brand-text">
+                  {summary.rates.wrapUpCompletionRate.toFixed(1)}%
+                </p>
+                <p className="text-[11px] text-brand-muted mt-1">
+                  {summary.totals.wrapUpCompleted} completed · {summary.totals.wrapUpPending} pending
+                </p>
+              </div>
+              <div className="rounded-xl bg-white border border-zinc-200 p-4">
+                <p className="text-xs text-brand-muted">M365 Consent Coverage</p>
+                <p className="text-2xl font-bold text-brand-text">
+                  {summary.rates.consentCoverageRate.toFixed(1)}%
+                </p>
+                <p className="text-[11px] text-brand-muted mt-1">
+                  {summary.consent.granted}/{summary.consent.snapshotsAvailable} granted snapshots
+                </p>
+              </div>
+              <div className="rounded-xl bg-white border border-zinc-200 p-4">
+                <p className="text-xs text-brand-muted">Delivery Success Proxy</p>
+                <p className="text-2xl font-bold text-brand-text">
+                  {summary.rates.notificationActionRate.toFixed(1)}%
+                </p>
+                <p className="text-[11px] text-brand-muted mt-1">
+                  tracked students: {summary.consent.trackedStudents}
+                </p>
+              </div>
+            </section>
+          )}
 
           <section className="rounded-xl bg-white border border-zinc-200 p-4 md:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
