@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef, Suspense } from "react";
 import Link from "next/link";
-import { Search, Zap, AlertTriangle, ArrowLeft, ArrowRight, Banknote, Wrench } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import MarkdownText from "@/components/MarkdownText";
 
 interface Message {
@@ -56,35 +56,6 @@ function StudentChatContent() {
       // no-op
     }
     return { text: content, toolCalls: [] };
-  };
-
-  const fetchTicketAndMessages = async () => {
-    if (!ticketId || !session?.user?.entra_oid) return;
-
-    try {
-      setLoading(true);
-      const [ticketRes, messagesRes] = await Promise.all([
-        fetch(`/api/v1/tickets?studentId=${session.user.entra_oid}`),
-        fetch(`/api/v1/tickets/${ticketId}/messages`),
-      ]);
-
-      const [ticketData, messagesData] = await Promise.all([
-        ticketRes.json(),
-        messagesRes.json(),
-      ]);
-
-      if (ticketData.success) {
-        const found = (ticketData.data as TicketItem[]).find((t) => t.id === ticketId);
-        setTicketDetails(found || null);
-      }
-      if (messagesData.success) {
-        setMessages(messagesData.data as Message[]);
-      }
-    } catch (err) {
-      console.error("Error loading chat messages:", err);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const animateStreaming = async (msg: Message) => {
@@ -196,12 +167,39 @@ function StudentChatContent() {
       router.push("/student");
       return;
     }
-    if (session?.user) {
-      const timer = setTimeout(() => {
-        void fetchTicketAndMessages();
-      }, 0);
-      return () => clearTimeout(timer);
-    }
+    if (!session?.user?.entra_oid) return;
+
+    const studentOid = session.user.entra_oid;
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          setLoading(true);
+          const [ticketRes, messagesRes] = await Promise.all([
+            fetch(`/api/v1/tickets?studentId=${studentOid}`),
+            fetch(`/api/v1/tickets/${ticketId}/messages`),
+          ]);
+
+          const [ticketData, messagesData] = await Promise.all([
+            ticketRes.json(),
+            messagesRes.json(),
+          ]);
+
+          if (ticketData.success) {
+            const found = (ticketData.data as TicketItem[]).find((t) => t.id === ticketId);
+            setTicketDetails(found || null);
+          }
+          if (messagesData.success) {
+            setMessages(messagesData.data as Message[]);
+          }
+        } catch (err) {
+          console.error("Error loading chat messages:", err);
+        } finally {
+          setLoading(false);
+        }
+      })();
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [session, status, ticketId, router]);
 
   useEffect(() => {
