@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { signOut, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { Inbox, BarChart3, Bell, LogOut, RefreshCw } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { RefreshCw } from "lucide-react";
 
 type NotificationChannel = "teams" | "outlook";
 type NotificationStatus = "pending" | "processing" | "sent" | "failed";
@@ -56,8 +54,7 @@ interface AnalyticsSummary {
 }
 
 export default function AdminNotificationOpsPage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+  const { data: session } = useSession();
   const [jobs, setJobs] = useState<NotificationJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -272,19 +269,46 @@ export default function AdminNotificationOpsPage() {
   };
 
   useEffect(() => {
-    if (session?.user?.role === "Admin") {
-      const initialTimer = setTimeout(() => {
-        void fetchJobs();
-      }, 0);
+    if (session?.user?.role !== "Admin") return;
 
-      const interval = setInterval(() => {
-        void fetchJobs(true);
-      }, 10000);
-      return () => {
-        clearInterval(interval);
-        clearTimeout(initialTimer);
-      };
-    }
+    const load = async (isRefresh = false) => {
+      try {
+        if (isRefresh) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
+
+        const res = await fetch("/api/v1/notify/jobs?limit=200");
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || "Failed to load notification jobs.");
+        }
+
+        setJobs(data.data || []);
+        setError(null);
+        await fetchSummary();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to load notification jobs.";
+        setError(message);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    };
+
+    const initialTimer = setTimeout(() => {
+      void load();
+    }, 0);
+
+    const interval = setInterval(() => {
+      void load(true);
+    }, 10000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(initialTimer);
+    };
   }, [session]);
 
   const filteredJobs = useMemo(() => {
