@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { MessageCircle, Calendar, Bell, Search, Building, ArrowRight, ShieldCheck, Users, Bot, Database, Zap, FileText } from "lucide-react";
+import { MessageCircle, Calendar, Building, ShieldCheck, Users, Zap, FileText } from "lucide-react";
 import MotionWrapper from "@/components/MotionWrapper";
 import ChatSimulation from "@/components/ChatSimulation";
 import ArchonLayerFlow from "@/components/ArchonLayerFlow";
@@ -41,7 +41,7 @@ export default async function Home() {
 
       {/* Hero Section */}
       <main className="flex-1">
-        <div className="relative overflow-hidden py-24 sm:py-32">
+        <div className="relative flex min-h-[calc(100svh-5rem)] items-center overflow-hidden py-16 sm:py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="lg:grid lg:grid-cols-12 lg:gap-8 lg:items-center">
               {/* Copy */}

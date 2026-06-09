@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef, Suspense } from "react";
 import Link from "next/link";
@@ -14,10 +14,94 @@ interface Message {
   ts: string;
 }
 
+interface CalendarEventPayload {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  isAllDay: boolean;
+  source: string;
+}
+
+type CalendarState =
+  | "ready"
+  | "empty"
+  | "consent_required"
+  | "token_missing"
+  | "disabled"
+  | "unavailable";
+
 interface TicketItem {
   id: string;
   ticket_id: string;
   status: "Open" | "Pending Agent" | "Resolved";
+}
+
+function formatCalendarEventRange(event: CalendarEventPayload): string {
+  const start = new Date(event.start);
+  const end = new Date(event.end);
+
+  if (event.isAllDay) {
+    return start.toLocaleDateString([], {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+  }
+
+  const sameDay = start.toDateString() === end.toDateString();
+  const startLabel = start.toLocaleString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  if (sameDay) {
+    return `${startLabel} - ${end.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+    })}`;
+  }
+
+  return `${startLabel} - ${end.toLocaleString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })}`;
+}
+
+function getCalendarStateMeta(state: Exclude<CalendarState, "ready">) {
+  switch (state) {
+    case "empty":
+      return {
+        title: "No upcoming calendar events",
+        description: "Your Outlook Calendar is connected, but there are no events in the upcoming window.",
+      };
+    case "consent_required":
+      return {
+        title: "Reconnect Microsoft 365",
+        description: "Your calendar needs fresh consent before Archon can load schedule data in chat.",
+      };
+    case "token_missing":
+      return {
+        title: "Session expired for calendar access",
+        description: "Reconnect Microsoft 365 so Archon can read your Outlook schedule again.",
+      };
+    case "disabled":
+      return {
+        title: "Calendar integration unavailable",
+        description: "M365 calendar access is temporarily disabled by configuration.",
+      };
+    case "unavailable":
+      return {
+        title: "Calendar data could not load",
+        description: "Archon could not fetch your Outlook schedule right now. Please try again shortly.",
+      };
+  }
 }
 
 function StudentChatContent() {
@@ -43,19 +127,31 @@ function StudentChatContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const parseMessageContent = (content: string): { text: string; toolCalls: string[] } => {
+  const parseMessageContent = (content: string): {
+    text: string;
+    toolCalls: string[];
+    calendarEvents: CalendarEventPayload[];
+    calendarState?: CalendarState;
+  } => {
     try {
-      const parsed = JSON.parse(content) as { text?: string; toolCalls?: string[] };
+      const parsed = JSON.parse(content) as {
+        text?: string;
+        toolCalls?: string[];
+        calendarEvents?: CalendarEventPayload[];
+        calendarState?: CalendarState;
+      };
       if (parsed && typeof parsed === "object" && typeof parsed.text === "string") {
         return {
           text: parsed.text,
           toolCalls: parsed.toolCalls || [],
+          calendarEvents: Array.isArray(parsed.calendarEvents) ? parsed.calendarEvents : [],
+          calendarState: parsed.calendarState,
         };
       }
     } catch {
       // no-op
     }
-    return { text: content, toolCalls: [] };
+    return { text: content, toolCalls: [], calendarEvents: [] };
   };
 
   const animateStreaming = async (msg: Message) => {
@@ -149,6 +245,8 @@ function StudentChatContent() {
         return "🧾 Checking your tuition and billing summary...";
       case "CheckFinancialAidStatus":
         return "💵 Checking your CHED UniFAST grant status...";
+      case "GetCalendarEvents":
+        return "📅 Fetching your Outlook Calendar events...";
       case "AttemptAutonomousResolution":
         return "🧠 Running autonomous resolution attempt...";
       case "requestHoldLift":
@@ -160,6 +258,13 @@ function StudentChatContent() {
       default:
         return `🛠️ Running tool: ${tool}...`;
     }
+  };
+
+  const handleReconnectM365 = async () => {
+    await signIn("azure-ad", {
+      callbackUrl: ticketId ? `/student/chat?ticketId=${ticketId}` : "/student",
+      prompt: "consent",
+    });
   };
 
   useEffect(() => {
@@ -259,7 +364,7 @@ function StudentChatContent() {
       <main className="flex-1 overflow-y-auto p-6 space-y-6 max-w-3xl w-full mx-auto">
         {messages.map((msg) => {
           const isUser = msg.role === "user";
-          const { text, toolCalls } = parseMessageContent(msg.content_scrubbed);
+          const { text, toolCalls, calendarEvents, calendarState } = parseMessageContent(msg.content_scrubbed);
           const isStreaming = msg.id === activeStreamingId;
           const displayText = isStreaming ? (streamedMessages[msg.id] || "") : text;
           const displayToolCalls = isStreaming ? visibleToolCalls : toolCalls;
@@ -312,6 +417,68 @@ function StudentChatContent() {
                     </div>
                   )
                 )}
+
+                {!isUser && calendarEvents.length > 0 && (
+                  <div className="rounded-2xl border border-brand-primary/15 bg-white p-4 shadow-sm">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-primary">
+                          Outlook Schedule
+                        </p>
+                        <p className="text-sm font-semibold text-brand-text">
+                          {calendarEvents.length} upcoming event{calendarEvents.length > 1 ? "s" : ""}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-brand-primary-light px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-primary">
+                        Live M365
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {calendarEvents.map((event) => (
+                        <div
+                          key={event.id}
+                          className="rounded-2xl border border-zinc-100 bg-brand-surface px-4 py-3"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-brand-text">{event.title}</p>
+                              <p className="mt-1 text-xs text-brand-muted">
+                                {formatCalendarEventRange(event)}
+                              </p>
+                            </div>
+                            {event.isAllDay && (
+                              <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-primary">
+                                All day
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {!isUser && calendarState && calendarState !== "ready" && (
+                  <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                    <p className="text-sm font-semibold text-brand-text">
+                      {getCalendarStateMeta(calendarState).title}
+                    </p>
+                    <p className="mt-1 text-sm text-brand-muted">
+                      {getCalendarStateMeta(calendarState).description}
+                    </p>
+
+                    {(calendarState === "consent_required" || calendarState === "token_missing") && (
+                      <button
+                        type="button"
+                        onClick={() => void handleReconnectM365()}
+                        className="mt-3 inline-flex items-center rounded-full bg-brand-primary px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-700"
+                      >
+                        Reconnect Microsoft 365
+                      </button>
+                    )}
+                  </div>
+                )}
                 <span className="text-[10px] text-brand-muted block text-right px-1">
                   {new Date(msg.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
@@ -346,6 +513,12 @@ function StudentChatContent() {
               🔍 Why do I have a hold?
             </button>
             <button
+              onClick={() => handleSendMessage("Show my upcoming M365 schedule.")}
+              className="rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
+            >
+              📅 Show my schedule
+            </button>
+            <button
               onClick={() => handleSendMessage("Please lift my financial hold.")}
               className="rounded-full bg-white border border-zinc-200 px-4 py-1.5 text-xs font-semibold text-brand-primary hover:border-brand-primary transition"
             >
@@ -377,7 +550,7 @@ function StudentChatContent() {
             placeholder={
               ticketDetails?.status === "Resolved"
                 ? "This ticket is closed."
-                : "Ask about holds, balances, or deadlines..."
+                : "Ask about holds, balances, schedules, or deadlines..."
             }
             className="flex-1 bg-transparent px-2 py-3 text-sm focus:outline-none disabled:opacity-50 font-sans"
           />

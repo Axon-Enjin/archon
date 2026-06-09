@@ -4,7 +4,7 @@ import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, MessageCircle, FileText, AlertOctagon, Calendar, Clock, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { MessageCircle, AlertOctagon, Calendar, Clock, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 
 interface StudentProfile {
   student_id: string;
@@ -59,6 +59,7 @@ export default function StudentDashboard() {
   const [ticketPage, setTicketPage] = useState(1);
   const TICKETS_PER_PAGE = 3;
   const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [creatingTicket, setCreatingTicket] = useState(false);
   const [calendarError, setCalendarError] = useState<string | null>(null);
   const [calendarErrorCode, setCalendarErrorCode] = useState<string | null>(null);
@@ -69,13 +70,26 @@ export default function StudentDashboard() {
   });
   const [selectedDateKey, setSelectedDateKey] = useState(() => toDateKey(new Date()));
 
-  async function fetchDashboardData(studentOid: string) {
+  async function fetchDashboardData(
+    studentOid: string,
+    options?: { showLoader?: boolean; refreshCalendar?: boolean }
+  ) {
+    const showLoader = options?.showLoader ?? false;
+    const refreshCalendar = options?.refreshCalendar ?? false;
+
     try {
-      setLoading(true);
+      if (showLoader) {
+        setLoading(true);
+      }
+
       const [profileRes, holdsRes, calendarRes, ticketsRes] = await Promise.all([
         fetch(`/api/v1/student/${studentOid}/profile`),
         fetch(`/api/v1/student/${studentOid}/holds`),
-        fetch(`/api/v1/student/${studentOid}/calendar?refresh=1`),
+        fetch(
+          refreshCalendar
+            ? `/api/v1/student/${studentOid}/calendar?refresh=1`
+            : `/api/v1/student/${studentOid}/calendar`
+        ),
         fetch(`/api/v1/tickets?studentId=${studentOid}`),
       ]);
 
@@ -101,7 +115,10 @@ export default function StudentDashboard() {
     } catch (err) {
       console.error("Error fetching student dashboard data:", err);
     } finally {
-      setLoading(false);
+      setHasLoadedOnce(true);
+      if (showLoader) {
+        setLoading(false);
+      }
     }
   }
 
@@ -135,20 +152,37 @@ export default function StudentDashboard() {
       }
 
       const initialFetchTimer = setTimeout(() => {
-        void fetchDashboardData(session.user.entra_oid);
+        void fetchDashboardData(session.user.entra_oid, {
+          showLoader: !hasLoadedOnce,
+          refreshCalendar: false,
+        });
       }, 0);
 
-      // Implement periodic sync polling every 4 seconds
+      const runSilentSync = () => {
+        if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+          return;
+        }
+        void fetchDashboardDataSilently(session.user.entra_oid);
+      };
+
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === "visible") {
+          runSilentSync();
+        }
+      };
+
       const interval = setInterval(() => {
-        fetchDashboardDataSilently(session.user.entra_oid);
+        runSilentSync();
       }, 4000);
+      document.addEventListener("visibilitychange", handleVisibilityChange);
 
       return () => {
         clearInterval(interval);
         clearTimeout(initialFetchTimer);
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
       };
     }
-  }, [session, status, router]);
+  }, [session, status, router, hasLoadedOnce]);
 
   const handleStartNewChat = async () => {
     if (!session?.user) return;
@@ -201,7 +235,7 @@ export default function StudentDashboard() {
     });
   };
 
-  if (loading || status === "loading") {
+  if ((loading && !hasLoadedOnce) || status === "loading") {
     return (
       <div className="flex h-[calc(100vh-80px)] items-center justify-center">
         <div className="text-center">
