@@ -417,6 +417,56 @@ class CosmosDBService {
     return resources;
   }
 
+  async getStudentEmail(studentId: string, institutionId: string): Promise<string | undefined> {
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      const latestConversation = db.conversations
+        .filter(
+          (c) =>
+            c.student_id === studentId &&
+            c.institution_id === institutionId &&
+            typeof c.student_email === "string" &&
+            c.student_email.trim().length > 0
+        )
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+      if (latestConversation?.student_email) return latestConversation.student_email;
+
+      const matchedUser = db.users.find(
+        (u) =>
+          u.entra_oid === studentId &&
+          u.institution_id === institutionId &&
+          typeof (u as UserDoc & { email?: string }).email === "string" &&
+          ((u as UserDoc & { email?: string }).email || "").trim().length > 0
+      ) as (UserDoc & { email?: string }) | undefined;
+      return matchedUser?.email;
+    }
+
+    const conversations = await this.getContainer("conversations");
+    const convoQuerySpec = {
+      query:
+        "SELECT TOP 1 c.student_email FROM c WHERE c.student_id = @studentId " +
+        "AND IS_DEFINED(c.student_email) AND c.student_email != '' ORDER BY c.created_at DESC",
+      parameters: [{ name: "@studentId", value: studentId }],
+    };
+    const { resources: convoResources } = await conversations.items
+      .query<{ student_email?: string }>(convoQuerySpec, { partitionKey: institutionId })
+      .fetchAll();
+    const fromConversation = convoResources[0]?.student_email;
+    if (fromConversation) return fromConversation;
+
+    const users = await this.getContainer("users");
+    const userQuerySpec = {
+      query:
+        "SELECT TOP 1 c.email FROM c WHERE c.entra_oid = @studentId " +
+        "AND IS_DEFINED(c.email) AND c.email != ''",
+      parameters: [{ name: "@studentId", value: studentId }],
+    };
+    const { resources: userResources } = await users.items
+      .query<{ email?: string }>(userQuerySpec, { partitionKey: institutionId })
+      .fetchAll();
+    return userResources[0]?.email;
+  }
+
   async getOpenConversations(institutionId: string): Promise<ConversationDoc[]> {
     if (this.isMockMode) {
       const db = this.readMockDB();
