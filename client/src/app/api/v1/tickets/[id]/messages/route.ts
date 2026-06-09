@@ -154,6 +154,13 @@ async function resolveSupportRecipients(institutionId: string, excludeIds: strin
   return staffIds.filter((id) => !excludeIds.includes(id));
 }
 
+function getSupportEscalationMessage(ticketLabel: string, ticketId: string): string {
+  return (
+    `Ticket ${ticketLabel} requested support staff assistance. ` +
+    `Ticket ID: ${ticketId}. Open Archon queue to continue the support session.`
+  );
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -298,9 +305,8 @@ export async function POST(
         await enqueueTeamsNotification({
           institutionId: authUser.institution_id,
           recipientEntraOid: recipient,
-          title: `New escalated ticket: ${ticketLabel}`,
-          message:
-            `${authUser.name || "Student"} requires staff assistance. Open Archon queue to continue the support session.`,
+          title: ticketLabel,
+          message: getSupportEscalationMessage(ticketLabel, conversationId),
           actionUrl: getSupportQueueActionUrl(conversationId),
           ticketId: conversationId,
         });
@@ -395,9 +401,8 @@ export async function POST(
         await enqueueTeamsNotification({
           institutionId: authUser.institution_id,
           recipientEntraOid: recipient,
-          title: `New escalated ticket: ${ticketLabel}`,
-          message:
-            `${authUser.name || "Student"} requires staff assistance. Open Archon queue to continue the support session.`,
+          title: ticketLabel,
+          message: getSupportEscalationMessage(ticketLabel, conversationId),
           actionUrl: getSupportQueueActionUrl(conversationId),
           ticketId: conversationId,
         });
