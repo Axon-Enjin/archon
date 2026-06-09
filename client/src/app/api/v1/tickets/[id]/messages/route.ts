@@ -154,10 +154,10 @@ async function resolveSupportRecipients(institutionId: string, excludeIds: strin
   return staffIds.filter((id) => !excludeIds.includes(id));
 }
 
-function getSupportEscalationMessage(ticketLabel: string, ticketId: string): string {
+function getSupportEscalationMessage(ticketLabel: string): string {
   return (
-    `Ticket ${ticketLabel} requested support staff assistance. ` +
-    `Ticket ID: ${ticketId}. Open Archon queue to continue the support session.`
+    `A student has requested for a support staff member. ` +
+    `Ticket ID: ${ticketLabel}. Please open the Archon support queue and continue this ticket.`
   );
 }
 
@@ -306,9 +306,9 @@ export async function POST(
           institutionId: authUser.institution_id,
           recipientEntraOid: recipient,
           title: ticketLabel,
-          message: getSupportEscalationMessage(ticketLabel, conversationId),
+          message: getSupportEscalationMessage(ticketLabel),
           actionUrl: getSupportQueueActionUrl(conversationId),
-          ticketId: conversationId,
+          ticketId: ticketLabel,
         });
       }
 
@@ -394,7 +394,7 @@ export async function POST(
         title: "Ticket escalated to support queue",
         message: "A student has requested for a support staff member. Please open the Archon support queue and continue this ticket.",
         actionUrl: `/student/chat?ticketId=${conversationId}`,
-        ticketId: conversationId,
+        ticketId: ticketLabel,
       });
 
       for (const recipient of supportRecipients) {
@@ -402,9 +402,9 @@ export async function POST(
           institutionId: authUser.institution_id,
           recipientEntraOid: recipient,
           title: ticketLabel,
-          message: getSupportEscalationMessage(ticketLabel, conversationId),
+          message: getSupportEscalationMessage(ticketLabel),
           actionUrl: getSupportQueueActionUrl(conversationId),
-          ticketId: conversationId,
+          ticketId: ticketLabel,
         });
       }
     };
