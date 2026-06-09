@@ -6,37 +6,8 @@ import { isAiEnabled } from "@/lib/feature-flags";
 import { enqueueOutlookNotification, enqueueTeamsNotification } from "@/lib/notification-jobs";
 import { generateFoundryReply, isFoundryConfigured } from "@/lib/azure-foundry";
 import { SYSTEM_PROMPT } from "@/lib/ai-prompt-templates";
-
-interface HoldItem {
-  id: string;
-  type: string;
-  reason: string;
-  status: "Active" | "Lifting" | "Resolved";
-  resolution_steps: string;
-}
-
-interface FinancialData {
-  student_id: string;
-  currency: string;
-  total_charges: number;
-  payments_made: number;
-  balance_due: number;
-  pending_financial_aid: number;
-  net_balance: number;
-  status: string;
-  payment_deadline: string;
-  scholarship_renewal_deadline: string;
-  scholarship_renewal_status?: "not_started" | "in_progress" | "submitted";
-  scholarship_renewal_submitted?: boolean;
-  scholarship_renewal_submitted_at?: string;
-  itemized_charges: Array<{ item: string; amount: number }>;
-  pending_disbursements: Array<{
-    source: string;
-    amount: number;
-    status: string;
-    expected_release: string;
-  }>;
-}
+import { getUniversityAdapter } from "@/lib/adapters";
+import type { AdapterContext, FinancialStatus } from "@/lib/adapters/types";
 
 type UserLanguage = "en" | "fil" | "ceb";
 
@@ -84,7 +55,7 @@ function detectLanguage(content: string): UserLanguage {
   return "en";
 }
 
-function formatBalanceResponse(financialData: FinancialData, language: UserLanguage): string {
+function formatBalanceResponse(financialData: FinancialStatus, language: UserLanguage): string {
   const itemizedCharges = financialData.itemized_charges
     .map((charge, index) => `${index + 1}. ${charge.item}: ${pesoFormatter.format(charge.amount)}`)
     .join("\n");
@@ -145,36 +116,6 @@ function formatBalanceResponse(financialData: FinancialData, language: UserLangu
     `Itemized Charges:\n${itemizedCharges}\n\n` +
     `Pending Financial Aid:\n${pendingAidSummary}\n\n` +
     `Once pending aid is posted, your projected net balance is ${pesoFormatter.format(financialData.net_balance)}.`;
-}
-
-function getDefaultFinancialData(): FinancialData {
-  return {
-    student_id: "2024-10025",
-    currency: "PHP",
-    total_charges: 24500.0,
-    payments_made: 12000.0,
-    balance_due: 12500.0,
-    pending_financial_aid: 15000.0,
-    net_balance: -2500.0,
-    status: "Hold Active",
-    payment_deadline: "2026-06-30",
-    scholarship_renewal_deadline: "2026-07-15",
-    scholarship_renewal_status: "not_started",
-    scholarship_renewal_submitted: false,
-    itemized_charges: [
-      { item: "Tuition Fee (18 units)", amount: 18000.0 },
-      { item: "Laboratory Fees (IT Lab)", amount: 3500.0 },
-      { item: "Miscellaneous & Registration", amount: 3000.0 },
-    ],
-    pending_disbursements: [
-      {
-        source: "CHED UniFAST Grant",
-        amount: 15000.0,
-        status: "Pending Verification",
-        expected_release: "3 business days",
-      },
-    ],
-  };
 }
 
 function extractMessageText(content: string): string {
@@ -288,10 +229,18 @@ export async function POST(
     const conversation = await cosmosDbService.getConversation(conversationId, authUser.institution_id);
     const currentAiAttempts = conversation?.ai_resolution_attempts || 0;
     let nextAiAttempts = currentAiAttempts;
+    const adapter = getUniversityAdapter(authUser.institution_id);
+    const adapterContext: AdapterContext = {
+      institutionId: authUser.institution_id,
+      studentOid: authUser.entra_oid,
+      major: authUser.major,
+      year: authUser.year,
+      name: authUser.name,
+      email: authUser.email,
+    };
 
     // 2. Fetch active holds/billing to make the AI responses data-driven
-    const holdsKey = `holds:${authUser.entra_oid}`;
-    const holds = (await cosmosDbService.getCacheData<HoldItem[]>(holdsKey, authUser.institution_id)) || [];
+    let holds = await adapter.getHolds(adapterContext);
     const activeHoldsCount = holds.filter((h) => h.status === "Active").length;
 
     const triggerEscalation = async () => {
@@ -306,8 +255,8 @@ export async function POST(
           student_profile: {
             name: authUser.name || "Student",
             student_id: authUser.entra_oid,
-            major: "N/A",
-            year: "N/A",
+            major: authUser.major || "Not available",
+            year: authUser.year || "Not available",
           },
           diagnosis: "Student queries holds or requested escalation. Financial holds or other assistance required.",
           systems_queried: ["RegistrarHolds", "BursarTuition", "CHEDUniFASTStatus"],
@@ -368,13 +317,7 @@ export async function POST(
         }
         
         if (finalToolCalls.includes("requestHoldLift")) {
-          const holdsKey = `holds:${authUser.entra_oid}`;
-          const holdsList = (await cosmosDbService.getCacheData<HoldItem[]>(holdsKey, authUser.institution_id)) || [];
-          const financialHold = holdsList.find((h) => h.id === "hold-financial" && h.status === "Active");
-          if (financialHold) {
-            financialHold.status = "Resolved";
-            await cosmosDbService.setCacheData(holdsKey, holdsList, authUser.institution_id);
-          }
+          await adapter.requestHoldLift(adapterContext, "hold-financial");
         }
 
         await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
@@ -472,13 +415,7 @@ export async function POST(
       toolCalls.push("CheckTuitionBalance");
       toolCalls.push("CheckFinancialAidStatus");
 
-      const financialKey = `financial:${authUser.entra_oid}`;
-      let financialData = await cosmosDbService.getCacheData<FinancialData>(financialKey, authUser.institution_id);
-      if (!financialData) {
-        financialData = getDefaultFinancialData();
-        await cosmosDbService.setCacheData(financialKey, financialData, authUser.institution_id);
-      }
-
+      const financialData = await adapter.getFinancialStatus(adapterContext);
       if (financialData) {
         aiContent = formatBalanceResponse(financialData, userLanguage);
         nextAiAttempts = 0;
@@ -525,10 +462,8 @@ export async function POST(
         toolCalls.push("CheckFinancialAidStatus");
         toolCalls.push("requestHoldLift");
         nextAiAttempts = 0;
-        
-        // Update mock database hold status
-        financialHold.status = "Resolved";
-        await cosmosDbService.setCacheData(holdsKey, holds, authUser.institution_id);
+        await adapter.requestHoldLift(adapterContext, "hold-financial");
+        holds = await adapter.getHolds(adapterContext);
 
         if (userLanguage === "fil") {
           aiContent = "Na-check ko ang Financial Aid records mo. Nakikita ko ang pending CHED UniFAST grant mo na ₱15,000. Dahil dito, nag-request na ako sa Bursar at Registrar na i-temporarily lift ang **Financial Hold** mo.\n\nSuccessful ang lift! Cleared na ito sa next 14 days para makapag-enroll ka. Makikita mo ito sa Student Dashboard mo. May iba pa ba akong maitutulong?";
