@@ -7,6 +7,8 @@ export type GuardrailDecision = {
 export interface AiResponsePayload {
   text: string;
   toolCalls: string[];
+  /** 0..1 confidence that Archon autonomously resolved the student's need. */
+  confidence?: number;
   calendarEvents?: Array<{
     id: string;
     title: string;
@@ -155,6 +157,25 @@ export function buildRefusalPayload(reason: GuardrailDecision["reason"] = "out_o
     text: buildRefusal(reason).responseText,
     toolCalls: [],
   };
+}
+
+/**
+ * Heuristic AI confidence score (0..1) for an assistant turn (PRD-F3 / US-05).
+ * Reflects how confidently Archon resolved the student's need autonomously:
+ * a successful hold lift is highest; an escalation is lowest; data-backed
+ * (tool-resolved) answers rank above text-only general replies.
+ */
+export function computeAiConfidence(signals: {
+  refused?: boolean;
+  escalated?: boolean;
+  holdLiftSucceeded?: boolean;
+  resolvedWithTools?: boolean;
+}): number {
+  if (signals.holdLiftSucceeded) return 0.96;
+  if (signals.escalated) return 0.35;
+  if (signals.refused) return 0.5;
+  if (signals.resolvedWithTools) return 0.88;
+  return 0.55;
 }
 
 function escapeTagContent(value: string): string {

@@ -9,6 +9,7 @@ import { ARCHON_TOOLS, toDisplayToolName } from "@/lib/ai-tools";
 import { SYSTEM_PROMPT } from "@/lib/ai-prompt-templates";
 import {
   buildRefusalPayload,
+  computeAiConfidence,
   evaluateUserInputGuardrails,
   guardModelOutput,
   wrapConversationTurnForModel,
@@ -37,6 +38,7 @@ interface CalendarEventPayload {
 interface AssistantPayload {
   text: string;
   toolCalls: string[];
+  confidence?: number;
   calendarEvents?: CalendarEventPayload[];
   calendarState?: CalendarState;
 }
@@ -819,6 +821,7 @@ export async function POST(
             `financial aid pending (${pesoFormatter.format(statusAggregate.financial.pending_financial_aid)}), ` +
             "and hold policy constraints before issuing a final resolution.",
           wrap_up_status: "pending",
+          ai_confidence: computeAiConfidence({ escalated: true }),
         },
         agent_id: undefined,
         resolved_at: undefined,
@@ -1018,6 +1021,12 @@ export async function POST(
         const assistantMsg = await createAssistantMessage(authUser.institution_id, conversationId, {
           text: finalText,
           toolCalls: finalToolCalls,
+          confidence: computeAiConfidence({
+            refused: Boolean(outputDecision),
+            escalated: foundryEscalated || finalToolCalls.includes("EscalateToHuman"),
+            holdLiftSucceeded,
+            resolvedWithTools: isResolvingTurn(finalToolCalls),
+          }),
         });
         return NextResponse.json({ success: true, data: assistantMsg });
       }
@@ -1207,6 +1216,11 @@ export async function POST(
     const assistantMsg = await createAssistantMessage(authUser.institution_id, conversationId, {
       text: aiContent,
       toolCalls: toolCalls,
+      confidence: computeAiConfidence({
+        escalated: didEscalate || toolCalls.includes("EscalateToHuman"),
+        holdLiftSucceeded: !didEscalate && toolCalls.includes("requestHoldLift"),
+        resolvedWithTools: isResolvingTurn(toolCalls),
+      }),
     });
 
     return NextResponse.json({ success: true, data: assistantMsg });

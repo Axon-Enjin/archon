@@ -44,6 +44,8 @@ export interface HandoffDoc extends BaseCosmosDocument {
     recommended_resolution: string;
     resolution_summary?: string;
     wrap_up_status?: "pending" | "completed";
+    /** 0..1 AI confidence at the time of escalation (PRD-F3 / US-05). */
+    ai_confidence?: number;
   };
   agent_id?: string;
   resolved_at?: string;
