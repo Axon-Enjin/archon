@@ -89,7 +89,13 @@ export async function GET(request: NextRequest) {
 
     const sentJobs = jobs.filter((j) => j.status === "sent").length;
     const failedJobs = jobs.filter((j) => j.status === "failed").length;
-    const notificationActionRate = toPercent(sentJobs, jobs.length);
+    const processingJobs = jobs.filter((j) => j.status === "processing").length;
+    // Delivery success = confirmed-delivered over jobs that were actually
+    // attempted (handed off to Power Automate or terminal), not over every
+    // pending job. Once the PA delivery callback flips jobs to "sent", this
+    // reflects real end-to-end delivery (PRD-F11).
+    const attemptedJobs = sentJobs + failedJobs + processingJobs;
+    const notificationActionRate = toPercent(sentJobs, attemptedJobs);
 
     const consentSnapshots = await Promise.all(
       studentIds.map((studentId) =>
@@ -130,6 +136,8 @@ export async function GET(request: NextRequest) {
           resolvedWithHandoff,
           sentJobs,
           failedJobs,
+          processingJobs,
+          attemptedJobs,
           avgAiConfidence,
         },
         satisfaction: {
