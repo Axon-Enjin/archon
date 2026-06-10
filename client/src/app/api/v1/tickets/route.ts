@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, verifyRole, unauthorizedResponse, forbiddenResponse } from "@/lib/auth-helper";
 import { cosmosDbService } from "@/lib/db/cosmos";
 import { ConversationDoc } from "@/lib/db/types";
+import { recordAnalyticsEvent } from "@/lib/analytics-events";
 
 export async function GET(request: NextRequest) {
   const authUser = await getAuthenticatedUser();
@@ -58,7 +59,13 @@ export async function POST(request: NextRequest) {
 
     const created = await cosmosDbService.createConversation(newTicket);
 
-    // Seed initial assistant greeting message
+    recordAnalyticsEvent({
+      type: "ticket_created",
+      institutionId: authUser.institution_id,
+      ticketId: created.id,
+      studentId: targetStudent,
+      metadata: { ticket_id: nextTicketId },
+    });
     await cosmosDbService.createMessage({
       id: `msg-${Date.now()}`,
       institution_id: authUser.institution_id,

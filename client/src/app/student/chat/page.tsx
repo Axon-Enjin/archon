@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, ArrowRight, Calendar, AlertOctagon } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, AlertOctagon, FileText } from "lucide-react";
 import MarkdownText from "@/components/MarkdownText";
 
 interface Message {
@@ -24,6 +24,12 @@ interface CalendarEventPayload {
   source: string;
 }
 
+interface AssistantAction {
+  type: "launch_appeal_wizard";
+  label: string;
+  href: string;
+}
+
 type CalendarState =
   | "ready"
   | "empty"
@@ -36,6 +42,12 @@ interface TicketItem {
   id: string;
   ticket_id: string;
   status: "Open" | "Pending Agent" | "Resolved";
+  satisfaction?: {
+    rating: "positive" | "negative";
+    score: number;
+    comment?: string;
+    submitted_at: string;
+  };
 }
 
 function formatCalendarEventRange(event: CalendarEventPayload): string {
@@ -116,6 +128,7 @@ function StudentChatContent() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [ticketDetails, setTicketDetails] = useState<TicketItem | null>(null);
+  const [csatSubmitting, setCsatSubmitting] = useState(false);
 
   const [streamedMessages, setStreamedMessages] = useState<Record<string, string>>({});
   const [activeStreamingId, setActiveStreamingId] = useState<string | null>(null);
@@ -133,6 +146,7 @@ function StudentChatContent() {
     toolCalls: string[];
     calendarEvents: CalendarEventPayload[];
     calendarState?: CalendarState;
+    actions: AssistantAction[];
   } => {
     try {
       const parsed = JSON.parse(content) as {
@@ -140,6 +154,7 @@ function StudentChatContent() {
         toolCalls?: string[];
         calendarEvents?: CalendarEventPayload[];
         calendarState?: CalendarState;
+        actions?: AssistantAction[];
       };
       if (parsed && typeof parsed === "object" && typeof parsed.text === "string") {
         return {
@@ -147,41 +162,80 @@ function StudentChatContent() {
           toolCalls: parsed.toolCalls || [],
           calendarEvents: Array.isArray(parsed.calendarEvents) ? parsed.calendarEvents : [],
           calendarState: parsed.calendarState,
+          actions: Array.isArray(parsed.actions) ? parsed.actions : [],
         };
       }
     } catch {
       // no-op
     }
-    return { text: content, toolCalls: [], calendarEvents: [] };
+    return { text: content, toolCalls: [], calendarEvents: [], actions: [] };
   };
 
-  const animateStreaming = async (msg: Message) => {
-    const { text, toolCalls } = parseMessageContent(msg.content_scrubbed);
-    setActiveStreamingId(msg.id);
+  const consumeAssistantStream = async (res: Response, assistantTempId: string) => {
+    // Insert a live placeholder bubble the server stream will fill in.
+    const placeholder: Message = {
+      id: assistantTempId,
+      role: "assistant",
+      content_scrubbed: JSON.stringify({ text: "", toolCalls: [] }),
+      ts: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, placeholder]);
+    setActiveStreamingId(assistantTempId);
+    setStreamedMessages((prev) => ({ ...prev, [assistantTempId]: "" }));
+    setVisibleToolCalls([]);
+    setCurrentExecutingTool(null);
     setSending(false);
 
-    if (toolCalls.length > 0) {
-      for (const tool of toolCalls) {
-        setCurrentExecutingTool(tool);
-        setVisibleToolCalls((prev) => [...prev, tool]);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let accumulated = "";
+
+    const handleEvent = (event: string, dataStr: string) => {
+      let data: { tool?: string; token?: string; data?: Message };
+      try {
+        data = JSON.parse(dataStr);
+      } catch {
+        return;
       }
-      setCurrentExecutingTool(null);
+      if (event === "tool" && data.tool) {
+        setCurrentExecutingTool(data.tool);
+        setVisibleToolCalls((prev) => [...prev, data.tool as string]);
+      } else if (event === "token" && typeof data.token === "string") {
+        accumulated += data.token;
+        setCurrentExecutingTool(null);
+        setStreamedMessages((prev) => ({ ...prev, [assistantTempId]: accumulated }));
+        scrollToBottom();
+      } else if (event === "done" && data.data) {
+        const real = data.data;
+        setMessages((prev) => prev.map((m) => (m.id === assistantTempId ? real : m)));
+        setActiveStreamingId(null);
+        setVisibleToolCalls([]);
+        setCurrentExecutingTool(null);
+      }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const frames = buffer.split("\n\n");
+      buffer = frames.pop() || "";
+      for (const frame of frames) {
+        let event = "message";
+        let dataStr = "";
+        for (const line of frame.split("\n")) {
+          if (line.startsWith("event:")) event = line.slice(6).trim();
+          else if (line.startsWith("data:")) dataStr += line.slice(5).trim();
+        }
+        if (dataStr) handleEvent(event, dataStr);
+      }
     }
 
-    const words = text.split(" ");
-    for (let i = 0; i < words.length; i++) {
-      const currentText = words.slice(0, i + 1).join(" ");
-      setStreamedMessages((prev) => ({
-        ...prev,
-        [msg.id]: currentText,
-      }));
-      scrollToBottom();
-      await new Promise((resolve) => setTimeout(resolve, 50 + Math.random() * 30));
-    }
-
-    setActiveStreamingId(null);
+    // Safety: never leave the UI stuck in a streaming state.
+    setActiveStreamingId((cur) => (cur === assistantTempId ? null : cur));
     setVisibleToolCalls([]);
+    setCurrentExecutingTool(null);
   };
 
   const handleSendMessage = async (textToSend?: string) => {
@@ -199,29 +253,29 @@ function StudentChatContent() {
       ts: new Date(now).toISOString(),
     };
     setMessages((prev) => [...prev, tempUserMsg]);
+    const assistantTempId = `temp-assistant-${now}`;
 
     try {
       const res = await fetch(`/api/v1/tickets/${ticketId}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
         body: JSON.stringify({ content: messageText }),
       });
-      const data = await res.json();
-      if (data.success) {
-        const msgRes = await fetch(`/api/v1/tickets/${ticketId}/messages`);
-        const msgData = await msgRes.json();
-        if (msgData.success) {
-          const newMessages = msgData.data as Message[];
-          const existingIds = new Set(messages.map((m) => m.id));
-          const newAssistantMsg = newMessages.find((m) => m.role === "assistant" && !existingIds.has(m.id));
 
-          if (newAssistantMsg) {
-            setMessages(newMessages);
-            await animateStreaming(newAssistantMsg);
-          } else {
-            setMessages(newMessages);
+      const contentType = res.headers.get("content-type") || "";
+      if (res.body && contentType.includes("text/event-stream")) {
+        await consumeAssistantStream(res, assistantTempId);
+      } else {
+        // Fallback (non-streaming server): re-fetch and reveal the reply.
+        const data = await res.json();
+        if (data.success) {
+          const msgRes = await fetch(`/api/v1/tickets/${ticketId}/messages`);
+          const msgData = await msgRes.json();
+          if (msgData.success) {
+            setMessages(msgData.data as Message[]);
           }
         }
+        setSending(false);
       }
     } catch (err) {
       console.error("Failed to send message:", err);
@@ -248,6 +302,10 @@ function StudentChatContent() {
         return "💵 Checking your CHED UniFAST grant status...";
       case "GetCalendarEvents":
         return "📅 Fetching your Outlook Calendar events...";
+      case "GetCourseSchedule":
+        return "📚 Pulling up your class schedule...";
+      case "GetTransactionHistory":
+        return "🧾 Reviewing your recent account activity...";
       case "AttemptAutonomousResolution":
         return "🧠 Running autonomous resolution attempt...";
       case "requestHoldLift":
@@ -266,6 +324,26 @@ function StudentChatContent() {
       callbackUrl: ticketId ? `/student/chat?ticketId=${ticketId}` : "/student",
       prompt: "consent",
     });
+  };
+
+  const handleSubmitCsat = async (rating: "positive" | "negative") => {
+    if (!ticketId || csatSubmitting || ticketDetails?.satisfaction) return;
+    setCsatSubmitting(true);
+    try {
+      const res = await fetch(`/api/v1/tickets/${ticketId}/satisfaction`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTicketDetails((prev) => (prev ? { ...prev, satisfaction: data.data } : prev));
+      }
+    } catch (err) {
+      console.error("Failed to submit satisfaction:", err);
+    } finally {
+      setCsatSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -371,7 +449,7 @@ function StudentChatContent() {
       <main className="flex-1 overflow-y-auto px-6 py-4 space-y-4 max-w-3xl w-full mx-auto relative z-10 scrollbar-hide">
         {messages.map((msg) => {
           const isUser = msg.role === "user";
-          const { text, toolCalls, calendarEvents, calendarState } = parseMessageContent(msg.content_scrubbed);
+          const { text, toolCalls, calendarEvents, calendarState, actions } = parseMessageContent(msg.content_scrubbed);
           const isStreaming = msg.id === activeStreamingId;
           const displayText = isStreaming ? (streamedMessages[msg.id] || "") : text;
           const displayToolCalls = isStreaming ? visibleToolCalls : toolCalls;
@@ -491,6 +569,18 @@ function StudentChatContent() {
                     )}
                   </div>
                 )}
+
+                {!isUser && !isStreaming && actions.map((action, idx) => (
+                  <Link
+                    key={`${action.type}-${idx}`}
+                    href={action.href}
+                    className="mt-2 inline-flex items-center gap-2 rounded-full bg-brand-primary px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-teal-700 hover:-translate-y-0.5 w-fit"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    {action.label}
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                ))}
                 
                 <span className={`text-[9px] text-brand-muted/70 font-mono tracking-widest uppercase px-2 opacity-0 group-hover:opacity-100 transition-opacity ${isUser ? "text-right" : "text-left"}`}>
                   {new Date(msg.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -544,6 +634,38 @@ function StudentChatContent() {
             >
               🚨 Talk to support
             </button>
+          </div>
+        )}
+
+        {ticketDetails?.status === "Resolved" && (
+          <div className="mb-4 rounded-2xl border border-[#E3DFD5] bg-white px-5 py-4 shadow-sm">
+            {ticketDetails.satisfaction ? (
+              <p className="text-center text-sm font-semibold text-brand-text">
+                {ticketDetails.satisfaction.rating === "positive" ? "🎉" : "🙏"} Thanks for your feedback!
+              </p>
+            ) : (
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-sm font-semibold text-brand-text">Was this resolution helpful?</p>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={csatSubmitting}
+                    onClick={() => void handleSubmitCsat("positive")}
+                    className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-5 py-2 text-xs font-bold text-emerald-700 transition-all hover:-translate-y-0.5 hover:border-emerald-400 disabled:opacity-50"
+                  >
+                    👍 Yes, it helped
+                  </button>
+                  <button
+                    type="button"
+                    disabled={csatSubmitting}
+                    onClick={() => void handleSubmitCsat("negative")}
+                    className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-5 py-2 text-xs font-bold text-red-700 transition-all hover:-translate-y-0.5 hover:border-red-400 disabled:opacity-50"
+                  >
+                    👎 Not really
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

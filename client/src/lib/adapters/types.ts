@@ -5,6 +5,10 @@ export interface AdapterContext {
   year?: string;
   name?: string | null;
   email?: string | null;
+  /** Dev-only: force generated data from an explicit seed (non-production). */
+  devSeed?: string;
+  /** Dev-only: force a specific scenario archetype (non-production). */
+  devArchetype?: string;
 }
 
 export interface HoldItem {
@@ -78,10 +82,33 @@ export interface StatusAggregate {
   aid: AidAggregate;
 }
 
+export interface CourseScheduleItem {
+  code: string;
+  title: string;
+  units: number;
+  section: string;
+  room: string;
+  days: string;
+  start_time: string;
+  end_time: string;
+  instructor: string;
+}
+
+export interface TransactionItem {
+  id: string;
+  date: string;
+  type: "payment" | "hold_lifted" | "disbursement" | "charge" | "scholarship_credit";
+  description: string;
+  amount: number;
+  currency: string;
+}
+
 export interface IUniversityAdapter {
   getStudentProfile(context: AdapterContext): Promise<StudentProfile>;
   getHolds(context: AdapterContext): Promise<HoldItem[]>;
   getFinancialStatus(context: AdapterContext): Promise<FinancialStatus>;
   requestHoldLift(context: AdapterContext, holdId: string, reason?: string): Promise<boolean>;
   getStatusAggregate(context: AdapterContext): Promise<StatusAggregate>;
+  getCourseSchedule(context: AdapterContext): Promise<CourseScheduleItem[]>;
+  getTransactionHistory(context: AdapterContext): Promise<TransactionItem[]>;
 }

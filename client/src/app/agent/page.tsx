@@ -37,6 +37,7 @@ interface HandoffPacket {
     recommended_resolution: string;
     resolution_summary?: string;
     wrap_up_status?: "pending" | "completed";
+    ai_confidence?: number;
   };
   agent_id?: string;
   resolved_at?: string;
@@ -372,12 +373,25 @@ export default function AgentDashboard() {
                               Wrap-up {handoff.handoff_packet.wrap_up_status}
                             </span>
                           )}
+                          {typeof handoff.handoff_packet.ai_confidence === "number" && (
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                handoff.handoff_packet.ai_confidence >= 0.75
+                                  ? "bg-green-100 text-green-700"
+                                  : handoff.handoff_packet.ai_confidence >= 0.5
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-red-100 text-red-700"
+                              }`}
+                            >
+                              AI Confidence {Math.round(handoff.handoff_packet.ai_confidence * 100)}%
+                            </span>
+                          )}
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2 text-xs">
                           <div>
                             <p className="font-semibold text-brand-text font-display">Student Profile:</p>
                             <p className="text-brand-muted mt-1 font-sans">
-                              {handoff.handoff_packet.student_profile.name} (GWA 2.65 · SAP Warning)
+                              {handoff.handoff_packet.student_profile.name} ({handoff.handoff_packet.student_profile.major} · {handoff.handoff_packet.student_profile.year})
                             </p>
                           </div>
                           <div>

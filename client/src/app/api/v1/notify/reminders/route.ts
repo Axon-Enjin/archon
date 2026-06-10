@@ -2,27 +2,7 @@ import { NextResponse } from "next/server";
 import { forbiddenResponse, getAuthenticatedUser, unauthorizedResponse, verifyRole } from "@/lib/auth-helper";
 import { isM365Enabled } from "@/lib/feature-flags";
 import { cosmosDbService } from "@/lib/db/cosmos";
-
-interface HoldItem {
-  id: string;
-  type: string;
-  reason: string;
-  status: "Active" | "Lifting" | "Resolved";
-}
-
-interface CalendarEvent {
-  id: string;
-  title: string;
-  start: string;
-}
-
-interface FinancialData {
-  payment_deadline?: string;
-  scholarship_renewal_deadline?: string;
-  scholarship_renewal_status?: "not_started" | "in_progress" | "submitted";
-  scholarship_renewal_submitted?: boolean;
-  scholarship_renewal_submitted_at?: string;
-}
+import { collectStudentSignals } from "@/lib/proactive-alerts";
 
 function daysUntil(isoDate: string, now: Date): number {
   const ts = new Date(isoDate).getTime();
@@ -115,11 +95,13 @@ export async function POST() {
 
     for (const studentId of studentIds) {
       const studentEmail = await cosmosDbService.getStudentEmail(studentId, authUser.institution_id);
-      const [holds, events, financial] = await Promise.all([
-        cosmosDbService.getCacheData<HoldItem[]>(`holds:${studentId}`, authUser.institution_id),
-        cosmosDbService.getCacheData<CalendarEvent[]>(`calendar:${studentId}`, authUser.institution_id),
-        cosmosDbService.getCacheData<FinancialData>(`financial:${studentId}`, authUser.institution_id),
-      ]);
+      // Proactive scan (PRD-F5): resolve each student's signals deterministically,
+      // generating + caching them when absent so reminders fire even for students
+      // who have never opened Archon.
+      const { holds, events, financial } = await collectStudentSignals(
+        studentId,
+        authUser.institution_id
+      );
 
       for (const hold of (holds || []).filter((h) => h.status === "Active")) {
         const holdTag = hold.id.replace(/[^a-zA-Z0-9_-]/g, "");

@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Bell, CheckCircle2, Clock3, ShieldCheck, Ticket } from "lucide-react";
+import { Activity, Bell, CheckCircle2, Clock3, ShieldCheck, Ticket, Brain, ThumbsUp } from "lucide-react";
 
 interface AnalyticsSummary {
   generatedAt: string;
@@ -20,6 +20,8 @@ interface AnalyticsSummary {
     wrapUpCompletionRate: number;
     notificationActionRate: number;
     consentCoverageRate: number;
+    csatResponseRate: number;
+    csatPositiveRate: number;
   };
   operations: {
     avgHandleMs: number;
@@ -28,6 +30,13 @@ interface AnalyticsSummary {
     resolvedWithHandoff: number;
     sentJobs: number;
     failedJobs: number;
+    avgAiConfidence: number;
+  };
+  satisfaction: {
+    responses: number;
+    positive: number;
+    negative: number;
+    avgScore: number;
   };
   consent: {
     trackedStudents: number;
@@ -117,6 +126,23 @@ export default function AdminAnalyticsDashboard() {
         value: `${summary.rates.consentCoverageRate.toFixed(1)}%`,
         helper: `${summary.consent.granted}/${summary.consent.snapshotsAvailable} granted snapshots`,
         icon: <ShieldCheck className="w-5 h-5 text-green-600" />,
+      },
+      {
+        id: "csat",
+        label: "Student Satisfaction (CSAT)",
+        value: summary.satisfaction.responses > 0 ? `${summary.rates.csatPositiveRate.toFixed(1)}%` : "—",
+        helper:
+          summary.satisfaction.responses > 0
+            ? `${summary.satisfaction.positive}/${summary.satisfaction.responses} positive · ${summary.rates.csatResponseRate.toFixed(1)}% response rate`
+            : "No ratings submitted yet",
+        icon: <ThumbsUp className="w-5 h-5 text-rose-600" />,
+      },
+      {
+        id: "confidence",
+        label: "Avg AI Confidence",
+        value: summary.operations.avgAiConfidence > 0 ? `${(summary.operations.avgAiConfidence * 100).toFixed(0)}%` : "—",
+        helper: "Across escalated handoff packets",
+        icon: <Brain className="w-5 h-5 text-violet-600" />,
       },
     ];
   }, [summary]);

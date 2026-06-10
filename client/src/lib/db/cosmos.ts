@@ -594,7 +594,31 @@ class CosmosDBService {
     return resource as ConversationDoc;
   }
 
-  // MESSAGES
+  async setConversationSatisfaction(
+    id: string,
+    institutionId: string,
+    satisfaction: NonNullable<ConversationDoc["satisfaction"]>
+  ): Promise<ConversationDoc | null> {
+    if (this.isMockMode) {
+      const db = this.readMockDB();
+      const idx = db.conversations.findIndex((c) => c.id === id && c.institution_id === institutionId);
+      if (idx !== -1) {
+        db.conversations[idx].satisfaction = satisfaction;
+        this.writeMockDB(db);
+        return db.conversations[idx];
+      }
+      return null;
+    }
+
+    const container = await this.getContainer("conversations");
+    const { resource: existing } = await container.item(id, institutionId).read<ConversationDoc>();
+    if (!existing) return null;
+
+    const updated = { ...existing, satisfaction };
+    const { resource } = await container.item(id, institutionId).replace(updated);
+    return resource as ConversationDoc;
+  }
+
   async getMessages(conversationId: string, institutionId: string): Promise<MessageDoc[]> {
     if (this.isMockMode) {
       const db = this.readMockDB();

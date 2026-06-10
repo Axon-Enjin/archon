@@ -61,6 +61,32 @@ export async function GET(request: NextRequest) {
     const wrapUpCompleted = handoffs.filter((h) => h.handoff_packet.wrap_up_status === "completed").length;
     const wrapUpPending = handoffs.filter((h) => h.handoff_packet.wrap_up_status === "pending").length;
 
+    // CSAT (PRD §5.5 `satisfaction_submitted`): aggregate post-resolution ratings.
+    const ratedConversations = conversations.filter((c) => c.satisfaction);
+    const csatResponses = ratedConversations.length;
+    const csatPositive = ratedConversations.filter((c) => c.satisfaction?.rating === "positive").length;
+    const csatAvgScore =
+      csatResponses > 0
+        ? Number(
+            (
+              ratedConversations.reduce((sum, c) => sum + (c.satisfaction?.score ?? 0), 0) / csatResponses
+            ).toFixed(2)
+          )
+        : 0;
+    const csatResponseRate = toPercent(csatResponses, resolvedTickets);
+    const csatPositiveRate = toPercent(csatPositive, csatResponses);
+
+    // Average AI confidence at escalation (PRD-F3 / US-05) across handoff packets.
+    const confidenceValues = handoffs
+      .map((h) => h.handoff_packet.ai_confidence)
+      .filter((v): v is number => typeof v === "number");
+    const avgAiConfidence =
+      confidenceValues.length > 0
+        ? Number(
+            (confidenceValues.reduce((sum, v) => sum + v, 0) / confidenceValues.length).toFixed(2)
+          )
+        : 0;
+
     const sentJobs = jobs.filter((j) => j.status === "sent").length;
     const failedJobs = jobs.filter((j) => j.status === "failed").length;
     const notificationActionRate = toPercent(sentJobs, jobs.length);
@@ -94,6 +120,8 @@ export async function GET(request: NextRequest) {
           wrapUpCompletionRate: toPercent(wrapUpCompleted, handoffs.length),
           notificationActionRate,
           consentCoverageRate: toPercent(consentGranted, Math.max(knownConsent.length, 1)),
+          csatResponseRate,
+          csatPositiveRate,
         },
         operations: {
           avgHandleMs,
@@ -102,6 +130,13 @@ export async function GET(request: NextRequest) {
           resolvedWithHandoff,
           sentJobs,
           failedJobs,
+          avgAiConfidence,
+        },
+        satisfaction: {
+          responses: csatResponses,
+          positive: csatPositive,
+          negative: csatResponses - csatPositive,
+          avgScore: csatAvgScore,
         },
         consent: {
           trackedStudents: studentIds.length,

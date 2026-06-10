@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, verifyStudentAccess, unauthorizedResponse, forbiddenResponse } from "@/lib/auth-helper";
 import { cosmosDbService } from "@/lib/db/cosmos";
 import { NotificationDoc } from "@/lib/db/types";
+import { collectStudentSignals } from "@/lib/proactive-alerts";
 
 interface HoldItem {
   id: string;
@@ -69,9 +70,10 @@ export async function GET(
     return forbiddenResponse("Forbidden: You cannot access this student's alerts.");
   }
 
-  // Generate in-app alerts based on current holds and calendar cache to support PRD-F5 behavior.
-  const holds = (await cosmosDbService.getCacheData<HoldItem[]>(`holds:${studentOid}`, authUser.institution_id)) || [];
-  const events = (await cosmosDbService.getCacheData<CalendarEvent[]>(`calendar:${studentOid}`, authUser.institution_id)) || [];
+  // Generate in-app alerts based on current holds and calendar to support PRD-F5
+  // behavior. Signals are resolved deterministically (and cached) so alerts exist
+  // even before the student's data is otherwise populated.
+  const { holds, events } = await collectStudentSignals(studentOid, authUser.institution_id);
 
   const derived = buildDerivedNotifications(studentOid, authUser.institution_id, holds, events);
   for (const notif of derived) {
