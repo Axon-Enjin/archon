@@ -4,6 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { LayoutDashboard, MessageCircle, FileText, LogOut, Bell, ChevronLeft, ChevronRight, Settings } from "lucide-react";
 
 export default function DashboardLayout({
@@ -70,9 +71,9 @@ export default function DashboardLayout({
         <div className="space-y-8">
           <div className="flex items-center justify-between">
             <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center w-full" : ""}`}>
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-primary text-white font-extrabold text-lg font-display">
-                A
-              </span>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-primary overflow-hidden">
+                <Image src="/archon.svg" alt="Archon Logo" width={36} height={36} className="w-full h-full object-contain" />
+              </div>
               {!isCollapsed && (
                 <span className="text-lg font-bold tracking-tight text-brand-text font-display transition-opacity duration-300">
                   Archon

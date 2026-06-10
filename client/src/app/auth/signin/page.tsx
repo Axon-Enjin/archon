@@ -3,6 +3,7 @@
 import { getProviders, signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
+import Image from "next/image";
 
 function SignInContent() {
   const searchParams = useSearchParams();
@@ -42,8 +43,8 @@ function SignInContent() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-brand-surface px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8 rounded-2xl bg-brand-card p-8 shadow-md border border-zinc-100">
         <div className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-primary-light text-brand-primary text-2xl font-bold">
-            A
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-primary overflow-hidden shadow-sm border border-zinc-100">
+            <Image src="/archon.svg" alt="Archon Portal Logo" width={48} height={48} className="w-full h-full object-contain" />
           </div>
           <h2 className="mt-6 text-3xl font-extrabold tracking-tight text-brand-text font-sans">
             Archon Portal

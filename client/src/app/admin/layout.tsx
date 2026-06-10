@@ -4,6 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Inbox, BarChart3, Bell, LogOut } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -45,9 +46,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <aside className="w-64 h-full border-r border-zinc-200 bg-white p-6 hidden md:flex flex-col justify-between shrink-0">
         <div className="space-y-8">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary text-white font-extrabold text-lg font-display">
-              A
-            </span>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-primary overflow-hidden">
+              <Image src="/archon.svg" alt="Archon Admin Logo" width={36} height={36} className="w-full h-full object-contain" />
+            </div>
             <span className="text-lg font-bold tracking-tight text-brand-text font-display">Archon Admin</span>
           </div>
 

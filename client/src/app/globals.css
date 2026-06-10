@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --color-primary-500: #0D9488;
+  --color-primary-500: #0D9488; /* Sage/Teal */
   --color-primary-100: #CCFBF1;
-  --color-surface-base: #FAFAF9;
+  --color-surface-base: #FAFAF9; /* Warm off-white */
   --color-surface-card: #FFFFFF;
-  --color-text-primary: #1C1917;
-  --color-text-muted: #78716C;
-  --color-error-500: #E11D48;
+  --color-text-primary: #111110; /* Ink black */
+  --color-text-muted: #6B6A65; /* Graphite */
+  --color-error-500: #E63946; /* Vermillion */
   --color-warning-500: #F59E0B;
-  --color-success-500: #10B981;
+  --color-success-500: #056644; /* Forest Green */
   --color-m365-blue: #0078D4;
 }
 
@@ -25,18 +25,19 @@
   --color-brand-success: var(--color-success-500);
   --color-brand-m365: var(--color-m365-blue);
   
-  --font-sans: var(--font-plus-jakarta-sans), sans-serif;
+  --font-sans: var(--font-jakarta), sans-serif;
   --font-display: var(--font-outfit), sans-serif;
-  --font-mono: 'System Mono', monospace;
+  --font-mono: var(--font-mono-custom), ui-monospace, monospace;
   
-  --radius-md: 12px;
-  --radius-lg: 20px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
 }
 
 body {
   background: var(--color-surface-base);
   color: var(--color-text-primary);
   min-height: 100vh;
+  font-family: var(--font-sans);
 }
 
 @keyframes laserPulse {

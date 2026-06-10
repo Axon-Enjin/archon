@@ -2,7 +2,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { MessageCircle, Calendar, Bell, Search, Building, ArrowRight, ShieldCheck, Users, Bot, Database, Zap, FileText } from "lucide-react";
+import Image from "next/image";
+import { MessageCircle, Calendar, Building, ShieldCheck, Users, Zap, FileText } from "lucide-react";
 import MotionWrapper from "@/components/MotionWrapper";
 import ChatSimulation from "@/components/ChatSimulation";
 import ArchonLayerFlow from "@/components/ArchonLayerFlow";
@@ -24,14 +25,14 @@ export default async function Home() {
         <header className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-20 items-center justify-between border-b border-zinc-100">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary text-white font-extrabold text-xl shadow-sm">
-                A
-              </span>
-              <span className="text-xl font-bold tracking-tight text-brand-text">Archon</span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary overflow-hidden shadow-sm border border-brand-primary/20">
+                <Image src="/archon.svg" alt="Archon" width={40} height={40} className="w-full h-full object-cover" />
+              </div>
+              <span className="text-2xl font-bold tracking-tight text-brand-text font-display">Archon</span>
             </div>
             <Link
               href="/auth/signin"
-              className="flex h-10 items-center justify-center rounded-lg bg-brand-primary px-4 text-sm font-semibold text-white transition hover:bg-teal-700 shadow-sm"
+              className="flex h-10 items-center justify-center rounded-md bg-brand-primary px-5 text-sm font-bold text-white transition hover:bg-teal-700 shadow-sm"
             >
               Enter Portal
             </Link>
@@ -41,7 +42,7 @@ export default async function Home() {
 
       {/* Hero Section */}
       <main className="flex-1">
-        <div className="relative overflow-hidden py-24 sm:py-32">
+        <div className="relative flex min-h-[calc(100svh-5rem)] items-center overflow-hidden py-16 sm:py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="lg:grid lg:grid-cols-12 lg:gap-8 lg:items-center">
               {/* Copy */}
@@ -83,38 +84,47 @@ export default async function Home() {
 
         {/* The Problem (The Broken Experience) */}
         <MotionWrapper direction="up" delay={0.1} triggerOnScroll={true}>
-          <div className="bg-white border-t border-zinc-100 py-24">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <div className="text-center max-w-3xl mx-auto mb-16">
-                <h2 className="text-3xl font-bold tracking-tight text-brand-text sm:text-4xl">
-                  The Student Experience is Broken
-                </h2>
-                <p className="mt-4 text-lg text-brand-muted">
-                  Students are forced to act as messengers between siloed departments, leading to missed deadlines, lost scholarships, and administrative burnout.
-                </p>
-              </div>
-
-              <div className="grid md:grid-cols-3 gap-8 text-center">
-                <div className="p-6 rounded-2xl bg-red-50/50 border border-red-100 relative">
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-white rounded-full p-2 shadow-sm border border-zinc-100">
-                    <Building className="w-6 h-6 text-red-500" />
-                  </div>
-                  <h3 className="mt-4 font-bold text-brand-text">Registrar&apos;s Office</h3>
-                  <p className="text-sm text-brand-muted mt-2">Places an Academic Hold but doesn&apos;t know the student&apos;s financial aid status.</p>
+          <div className="bg-brand-surface relative overflow-hidden py-32">
+            <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#0D9488 1.5px, transparent 1.5px)', backgroundSize: '32px 32px' }}></div>
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+              <div className="flex flex-col lg:flex-row gap-16 lg:items-center">
+                <div className="lg:w-5/12">
+                  <span className="text-brand-primary font-mono text-sm mb-4 block tracking-widest uppercase">The Status Quo</span>
+                  <h2 className="text-5xl lg:text-6xl font-extrabold tracking-tight text-brand-text font-display mb-8 leading-[1.1]">
+                    The Student Experience is Broken.
+                  </h2>
+                  <p className="text-xl text-brand-muted font-sans leading-relaxed">
+                    Students are forced to act as messengers between siloed departments, leading to missed deadlines, lost scholarships, and administrative burnout.
+                  </p>
                 </div>
-                <div className="p-6 rounded-2xl bg-amber-50/50 border border-amber-100 relative mt-8 md:mt-0">
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-white rounded-full p-2 shadow-sm border border-zinc-100">
-                    <Building className="w-6 h-6 text-amber-500" />
+                <div className="lg:w-7/12 relative">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 relative">
+                    <div className="space-y-6 sm:mt-16">
+                      <div className="p-8 rounded-[2rem] bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-red-100 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] group">
+                        <div className="h-14 w-14 rounded-2xl bg-red-50 flex items-center justify-center mb-6 text-red-500 group-hover:scale-110 transition-transform duration-500">
+                          <Building className="w-7 h-7" />
+                        </div>
+                        <h3 className="text-2xl font-bold text-brand-text font-display mb-3">Registrar's Office</h3>
+                        <p className="text-brand-muted leading-relaxed">Places an Academic Hold but doesn't know the student's financial aid status.</p>
+                      </div>
+                      <div className="p-8 rounded-[2rem] bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-blue-100 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] group">
+                        <div className="h-14 w-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-6 text-blue-500 group-hover:scale-110 transition-transform duration-500">
+                          <Building className="w-7 h-7" />
+                        </div>
+                        <h3 className="text-2xl font-bold text-brand-text font-display mb-3">Financial Aid</h3>
+                        <p className="text-brand-muted leading-relaxed">Processes the UniFAST grant but lacks a real-time channel to notify the Bursar to lift holds.</p>
+                      </div>
+                    </div>
+                    <div className="space-y-6 sm:-mt-16">
+                      <div className="p-8 rounded-[2rem] bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-amber-100 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] group">
+                        <div className="h-14 w-14 rounded-2xl bg-amber-50 flex items-center justify-center mb-6 text-amber-500 group-hover:scale-110 transition-transform duration-500">
+                          <Building className="w-7 h-7" />
+                        </div>
+                        <h3 className="text-2xl font-bold text-brand-text font-display mb-3">Bursar's Office</h3>
+                        <p className="text-brand-muted leading-relaxed">Places a Financial Hold, unaware that the student's scholarship is currently being processed.</p>
+                      </div>
+                    </div>
                   </div>
-                  <h3 className="mt-4 font-bold text-brand-text">Bursar&apos;s Office</h3>
-                  <p className="text-sm text-brand-muted mt-2">Places a Financial Hold, unaware that the student&apos;s scholarship is currently being processed.</p>
-                </div>
-                <div className="p-6 rounded-2xl bg-blue-50/50 border border-blue-100 relative mt-8 md:mt-0">
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-white rounded-full p-2 shadow-sm border border-zinc-100">
-                    <Building className="w-6 h-6 text-blue-500" />
-                  </div>
-                  <h3 className="mt-4 font-bold text-brand-text">Financial Aid</h3>
-                  <p className="text-sm text-brand-muted mt-2">Processes the UniFAST grant but lacks a real-time channel to notify the Bursar to lift holds.</p>
                 </div>
               </div>
             </div>
@@ -123,130 +133,141 @@ export default async function Home() {
 
         {/* The Solution (The Archon Layer) */}
         <MotionWrapper direction="up" delay={0.1} triggerOnScroll={true}>
-          <div className="bg-brand-surface border-t border-zinc-100 py-24">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-              <h2 className="text-3xl font-bold tracking-tight text-brand-text sm:text-4xl mb-4">
-                Enter the Archon Layer
+          <div className="bg-white border-y border-zinc-200/50 py-32 relative">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center relative z-10">
+              <span className="text-brand-primary font-mono text-sm mb-4 block tracking-widest uppercase">The Architecture</span>
+              <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight text-brand-text font-display mb-6">
+                Enter the Archon Layer.
               </h2>
-              <p className="text-lg text-brand-muted max-w-2xl mx-auto mb-16">
+              <p className="text-xl text-brand-muted max-w-2xl mx-auto mb-20 leading-relaxed">
                 A unified, autonomous AI layer that sits on top of existing university systems. It orchestrates complex queries and executes resolutions seamlessly.
               </p>
 
-              <ArchonLayerFlow />
+              <div className="bg-brand-surface/50 rounded-[2.5rem] p-8 md:p-12 border border-zinc-200/50 shadow-sm">
+                <ArchonLayerFlow />
+              </div>
             </div>
           </div>
         </MotionWrapper>
 
-        {/* Use Cases Section */}
-        <MotionWrapper direction="up" delay={0.1} triggerOnScroll={true}>
-          <div className="bg-white border-t border-zinc-100 py-24">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <h2 className="text-center text-3xl font-bold tracking-tight text-brand-text sm:text-4xl mb-16">
-                Autonomous Cross-Department Action
+        {/* Editorial Use Cases Section */}
+        <div className="bg-brand-surface py-32 overflow-hidden">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-24 md:mb-32">
+              <span className="text-brand-primary font-mono text-sm mb-4 block tracking-widest uppercase">Capabilities</span>
+              <h2 className="text-5xl lg:text-7xl font-extrabold tracking-tight text-brand-text font-display max-w-3xl leading-[1.05]">
+                Autonomous Cross-Department Action.
               </h2>
-              <div className="grid md:grid-cols-3 gap-8">
-                <div className="bg-zinc-50 p-8 rounded-2xl border border-zinc-100">
-                  <Zap className="w-8 h-8 text-brand-primary mb-6" />
-                  <h3 className="text-xl font-bold text-brand-text mb-3">Automated Hold Lifting</h3>
-                  <p className="text-brand-muted text-sm leading-relaxed">
-                    If a student has a Financial Hold but a pending CHED UniFAST grant, Archon autonomously verifies the grant and triggers a temporary 14-day hold lift, allowing immediate enrollment.
-                  </p>
+            </div>
+            
+            <div className="space-y-32">
+              {/* Case 1 */}
+              <MotionWrapper direction="up" delay={0.1} triggerOnScroll={true}>
+                <div className="flex flex-col md:flex-row gap-16 items-center group">
+                  <div className="md:w-1/2 w-full relative">
+                    <div className="aspect-[4/3] rounded-[2rem] bg-brand-primary-light/40 overflow-hidden relative border border-brand-primary/10 flex items-center justify-center p-8">
+                      <Zap className="w-64 h-64 text-brand-primary opacity-5 absolute -right-8 -bottom-8 transform group-hover:scale-110 transition-transform duration-700" />
+                      <div className="bg-white p-8 rounded-3xl shadow-[0_20px_40px_rgb(0,0,0,0.08)] z-10 w-full max-w-sm transform group-hover:-translate-y-2 transition-transform duration-500 border border-zinc-100">
+                        <div className="flex items-center gap-3 border-b border-zinc-100 pb-4 mb-5">
+                          <div className="w-2.5 h-2.5 rounded-full bg-brand-primary animate-pulse"></div>
+                          <span className="font-mono text-xs text-brand-muted uppercase tracking-widest">System Action</span>
+                        </div>
+                        <p className="text-brand-text font-semibold text-lg leading-snug">Temporary 14-day hold lift approved. Student cleared to enroll.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="md:w-1/2">
+                    <div className="text-brand-primary font-mono text-sm mb-4 tracking-widest uppercase border-b border-brand-primary/20 pb-4 inline-block">01 / Resolution</div>
+                    <h3 className="text-4xl font-bold text-brand-text font-display mb-6 mt-4">Automated Hold Lifting</h3>
+                    <p className="text-xl text-brand-muted leading-relaxed">
+                      If a student has a Financial Hold but a pending CHED UniFAST grant, Archon autonomously verifies the grant and triggers a temporary 14-day hold lift, allowing immediate enrollment.
+                    </p>
+                  </div>
                 </div>
-                <div className="bg-zinc-50 p-8 rounded-2xl border border-zinc-100">
-                  <FileText className="w-8 h-8 text-amber-500 mb-6" />
-                  <h3 className="text-xl font-bold text-brand-text mb-3">Guided SAP Appeals</h3>
-                  <p className="text-brand-muted text-sm leading-relaxed">
-                    When an Academic Hold requires a manual appeal, Archon guides the student through a dedicated Satisfactory Academic Progress (SAP) wizard, ensuring all required documents are attached.
-                  </p>
+              </MotionWrapper>
+
+              {/* Case 2 */}
+              <MotionWrapper direction="up" delay={0.1} triggerOnScroll={true}>
+                <div className="flex flex-col md:flex-row-reverse gap-16 items-center group">
+                  <div className="md:w-1/2 w-full relative">
+                    <div className="aspect-[4/3] rounded-[2rem] bg-amber-50 overflow-hidden relative border border-amber-100 flex items-center justify-center p-8">
+                      <FileText className="w-64 h-64 text-amber-500 opacity-5 absolute -left-8 -bottom-8 transform group-hover:scale-110 transition-transform duration-700" />
+                      <div className="bg-white p-8 rounded-3xl shadow-[0_20px_40px_rgb(0,0,0,0.08)] z-10 w-full max-w-sm transform group-hover:-translate-y-2 transition-transform duration-500 border border-zinc-100">
+                        <div className="flex items-center gap-3 border-b border-zinc-100 pb-4 mb-5">
+                          <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></div>
+                          <span className="font-mono text-xs text-brand-muted uppercase tracking-widest">Workflow Triggered</span>
+                        </div>
+                        <p className="text-brand-text font-semibold text-lg leading-snug">Please attach your medical certificate to complete the SAP appeal.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="md:w-1/2">
+                    <div className="text-amber-600 font-mono text-sm mb-4 tracking-widest uppercase border-b border-amber-200 pb-4 inline-block">02 / Guidance</div>
+                    <h3 className="text-4xl font-bold text-brand-text font-display mb-6 mt-4">Guided SAP Appeals</h3>
+                    <p className="text-xl text-brand-muted leading-relaxed">
+                      When an Academic Hold requires a manual appeal, Archon guides the student through a dedicated Satisfactory Academic Progress (SAP) wizard, ensuring all required documents are attached.
+                    </p>
+                  </div>
                 </div>
-                <div className="bg-zinc-50 p-8 rounded-2xl border border-zinc-100">
-                  <Users className="w-8 h-8 text-blue-500 mb-6" />
-                  <h3 className="text-xl font-bold text-brand-text mb-3">Intelligent Handoffs</h3>
-                  <p className="text-brand-muted text-sm leading-relaxed">
-                    If an issue is too complex, Archon transfers the chat to a human agent, providing them with a complete AI diagnosis and suggested resolution, drastically reducing triage time.
-                  </p>
+              </MotionWrapper>
+
+              {/* Case 3 */}
+              <MotionWrapper direction="up" delay={0.1} triggerOnScroll={true}>
+                <div className="flex flex-col md:flex-row gap-16 items-center group">
+                  <div className="md:w-1/2 w-full relative">
+                    <div className="aspect-[4/3] rounded-[2rem] bg-blue-50 overflow-hidden relative border border-blue-100 flex items-center justify-center p-8">
+                      <Users className="w-64 h-64 text-blue-500 opacity-5 absolute -right-8 -bottom-8 transform group-hover:scale-110 transition-transform duration-700" />
+                      <div className="bg-white p-8 rounded-3xl shadow-[0_20px_40px_rgb(0,0,0,0.08)] z-10 w-full max-w-sm transform group-hover:-translate-y-2 transition-transform duration-500 border border-zinc-100">
+                        <div className="flex items-center gap-3 border-b border-zinc-100 pb-4 mb-5">
+                          <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></div>
+                          <span className="font-mono text-xs text-brand-muted uppercase tracking-widest">Handoff Packet</span>
+                        </div>
+                        <p className="text-brand-text font-semibold text-lg leading-snug">Diagnosis complete. Transferring to human agent with context.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="md:w-1/2">
+                    <div className="text-blue-600 font-mono text-sm mb-4 tracking-widest uppercase border-b border-blue-200 pb-4 inline-block">03 / Escalation</div>
+                    <h3 className="text-4xl font-bold text-brand-text font-display mb-6 mt-4">Intelligent Handoffs</h3>
+                    <p className="text-xl text-brand-muted leading-relaxed">
+                      If an issue is too complex, Archon transfers the chat to a human agent, providing them with a complete AI diagnosis and suggested resolution, drastically reducing triage time.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              </MotionWrapper>
             </div>
           </div>
-        </MotionWrapper>
-
-        {/* Value-Driven Feature Grid */}
-        <MotionWrapper direction="up" delay={0.1} triggerOnScroll={true}>
-          <div className="bg-brand-surface border-t border-zinc-100 py-20">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <div className="text-center max-w-3xl mx-auto mb-12">
-                <h2 className="text-3xl font-bold tracking-tight text-brand-text sm:text-4xl">
-                  Engineered for Frictionless Resolution
-                </h2>
-                <p className="mt-4 text-lg text-brand-muted">
-                  Delivering immediate value to students while drastically reducing administrative overhead across the university.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                {/* Feature 1 */}
-                <div className="rounded-xl bg-white p-6 shadow-sm border border-zinc-100">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-primary text-white mb-4">
-                    <MessageCircle className="w-5 h-5" />
-                  </span>
-                  <h3 className="text-lg font-bold text-brand-text">Instant Resolution, Zero Lines</h3>
-                  <p className="mt-2 text-sm text-brand-muted leading-relaxed">
-                    Multilingual agentic chat (English, Tagalog, Cebuano) resolves 70%+ of student inquiries instantly without human intervention.
-                  </p>
-                </div>
-
-                {/* Feature 2 */}
-                <div className="rounded-xl bg-white p-6 shadow-sm border border-zinc-100">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-m365 text-white mb-4">
-                    <Calendar className="w-5 h-5" />
-                  </span>
-                  <h3 className="text-lg font-bold text-brand-text">Meet Students Where They Are</h3>
-                  <p className="mt-2 text-sm text-brand-muted leading-relaxed">
-                    Seamless Microsoft 365 integration surfaces exam slots and registration windows, while sending proactive Adaptive Card alerts to MS Teams.
-                  </p>
-                </div>
-
-                {/* Feature 3 */}
-                <div className="rounded-xl bg-white p-6 shadow-sm border border-zinc-100">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500 text-white mb-4">
-                    <ShieldCheck className="w-5 h-5" />
-                  </span>
-                  <h3 className="text-lg font-bold text-brand-text">Institutional Savings</h3>
-                  <p className="mt-2 text-sm text-brand-muted leading-relaxed">
-                    By shifting routine balance and hold lookups to the Archon AI Agent, universities save hundreds of thousands in administrative labor overhead.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </MotionWrapper>
+        </div>
 
         {/* Call to Action Section */}
         <MotionWrapper direction="up" delay={0.1} triggerOnScroll={true}>
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-            <div className="relative overflow-hidden rounded-3xl bg-brand-primary px-6 py-20 shadow-xl sm:px-12 sm:py-24 text-center">
-              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-brand-primary to-teal-800 opacity-90"></div>
-              
-              <div className="relative mx-auto max-w-2xl text-white space-y-6">
-                <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl font-display">
-                  Ready to transform your student experience?
-                </h2>
-                <p className="text-base text-brand-primary-light/80 leading-relaxed">
-                  Empower your university with autonomous cross-department resolution. Eliminate silos between Registrar, Bursar, and Financial Aid offices today.
-                </p>
-                <div className="pt-4 flex flex-col sm:flex-row justify-center gap-4">
-                  <Link
-                    href="/auth/signin"
-                    className="flex h-12 items-center justify-center rounded-xl bg-white px-6 text-sm font-semibold text-brand-primary transition hover:bg-zinc-100 shadow-md"
-                  >
-                    Enter Portal
-                  </Link>
-                  <Link
-                    href="/auth/signin"
-                    className="flex h-12 items-center justify-center rounded-xl border border-white/20 bg-brand-primary/10 px-6 text-sm font-semibold text-white transition hover:bg-white/10"
-                  >
-                    Sign in with Entra ID
-                  </Link>
+          <div className="bg-white py-32 border-t border-zinc-200/50">
+            <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+              <div className="relative overflow-hidden rounded-[3rem] bg-brand-primary px-6 py-24 shadow-2xl sm:px-16 text-center isolate">
+                <div className="absolute inset-0 bg-white opacity-10" style={{ backgroundImage: 'radial-gradient(#ffffff 2px, transparent 2px)', backgroundSize: '32px 32px' }}></div>
+                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-brand-primary to-teal-900 -z-10"></div>
+                
+                <div className="relative mx-auto max-w-3xl text-white space-y-8">
+                  <h2 className="text-4xl sm:text-6xl font-extrabold tracking-tight font-display leading-tight">
+                    Ready to transform the student experience?
+                  </h2>
+                  <p className="text-xl text-brand-primary-light/90 leading-relaxed font-sans max-w-2xl mx-auto">
+                    Empower your university with autonomous cross-department resolution. Eliminate silos between Registrar, Bursar, and Financial Aid offices today.
+                  </p>
+                  <div className="pt-8 flex flex-col sm:flex-row justify-center gap-6">
+                    <Link
+                      href="/auth/signin"
+                      className="flex h-14 items-center justify-center rounded-2xl bg-white px-8 text-base font-bold text-brand-primary transition-transform hover:scale-105 shadow-lg"
+                    >
+                      Enter Portal
+                    </Link>
+                    <Link
+                      href="/auth/signin"
+                      className="flex h-14 items-center justify-center rounded-2xl border-2 border-white/30 bg-white/5 px-8 text-base font-bold text-white transition-colors hover:bg-white/10 backdrop-blur-sm"
+                    >
+                      Sign in with Entra ID
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>

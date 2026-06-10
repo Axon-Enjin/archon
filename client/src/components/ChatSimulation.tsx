@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import { Search, ShieldCheck } from "lucide-react";
 
 interface ChatStep {
@@ -145,8 +146,8 @@ export default function ChatSimulation() {
                   exit={{ opacity: 0 }}
                   className="flex justify-start gap-3"
                 >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-primary text-white font-extrabold text-xs shadow-sm">
-                    A
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-primary overflow-hidden shadow-sm border border-zinc-100">
+                    <Image src="/archon.svg" alt="Archon AI" width={32} height={32} className="w-full h-full object-cover" />
                   </div>
                   <div className="rounded-[20px] rounded-tl-[4px] bg-brand-primary-light/50 px-4 py-3 flex items-center gap-1.5 shadow-sm">
                     <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-bounce"></span>
@@ -167,8 +168,8 @@ export default function ChatSimulation() {
                 className={`flex ${isUser ? "justify-end" : "justify-start"} gap-3`}
               >
                 {!isUser && (
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-primary text-white font-extrabold text-xs shadow-sm">
-                    A
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-primary overflow-hidden shadow-sm border border-zinc-100">
+                    <Image src="/archon.svg" alt="Archon AI" width={32} height={32} className="w-full h-full object-cover" />
                   </div>
                 )}
                 
