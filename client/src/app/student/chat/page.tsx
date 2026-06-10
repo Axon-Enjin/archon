@@ -164,33 +164,71 @@ function StudentChatContent() {
     return { text: content, toolCalls: [], calendarEvents: [], actions: [] };
   };
 
-  const animateStreaming = async (msg: Message) => {
-    const { text, toolCalls } = parseMessageContent(msg.content_scrubbed);
-    setActiveStreamingId(msg.id);
+  const consumeAssistantStream = async (res: Response, assistantTempId: string) => {
+    // Insert a live placeholder bubble the server stream will fill in.
+    const placeholder: Message = {
+      id: assistantTempId,
+      role: "assistant",
+      content_scrubbed: JSON.stringify({ text: "", toolCalls: [] }),
+      ts: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, placeholder]);
+    setActiveStreamingId(assistantTempId);
+    setStreamedMessages((prev) => ({ ...prev, [assistantTempId]: "" }));
+    setVisibleToolCalls([]);
+    setCurrentExecutingTool(null);
     setSending(false);
 
-    if (toolCalls.length > 0) {
-      for (const tool of toolCalls) {
-        setCurrentExecutingTool(tool);
-        setVisibleToolCalls((prev) => [...prev, tool]);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let accumulated = "";
+
+    const handleEvent = (event: string, dataStr: string) => {
+      let data: { tool?: string; token?: string; data?: Message };
+      try {
+        data = JSON.parse(dataStr);
+      } catch {
+        return;
       }
-      setCurrentExecutingTool(null);
+      if (event === "tool" && data.tool) {
+        setCurrentExecutingTool(data.tool);
+        setVisibleToolCalls((prev) => [...prev, data.tool as string]);
+      } else if (event === "token" && typeof data.token === "string") {
+        accumulated += data.token;
+        setCurrentExecutingTool(null);
+        setStreamedMessages((prev) => ({ ...prev, [assistantTempId]: accumulated }));
+        scrollToBottom();
+      } else if (event === "done" && data.data) {
+        const real = data.data;
+        setMessages((prev) => prev.map((m) => (m.id === assistantTempId ? real : m)));
+        setActiveStreamingId(null);
+        setVisibleToolCalls([]);
+        setCurrentExecutingTool(null);
+      }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const frames = buffer.split("\n\n");
+      buffer = frames.pop() || "";
+      for (const frame of frames) {
+        let event = "message";
+        let dataStr = "";
+        for (const line of frame.split("\n")) {
+          if (line.startsWith("event:")) event = line.slice(6).trim();
+          else if (line.startsWith("data:")) dataStr += line.slice(5).trim();
+        }
+        if (dataStr) handleEvent(event, dataStr);
+      }
     }
 
-    const words = text.split(" ");
-    for (let i = 0; i < words.length; i++) {
-      const currentText = words.slice(0, i + 1).join(" ");
-      setStreamedMessages((prev) => ({
-        ...prev,
-        [msg.id]: currentText,
-      }));
-      scrollToBottom();
-      await new Promise((resolve) => setTimeout(resolve, 50 + Math.random() * 30));
-    }
-
-    setActiveStreamingId(null);
+    // Safety: never leave the UI stuck in a streaming state.
+    setActiveStreamingId((cur) => (cur === assistantTempId ? null : cur));
     setVisibleToolCalls([]);
+    setCurrentExecutingTool(null);
   };
 
   const handleSendMessage = async (textToSend?: string) => {
@@ -208,29 +246,29 @@ function StudentChatContent() {
       ts: new Date(now).toISOString(),
     };
     setMessages((prev) => [...prev, tempUserMsg]);
+    const assistantTempId = `temp-assistant-${now}`;
 
     try {
       const res = await fetch(`/api/v1/tickets/${ticketId}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
         body: JSON.stringify({ content: messageText }),
       });
-      const data = await res.json();
-      if (data.success) {
-        const msgRes = await fetch(`/api/v1/tickets/${ticketId}/messages`);
-        const msgData = await msgRes.json();
-        if (msgData.success) {
-          const newMessages = msgData.data as Message[];
-          const existingIds = new Set(messages.map((m) => m.id));
-          const newAssistantMsg = newMessages.find((m) => m.role === "assistant" && !existingIds.has(m.id));
 
-          if (newAssistantMsg) {
-            setMessages(newMessages);
-            await animateStreaming(newAssistantMsg);
-          } else {
-            setMessages(newMessages);
+      const contentType = res.headers.get("content-type") || "";
+      if (res.body && contentType.includes("text/event-stream")) {
+        await consumeAssistantStream(res, assistantTempId);
+      } else {
+        // Fallback (non-streaming server): re-fetch and reveal the reply.
+        const data = await res.json();
+        if (data.success) {
+          const msgRes = await fetch(`/api/v1/tickets/${ticketId}/messages`);
+          const msgData = await msgRes.json();
+          if (msgData.success) {
+            setMessages(msgData.data as Message[]);
           }
         }
+        setSending(false);
       }
     } catch (err) {
       console.error("Failed to send message:", err);

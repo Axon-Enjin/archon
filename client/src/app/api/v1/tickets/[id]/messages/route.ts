@@ -431,6 +431,73 @@ async function createAssistantMessage(
   return assistantMsg;
 }
 
+/**
+ * Whether the client requested a streamed (SSE) response (PRD §5.4). The full
+ * orchestration — tools, guardrails, persistence — still completes server-side
+ * first; streaming only governs how the already-approved reply is delivered, so
+ * output guardrails are never bypassed.
+ */
+function wantsStream(request: NextRequest): boolean {
+  return (request.headers.get("accept") || "").includes("text/event-stream");
+}
+
+/**
+ * Returns the assistant turn either as JSON (default) or as a Server-Sent Events
+ * stream that replays the persisted reply progressively: tool-call activity
+ * first, then the answer token-by-token, then a final `done` event carrying the
+ * full message. This drives the chat's live typing UX from the server.
+ */
+function respondAssistant(request: NextRequest, assistantMsg: MessageDoc): Response {
+  if (!wantsStream(request)) {
+    return NextResponse.json({ success: true, data: assistantMsg });
+  }
+
+  let payload: AssistantPayload;
+  try {
+    payload = JSON.parse(assistantMsg.content_scrubbed) as AssistantPayload;
+  } catch {
+    payload = { text: assistantMsg.content_scrubbed, toolCalls: [] };
+  }
+
+  const encoder = new TextEncoder();
+  const sse = (event: string, data: unknown) =>
+    encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        for (const tool of payload.toolCalls || []) {
+          controller.enqueue(sse("tool", { tool }));
+          await delay(600);
+        }
+
+        const words = (payload.text || "").split(/(\s+)/);
+        for (const word of words) {
+          if (!word) continue;
+          controller.enqueue(sse("token", { token: word }));
+          if (word.trim()) await delay(28);
+        }
+
+        controller.enqueue(sse("done", { data: assistantMsg }));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "stream_error";
+        controller.enqueue(sse("error", { error: message }));
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    },
+  });
+}
+
 function isCalendarScheduleIntent(content: string): boolean {
   return /\b(calendar|schedule|outlook|m365|microsoft 365)\b/i.test(content);
 }
@@ -764,7 +831,7 @@ export async function POST(
         conversationId,
         buildRefusalPayload(guardrailDecision.reason)
       );
-      return NextResponse.json({ success: true, data: assistantMsg });
+      return respondAssistant(request, assistantMsg);
     }
 
     const conversation = await cosmosDbService.getConversation(conversationId, authUser.institution_id);
@@ -804,13 +871,13 @@ export async function POST(
       };
       await cosmosDbService.createMessage(assistantMsg);
 
-      return NextResponse.json({ success: true, data: assistantMsg });
+      return respondAssistant(request, assistantMsg);
     }
     if (isCalendarScheduleIntent(normalizedContent)) {
       await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
       const calendarPayload = await fetchCalendarPayloadForChat(request, authUser, userLanguage);
       const assistantMsg = await createAssistantMessage(authUser.institution_id, conversationId, calendarPayload);
-      return NextResponse.json({ success: true, data: assistantMsg });
+      return respondAssistant(request, assistantMsg);
     }
 
     const currentAiAttempts = conversation?.ai_resolution_attempts || 0;
@@ -1088,7 +1155,7 @@ export async function POST(
           }),
           actions: foundryEscalated ? undefined : appealActions,
         });
-        return NextResponse.json({ success: true, data: assistantMsg });
+        return respondAssistant(request, assistantMsg);
       }
     }
 
@@ -1284,7 +1351,7 @@ export async function POST(
       actions: didEscalate ? undefined : appealActions,
     });
 
-    return NextResponse.json({ success: true, data: assistantMsg });
+    return respondAssistant(request, assistantMsg);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error while processing message.";
     return NextResponse.json({ success: false, error: message }, { status: 500 });
