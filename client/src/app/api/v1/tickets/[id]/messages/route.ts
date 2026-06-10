@@ -327,6 +327,41 @@ function formatHoldLiftResponse(
   );
 }
 
+/**
+ * Autonomous resolution policy (PRD-F3 / US-04): Archon makes at most
+ * MAX_AI_ATTEMPTS substantive attempts before escalating to a human agent.
+ */
+const MAX_AI_ATTEMPTS = 2;
+
+/**
+ * Tool calls that represent a substantive, data-backed resolution attempt.
+ * A turn that invokes any of these is treated as "resolved" and resets the
+ * attempt counter; a text-only turn with none of these counts as an unresolved
+ * attempt and advances the counter toward escalation.
+ */
+const RESOLVING_TOOL_CALLS = new Set<string>([
+  "CheckTuitionBalance",
+  "CheckFinancialAidStatus",
+  "CheckStudentHolds",
+  "GetCalendarEvents",
+  "queryPolicies",
+  "requestHoldLift",
+]);
+
+function isResolvingTurn(toolCalls: string[]): boolean {
+  return toolCalls.some((tool) => RESOLVING_TOOL_CALLS.has(tool));
+}
+
+function getEscalationNote(language: UserLanguage): string {
+  if (language === "fil") {
+    return "Naabot na natin ang limitasyon ng autonomous resolution attempts, kaya in-escalate ko na ito sa support queue. May human agent na tutulong sa iyo, at isinama ko na ang konteksto para hindi mo na ulitin ang kwento mo.";
+  }
+  if (language === "ceb") {
+    return "Naabot na nato ang limitasyon sa autonomous resolution attempts, mao gi-escalate na nako ni sa support queue. Naay human agent nga motabang nimo, ug giapil na nako ang konteksto para dili na nimo usbon ang imong istorya.";
+  }
+  return "We've reached the limit of autonomous resolution attempts, so I've escalated this to the support queue. A human agent will assist you, and I've included your context so you won't need to repeat your story.";
+}
+
 function extractMessageText(content: string): string {
   try {
     const parsed = JSON.parse(content) as { text?: string };
@@ -872,12 +907,21 @@ export async function POST(
         });
         const finalToolCalls = outputDecision ? [] : foundryResult.toolCalls || [];
         let finalText = outputDecision ? buildRefusalPayload(outputDecision.reason).text : foundryResult.text;
-        
+
+        // Escalation is idempotent within this turn.
+        let foundryEscalated = false;
+        const ensureEscalation = async () => {
+          if (foundryEscalated) return;
+          await triggerEscalation();
+          foundryEscalated = true;
+          if (!finalToolCalls.includes("EscalateToHuman")) finalToolCalls.push("EscalateToHuman");
+        };
+
         // Execute tool calls on the server
         if (finalToolCalls.includes("EscalateToHuman")) {
-          await triggerEscalation();
+          await ensureEscalation();
         }
-        
+
         if (finalToolCalls.includes("requestHoldLift")) {
           if (canAutoLiftFinancial) {
             await adapter.requestHoldLift(adapterContext, "hold-financial");
@@ -888,13 +932,30 @@ export async function POST(
                 : userLanguage === "ceb"
                 ? "Na-check nako imong financial status. Dili pa eligible sa temporary financial hold lift kay kulang pa ang pending aid coverage. I-escalate nako ni sa support staff para ma-review dayon."
                 : "I checked your financial status. You're not yet eligible for a temporary financial hold lift because pending aid does not fully cover the balance yet. I will escalate this to support staff for immediate review.";
-            if (!finalToolCalls.includes("EscalateToHuman")) {
-              await triggerEscalation();
-            }
+            await ensureEscalation();
           }
         }
 
-        await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
+        // Explicit 2-attempt-then-escalate accounting (PRD-F3 / US-04), consistent
+        // with the mock loop below.
+        if (foundryEscalated) {
+          // triggerEscalation already reset the counter to 0.
+        } else if (isResolvingTurn(finalToolCalls)) {
+          await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
+        } else {
+          const attempts = currentAiAttempts + 1;
+          if (attempts >= MAX_AI_ATTEMPTS) {
+            await ensureEscalation();
+            finalText = `${finalText}\n\n${getEscalationNote(userLanguage)}`;
+          } else {
+            await cosmosDbService.updateConversationAiAttempts(
+              conversationId,
+              authUser.institution_id,
+              attempts
+            );
+          }
+        }
+
         const assistantMsg = await createAssistantMessage(authUser.institution_id, conversationId, {
           text: finalText,
           toolCalls: finalToolCalls,
@@ -1036,7 +1097,7 @@ export async function POST(
         aiContent = "For your **Academic Hold (SAP deficiency)**, you are required to file a formal SAP Appeal. \n\nYou can open the **SAP Appeal Wizard** from the dashboard sidebar to prepare your appeal narrative and checklist of documents (such as transcript or medical certificate). Would you like me to guide you there?";
       }
     } else if (normalizedContent.includes("human") || normalizedContent.includes("agent") || normalizedContent.includes("talk") || normalizedContent.includes("staff")) {
-      if (currentAiAttempts >= 2) {
+      if (currentAiAttempts >= MAX_AI_ATTEMPTS) {
         await escalateToHuman();
         if (userLanguage === "fil") {
           aiContent = "Naiintindihan ko. In-escalate ko na ang conversation na ito sa student services support queue namin. Isinama ko na rin ang summary ng holds mo at mga actions na ginawa ko para hindi mo na ulitin ang kwento mo.\n\nSandali lang habang kino-connect kita sa next available support staff.";
@@ -1049,16 +1110,16 @@ export async function POST(
         toolCalls.push("AttemptAutonomousResolution");
         nextAiAttempts = currentAiAttempts + 1;
         if (userLanguage === "fil") {
-          aiContent = `Naiintindihan ko na gusto mong makausap ang support staff. Bago kita i-escalate, susubukan ko muna ang isa pang autonomous resolution attempt (${nextAiAttempts}/2) para baka ma-resolve agad ito.\n\nPaki-share nang mas specific kung anong outcome ang kailangan mo ngayon (hal. hold lift, exact amount due, o scholarship status).`;
+          aiContent = `Naiintindihan ko na gusto mong makausap ang support staff. Bago kita i-escalate, susubukan ko muna ang isa pang autonomous resolution attempt (${nextAiAttempts}/${MAX_AI_ATTEMPTS}) para baka ma-resolve agad ito.\n\nPaki-share nang mas specific kung anong outcome ang kailangan mo ngayon (hal. hold lift, exact amount due, o scholarship status).`;
         } else if (userLanguage === "ceb") {
-          aiContent = `Nasabtan nako nga gusto nimo makigstorya sa support staff. Sa dili pa tika i-escalate, mosulay sa ko ug usa pa ka autonomous resolution attempt (${nextAiAttempts}/2) basin ma-resolve dayon.\n\nPalihog ihatag ang mas specific nga outcome nga imong kailangan karon (pananglitan: hold lift, exact amount due, o scholarship status).`;
+          aiContent = `Nasabtan nako nga gusto nimo makigstorya sa support staff. Sa dili pa tika i-escalate, mosulay sa ko ug usa pa ka autonomous resolution attempt (${nextAiAttempts}/${MAX_AI_ATTEMPTS}) basin ma-resolve dayon.\n\nPalihog ihatag ang mas specific nga outcome nga imong kailangan karon (pananglitan: hold lift, exact amount due, o scholarship status).`;
         } else {
-          aiContent = `I understand you want to speak with support staff. Before escalation, I need to run one more autonomous resolution attempt (${nextAiAttempts}/2) in case we can resolve this immediately.\n\nPlease share the exact outcome you need right now (e.g., hold lift, exact amount due, or scholarship status).`;
+          aiContent = `I understand you want to speak with support staff. Before escalation, I need to run one more autonomous resolution attempt (${nextAiAttempts}/${MAX_AI_ATTEMPTS}) in case we can resolve this immediately.\n\nPlease share the exact outcome you need right now (e.g., hold lift, exact amount due, or scholarship status).`;
         }
       }
     } else {
       nextAiAttempts = currentAiAttempts + 1;
-      if (nextAiAttempts >= 2) {
+      if (nextAiAttempts >= MAX_AI_ATTEMPTS) {
         await escalateToHuman();
         if (userLanguage === "fil") {
           aiContent = "Mukhang hindi ko pa ito nareresolba sa autonomous flow. In-escalate ko na ito sa support queue para ma-assist ka agad ng human agent. Isinama ko na ang context para hindi mo na ulitin ang details.";
@@ -1069,13 +1130,13 @@ export async function POST(
         }
       } else if (userLanguage === "fil") {
         toolCalls.push("AttemptAutonomousResolution");
-        aiContent = `Salamat sa message mo, ${authUser.name || "Student"}. Susubukan ko pa ang autonomous resolution attempt (${nextAiAttempts}/2).\n\nPuwede mo akong tanungin tungkol sa holds mo ("bakit may hold ako?"), tuition balance, UniFAST scholarship deadlines, o specific resolution na kailangan mo.`;
+        aiContent = `Salamat sa message mo, ${authUser.name || "Student"}. Susubukan ko pa ang autonomous resolution attempt (${nextAiAttempts}/${MAX_AI_ATTEMPTS}).\n\nPuwede mo akong tanungin tungkol sa holds mo ("bakit may hold ako?"), tuition balance, UniFAST scholarship deadlines, o specific resolution na kailangan mo.`;
       } else if (userLanguage === "ceb") {
         toolCalls.push("AttemptAutonomousResolution");
-        aiContent = `Salamat sa imong mensahe, ${authUser.name || "Student"}. Mosulay pa ko sa autonomous resolution attempt (${nextAiAttempts}/2).\n\nPwede ko nimo pangutan-on bahin sa imong holds ("ngano naa koy hold?"), tuition balance, UniFAST scholarship deadlines, o specific nga resolution nga imong kailangan.`;
+        aiContent = `Salamat sa imong mensahe, ${authUser.name || "Student"}. Mosulay pa ko sa autonomous resolution attempt (${nextAiAttempts}/${MAX_AI_ATTEMPTS}).\n\nPwede ko nimo pangutan-on bahin sa imong holds ("ngano naa koy hold?"), tuition balance, UniFAST scholarship deadlines, o specific nga resolution nga imong kailangan.`;
       } else {
         toolCalls.push("AttemptAutonomousResolution");
-        aiContent = `Thank you for your message, ${authUser.name || "Student"}. I'll run another autonomous resolution attempt (${nextAiAttempts}/2).\n\nYou can ask about holds ("why do I have a hold?"), tuition balance, UniFAST scholarship deadlines, or the specific resolution you need.`;
+        aiContent = `Thank you for your message, ${authUser.name || "Student"}. I'll run another autonomous resolution attempt (${nextAiAttempts}/${MAX_AI_ATTEMPTS}).\n\nYou can ask about holds ("why do I have a hold?"), tuition balance, UniFAST scholarship deadlines, or the specific resolution you need.`;
       }
     }
 
