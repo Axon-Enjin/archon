@@ -343,3 +343,125 @@ export function generateStudentScenario(studentOid: string): StudentScenario {
   scenarioCache.set(studentOid, scenario);
   return scenario;
 }
+
+export interface GeneratedCalendarEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  isAllDay: boolean;
+  source: "M365";
+}
+
+const COURSE_EVENTS = [
+  "Midterm Exam",
+  "Project Defense",
+  "Laboratory Practical",
+  "Group Consultation",
+  "Departmental Seminar",
+] as const;
+
+function isoAt(daysFromNow: number, hour: number, durationHours = 1): { start: string; end: string } {
+  const start = new Date();
+  start.setHours(hour, 0, 0, 0);
+  start.setDate(start.getDate() + daysFromNow);
+  const end = new Date(start);
+  end.setHours(start.getHours() + durationHours);
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
+function isoAllDay(deadline: string): { start: string; end: string } {
+  // `deadline` is a YYYY-MM-DD string; render as an all-day event on that date.
+  const start = new Date(`${deadline}T00:00:00.000Z`);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 1);
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
+/**
+ * Generate a deterministic M365 calendar for a student, anchored to "today" and
+ * tied to their own scenario (payment deadline, scholarship renewal, SAP appeal,
+ * disbursement) plus a couple of course events. Keeps the dashboard calendar
+ * coherent with the student's holds and financial data (US-08, PRD-F11).
+ */
+export function generateCalendarEvents(studentOid: string): GeneratedCalendarEvent[] {
+  const scenario = generateStudentScenario(studentOid);
+  // Separate RNG stream so calendar variety doesn't disturb scenario generation.
+  const rng = mulberry32(hashSeed(`${studentOid}:calendar`));
+  const events: GeneratedCalendarEvent[] = [];
+
+  const { financial, academic, holds } = scenario;
+
+  // Tuition payment deadline (only meaningful when there's a balance).
+  if (financial.balance_due > 0) {
+    const slot = isoAllDay(financial.payment_deadline);
+    events.push({
+      id: `cal-payment-${studentOid}`,
+      title: "Tuition Payment Deadline",
+      start: slot.start,
+      end: slot.end,
+      isAllDay: true,
+      source: "M365",
+    });
+  }
+
+  // Pending disbursement expected-release (turn the relative text into a date).
+  const disbursement = financial.pending_disbursements[0];
+  if (disbursement) {
+    const releaseDays = Number(disbursement.expected_release.match(/\d+/)?.[0] ?? 5);
+    const slot = isoAt(Math.max(1, releaseDays), 9);
+    events.push({
+      id: `cal-disbursement-${studentOid}`,
+      title: `${disbursement.source} Disbursement Expected`,
+      start: slot.start,
+      end: slot.end,
+      isAllDay: false,
+      source: "M365",
+    });
+  }
+
+  // Scholarship renewal deadline (only when the student holds a scholarship).
+  if (academic.scholarship !== "Self-funded") {
+    const slot = isoAllDay(financial.scholarship_renewal_deadline);
+    events.push({
+      id: `cal-renewal-${studentOid}`,
+      title: `${academic.scholarship} Renewal Deadline`,
+      start: slot.start,
+      end: slot.end,
+      isAllDay: true,
+      source: "M365",
+    });
+  }
+
+  // SAP appeal deadline when there is an active academic hold.
+  if (holds.some((hold) => hold.type === "Academic" && hold.status === "Active")) {
+    const slot = isoAllDay(addDays(randInt(rng, 5, 12)));
+    events.push({
+      id: `cal-sap-${studentOid}`,
+      title: "SAP Academic Appeal Submission Deadline",
+      start: slot.start,
+      end: slot.end,
+      isAllDay: true,
+      source: "M365",
+    });
+  }
+
+  // One or two course events for texture.
+  const courseCount = randInt(rng, 1, 2);
+  for (let i = 0; i < courseCount; i++) {
+    const day = randInt(rng, 2, 14);
+    const hour = randInt(rng, 8, 15);
+    const slot = isoAt(day, hour, 2);
+    const subjectCode = `${academic.major.split(" ")[1] ?? "GEN"} ${randInt(rng, 101, 412)}`;
+    events.push({
+      id: `cal-course-${studentOid}-${i}`,
+      title: `${pick(rng, COURSE_EVENTS)}: ${subjectCode}`,
+      start: slot.start,
+      end: slot.end,
+      isAllDay: false,
+      source: "M365",
+    });
+  }
+
+  return events.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+}

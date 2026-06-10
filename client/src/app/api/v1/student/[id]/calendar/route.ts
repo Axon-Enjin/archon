@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, verifyStudentAccess, unauthorizedResponse, forbiddenResponse } from "@/lib/auth-helper";
 import { cosmosDbService } from "@/lib/db/cosmos";
 import { isM365Enabled } from "@/lib/feature-flags";
+import { generateCalendarEvents } from "@/lib/adapters/mock-data-generator";
 
 interface CalendarEvent {
   id: string;
@@ -239,6 +240,18 @@ export async function GET(
         data: cachedEvents,
       });
     }
+  }
+
+  // Demo / no live tenant: synthesize a calendar from the student's own scenario
+  // (deadlines, disbursements, SAP appeal) so the panel is dynamic and coherent
+  // with their holds and finances instead of requiring a real Graph token.
+  if (cosmosDbService.getConnectionMode() === "mock") {
+    const generated = generateCalendarEvents(studentOid) as CalendarEvent[];
+    await cosmosDbService.setCacheData(cacheKey, generated, authUser.institution_id, 900);
+    return NextResponse.json({
+      success: true,
+      data: generated,
+    });
   }
 
   if (!authUser.accessToken) {
