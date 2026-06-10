@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, ArrowRight, Calendar, AlertOctagon } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, AlertOctagon, FileText } from "lucide-react";
 import MarkdownText from "@/components/MarkdownText";
 
 interface Message {
@@ -22,6 +22,12 @@ interface CalendarEventPayload {
   end: string;
   isAllDay: boolean;
   source: string;
+}
+
+interface AssistantAction {
+  type: "launch_appeal_wizard";
+  label: string;
+  href: string;
 }
 
 type CalendarState =
@@ -133,6 +139,7 @@ function StudentChatContent() {
     toolCalls: string[];
     calendarEvents: CalendarEventPayload[];
     calendarState?: CalendarState;
+    actions: AssistantAction[];
   } => {
     try {
       const parsed = JSON.parse(content) as {
@@ -140,6 +147,7 @@ function StudentChatContent() {
         toolCalls?: string[];
         calendarEvents?: CalendarEventPayload[];
         calendarState?: CalendarState;
+        actions?: AssistantAction[];
       };
       if (parsed && typeof parsed === "object" && typeof parsed.text === "string") {
         return {
@@ -147,12 +155,13 @@ function StudentChatContent() {
           toolCalls: parsed.toolCalls || [],
           calendarEvents: Array.isArray(parsed.calendarEvents) ? parsed.calendarEvents : [],
           calendarState: parsed.calendarState,
+          actions: Array.isArray(parsed.actions) ? parsed.actions : [],
         };
       }
     } catch {
       // no-op
     }
-    return { text: content, toolCalls: [], calendarEvents: [] };
+    return { text: content, toolCalls: [], calendarEvents: [], actions: [] };
   };
 
   const animateStreaming = async (msg: Message) => {
@@ -371,7 +380,7 @@ function StudentChatContent() {
       <main className="flex-1 overflow-y-auto px-6 py-4 space-y-4 max-w-3xl w-full mx-auto relative z-10 scrollbar-hide">
         {messages.map((msg) => {
           const isUser = msg.role === "user";
-          const { text, toolCalls, calendarEvents, calendarState } = parseMessageContent(msg.content_scrubbed);
+          const { text, toolCalls, calendarEvents, calendarState, actions } = parseMessageContent(msg.content_scrubbed);
           const isStreaming = msg.id === activeStreamingId;
           const displayText = isStreaming ? (streamedMessages[msg.id] || "") : text;
           const displayToolCalls = isStreaming ? visibleToolCalls : toolCalls;
@@ -491,6 +500,18 @@ function StudentChatContent() {
                     )}
                   </div>
                 )}
+
+                {!isUser && !isStreaming && actions.map((action, idx) => (
+                  <Link
+                    key={`${action.type}-${idx}`}
+                    href={action.href}
+                    className="mt-2 inline-flex items-center gap-2 rounded-full bg-brand-primary px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-teal-700 hover:-translate-y-0.5 w-fit"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    {action.label}
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                ))}
                 
                 <span className={`text-[9px] text-brand-muted/70 font-mono tracking-widest uppercase px-2 opacity-0 group-hover:opacity-100 transition-opacity ${isUser ? "text-right" : "text-left"}`}>
                   {new Date(msg.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}

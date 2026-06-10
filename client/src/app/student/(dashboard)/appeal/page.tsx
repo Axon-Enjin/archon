@@ -1,14 +1,18 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { LayoutDashboard, MessageCircle, FileText, FolderOpen, ArrowRight, Check, X, AlertTriangle } from "lucide-react";
 
-export default function SAPAppealWizard() {
+function SAPAppealWizardContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const launchedFromChat = searchParams.get("from") === "chat";
+  const chatGwa = searchParams.get("gwa");
+  const chatSapStatus = searchParams.get("sap");
 
   const [step, setStep] = useState(1);
   const [extenuatingCircumstance, setExtenuatingCircumstance] = useState("");
@@ -28,6 +32,19 @@ export default function SAPAppealWizard() {
       router.push("/auth/signin");
     }
   }, [status, router]);
+
+  // PRD-F9: when launched from the Archon chat, skip ahead to the narrative
+  // builder and pre-fill a starter referencing the student's current standing.
+  useEffect(() => {
+    if (!launchedFromChat) return;
+    setStep(2);
+    setExtenuatingCircumstance((prev) => {
+      if (prev) return prev;
+      const standing = chatSapStatus ? `${chatSapStatus}` : "an academic hold";
+      const gwaPart = chatGwa ? ` (current GWA ${chatGwa})` : "";
+      return `My academic standing is currently flagged as ${standing}${gwaPart}. The extenuating circumstances that affected my performance were: `;
+    });
+  }, [launchedFromChat, chatSapStatus, chatGwa]);
 
   const handleNextStep = () => setStep((prev) => prev + 1);
   const handlePrevStep = () => setStep((prev) => prev - 1);
@@ -142,6 +159,18 @@ export default function SAPAppealWizard() {
           Build and submit your Satisfactory Academic Progress appeal package to lift academic holds.
         </p>
       </section>
+
+      {launchedFromChat && (
+        <section className="flex items-start gap-3 rounded-xl border border-brand-primary/20 bg-brand-primary-light/20 p-4">
+          <MessageCircle className="w-5 h-5 text-brand-primary shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-semibold text-brand-text">Continued from your Archon chat</p>
+            <p className="text-brand-muted mt-0.5">
+              Archon detected your academic hold{chatSapStatus ? ` (${chatSapStatus}${chatGwa ? `, GWA ${chatGwa}` : ""})` : ""} and jumped you ahead to the narrative builder with a starting draft you can edit.
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* Wizard Steps indicator */}
       <section className="flex items-center justify-between border-b border-zinc-100 pb-4 text-xs font-semibold text-brand-muted">
@@ -371,5 +400,13 @@ export default function SAPAppealWizard() {
         </div>
       )}
     </main>
+  );
+}
+
+export default function SAPAppealWizard() {
+  return (
+    <Suspense fallback={null}>
+      <SAPAppealWizardContent />
+    </Suspense>
   );
 }

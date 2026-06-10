@@ -35,12 +35,19 @@ interface CalendarEventPayload {
   source: string;
 }
 
+interface AssistantAction {
+  type: "launch_appeal_wizard";
+  label: string;
+  href: string;
+}
+
 interface AssistantPayload {
   text: string;
   toolCalls: string[];
   confidence?: number;
   calendarEvents?: CalendarEventPayload[];
   calendarState?: CalendarState;
+  actions?: AssistantAction[];
 }
 
 const pesoFormatter = new Intl.NumberFormat("en-PH", {
@@ -455,6 +462,46 @@ function isAccountDiagnosisIntent(content: string): boolean {
   return patterns.some((pattern) => pattern.test(normalized));
 }
 
+/**
+ * SAP appeal intent (PRD-F9): the student wants to contest an academic
+ * (Satisfactory Academic Progress) hold. These turns get an actionable
+ * deep-link CTA into the SAP Appeal Wizard.
+ */
+function isSapAppealIntent(content: string): boolean {
+  return /\b(sap|appeal|academic hold|academic standing|probation|reinstate|gwa|grade point)\b/i.test(
+    content
+  );
+}
+
+/**
+ * Builds a deep-link action into the SAP Appeal Wizard, pre-filled with the
+ * student's current academic standing so the wizard can open at the narrative
+ * step with context already populated (PRD-F9).
+ */
+function buildAppealAction(
+  aggregate: StatusAggregate,
+  language: UserLanguage
+): AssistantAction {
+  const params = new URLSearchParams({ from: "chat" });
+  if (aggregate.academic.profile.gwa) {
+    params.set("gwa", String(aggregate.academic.profile.gwa));
+  }
+  if (aggregate.academic.profile.sap_status) {
+    params.set("sap", aggregate.academic.profile.sap_status);
+  }
+  const label =
+    language === "fil"
+      ? "Buksan ang SAP Appeal Wizard"
+      : language === "ceb"
+      ? "Ablihi ang SAP Appeal Wizard"
+      : "Open the SAP Appeal Wizard";
+  return {
+    type: "launch_appeal_wizard",
+    label,
+    href: `/student/appeal?${params.toString()}`,
+  };
+}
+
 function getCalendarFallbackText(state: CalendarState, language: UserLanguage): string {
   if (state === "empty") {
     if (language === "fil") {
@@ -787,6 +834,18 @@ export async function POST(
       Boolean(activeFinancialHold) &&
       statusAggregate.financial.pending_financial_aid >= statusAggregate.financial.balance_due;
 
+    // SAP Appeal Wizard CTA (PRD-F9): only relevant when the student actually has
+    // an active academic hold and the turn is about that hold/appeal.
+    const hasActiveAcademicHold = statusAggregate.academic.holds.some((hold) => hold.status === "Active");
+    const appealRelevant =
+      hasActiveAcademicHold &&
+      (isSapAppealIntent(normalizedContent) ||
+        isAccountDiagnosisIntent(normalizedContent) ||
+        /\b(hold|academic|standing)\b/i.test(normalizedContent));
+    const appealActions: AssistantAction[] | undefined = appealRelevant
+      ? [buildAppealAction(statusAggregate, userLanguage)]
+      : undefined;
+
     const triggerEscalation = async () => {
       await cosmosDbService.updateConversationStatus(
         conversationId,
@@ -1027,6 +1086,7 @@ export async function POST(
             holdLiftSucceeded,
             resolvedWithTools: isResolvingTurn(finalToolCalls),
           }),
+          actions: foundryEscalated ? undefined : appealActions,
         });
         return NextResponse.json({ success: true, data: assistantMsg });
       }
@@ -1221,6 +1281,7 @@ export async function POST(
         holdLiftSucceeded: !didEscalate && toolCalls.includes("requestHoldLift"),
         resolvedWithTools: isResolvingTurn(toolCalls),
       }),
+      actions: didEscalate ? undefined : appealActions,
     });
 
     return NextResponse.json({ success: true, data: assistantMsg });
