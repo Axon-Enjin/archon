@@ -269,315 +269,332 @@ export default function StudentDashboard() {
   });
 
   return (
-    <main className="p-6 md:p-10 max-w-7xl mx-auto space-y-8">
-      {/* Welcome Header */}
-      <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-200 pb-6">
-        <div>
-          <h1 className="text-3xl font-bold font-display text-brand-text">Welcome, {profile?.name}!</h1>
-          <p className="text-brand-muted text-sm mt-1">
-            {profile?.major} · {profile?.year} · ID: {profile?.student_id}
-          </p>
-        </div>
-        <button
-          onClick={handleStartNewChat}
-          disabled={creatingTicket}
-          className="flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-primary px-5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50 transition"
-        >
-          {creatingTicket ? "Initializing..." : <><MessageCircle className="w-4 h-4" /> Start AI Conversation</>}
-        </button>
-      </section>
-
-      {/* Holds Alerts */}
-      {activeHolds.length > 0 ? (
-        <section className="rounded-xl border border-brand-error/20 bg-red-50/30 p-6 space-y-4">
-          <div className="flex items-center gap-2 text-brand-error font-bold font-display">
-            <AlertOctagon className="w-5 h-5" />
-            <h2>You have ({activeHolds.length}) active holds on your account</h2>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {activeHolds.map((hold) => (
-              <div key={hold.id} className="rounded-xl bg-white p-4 shadow-sm border border-zinc-100 flex flex-col justify-between transition-all duration-300">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-brand-error">
-                      {hold.type}
-                    </span>
-                    <span className="text-xs text-brand-muted font-mono">{hold.status}</span>
-                  </div>
-                  <h3 className="text-base font-semibold text-brand-text mt-2 font-display">{hold.reason}</h3>
-                  <p className="text-xs text-brand-muted mt-1 leading-relaxed">
-                    {hold.resolution_steps}
-                  </p>
-                </div>
-                {hold.id === "hold-financial" && (
-                  <button
-                    onClick={handleStartNewChat}
-                    className="mt-4 flex w-full h-9 items-center justify-center rounded-lg bg-brand-primary-light text-brand-primary text-xs font-semibold hover:bg-brand-primary-light/80 transition"
-                  >
-                    Request Temporary Lift via AI
-                  </button>
-                )}
-                {hold.id === "hold-academic" && (
-                  <Link
-                    href="/student/appeal"
-                    className="mt-4 flex w-full h-9 items-center justify-center rounded-lg bg-amber-50 border border-brand-warning/30 text-amber-800 text-xs font-semibold hover:bg-amber-100/50 transition"
-                  >
-                    Open SAP Appeal Wizard
-                  </Link>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : (
-        <section className="rounded-xl border border-brand-success/20 bg-green-50/20 p-4 flex items-center gap-3">
-          <span className="text-brand-success text-xl">✓</span>
-          <div>
-            <p className="text-sm font-semibold text-green-800">Clear Account Status</p>
-            <p className="text-xs text-brand-muted">You have no active holds. You are cleared to enroll and register for classes.</p>
-          </div>
-        </section>
-      )}
-
-      {/* Two Column Section: Calendar & Active Tickets */}
-      <div className="grid gap-8 lg:grid-cols-12">
-        {/* Calendar Card (Microsoft Graph Outlook Calendar) */}
-        <section className="lg:col-span-7 rounded-xl bg-white p-6 border border-zinc-200 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-zinc-100 pb-3 gap-3">
-            <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded bg-brand-m365 text-white font-bold text-[10px]">
-                M
-              </span>
-              <h2 className="text-lg font-bold font-display text-brand-text">Outlook Calendar</h2>
+    <main className="min-h-screen bg-brand-surface pb-12">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome Header */}
+        <div className="relative mb-10 pb-8 border-b border-[#E3DFD5] flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#0D9488 1.5px, transparent 1.5px)', backgroundSize: '32px 32px' }}></div>
+          <div className="relative z-10">
+            <span className="font-mono text-[10px] text-brand-muted uppercase tracking-[0.2em] mb-2 block">Student Dossier</span>
+            <h1 className="text-3xl md:text-4xl font-extrabold font-display text-brand-text tracking-tight">
+              {profile?.name ? `Welcome, ${profile.name.split(' ')[0]}.` : "Welcome."}
+            </h1>
+            <div className="mt-4 flex flex-wrap items-center gap-3 font-sans text-xs text-brand-muted">
+              <span className="px-3 py-1 bg-white border border-[#E3DFD5] rounded-[9999px] shadow-sm font-semibold">{profile?.major || "Loading Major"}</span>
+              <span className="px-3 py-1 bg-white border border-[#E3DFD5] rounded-[9999px] shadow-sm font-semibold">{profile?.year || "Year"}</span>
+              <span className="font-mono text-[10px] px-1">ID: {profile?.student_id || "..."}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-brand-muted">Sync: 15m TTL</span>
+          </div>
+          <button
+            onClick={handleStartNewChat}
+            disabled={creatingTicket}
+            className="group relative z-10 flex h-10 items-center justify-center gap-2 rounded-[9999px] bg-brand-primary px-5 text-sm font-bold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50 disabled:hover:translate-y-0"
+          >
+            {creatingTicket ? "Initializing..." : <><MessageCircle className="w-4 h-4 transition-transform group-hover:scale-110" /> Initiate Consultation</>}
+          </button>
+        </div>
+
+        {/* Holds Alerts */}
+        {activeHolds.length > 0 ? (
+          <section className="mb-12 relative">
+            <div className="absolute -left-3 top-0 bottom-0 w-1 bg-brand-error rounded-full"></div>
+            <div className="flex items-center gap-2 mb-4 pl-1">
+              <AlertOctagon className="w-5 h-5 text-brand-error" />
+              <h2 className="text-xl font-bold font-display text-brand-text tracking-tight">Action Required <span className="text-brand-error font-mono text-sm align-top">({activeHolds.length})</span></h2>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 pl-1">
+              {activeHolds.map((hold) => (
+                <div key={hold.id} className="relative overflow-hidden rounded-[1.25rem] bg-white p-6 shadow-sm border border-red-100 group transition-all duration-300 hover:shadow-md">
+                  <div className="absolute top-0 right-0 p-4 opacity-[0.02] group-hover:opacity-[0.04] transition-opacity duration-500 pointer-events-none">
+                    <AlertOctagon className="w-24 h-24 text-brand-error -mt-4 -mr-4" />
+                  </div>
+                  <div className="relative z-10 flex flex-col h-full justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="rounded-full bg-red-50 border border-red-100 px-2 py-0.5 text-[10px] font-bold tracking-widest text-brand-error uppercase font-mono">
+                          {hold.type}
+                        </span>
+                        <span className="text-[10px] text-brand-muted font-mono bg-zinc-50 border border-zinc-100 px-2 py-0.5 rounded-full uppercase tracking-wider">{hold.status}</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-brand-text mb-2 font-display leading-tight">{hold.reason}</h3>
+                      <p className="text-xs text-brand-muted leading-relaxed">
+                        {hold.resolution_steps}
+                      </p>
+                    </div>
+                    <div className="mt-6">
+                      {hold.id === "hold-financial" && (
+                        <button
+                          onClick={handleStartNewChat}
+                          className="flex w-full h-10 items-center justify-center rounded-xl bg-brand-primary-light/30 text-brand-primary text-xs font-bold hover:bg-brand-primary hover:text-white transition-colors border border-brand-primary/20"
+                        >
+                          Request Temporary Lift via AI
+                        </button>
+                      )}
+                      {hold.id === "hold-academic" && (
+                        <Link
+                          href="/student/appeal"
+                          className="flex w-full h-10 items-center justify-center rounded-xl bg-brand-primary-light/30 text-brand-primary text-xs font-bold hover:bg-brand-m365 hover:text-white transition-colors border border-brand-primary/20 hover:border-brand-m365"
+                        >
+                          Open SAP Appeal Wizard
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <section className="mb-12 rounded-[1.25rem] border border-brand-success/20 bg-gradient-to-br from-green-50/50 to-transparent p-6 flex items-center gap-4 shadow-sm">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-success/10 text-brand-success">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+            </div>
+            <div>
+              <p className="text-lg font-bold text-brand-success font-display tracking-tight">Clear Account Status</p>
+              <p className="text-brand-muted font-sans text-xs mt-1">You have no active holds. You are cleared to enroll and register for classes.</p>
+            </div>
+          </section>
+        )}
+
+        {/* Dashboard Grid */}
+        <div className="grid gap-8 lg:gap-8 lg:grid-cols-12">
+          {/* Calendar Section */}
+          <section className="lg:col-span-7 flex flex-col">
+            <div className="flex flex-row items-end justify-between mb-4 gap-4">
+              <div>
+                <span className="font-mono text-[10px] text-brand-m365 uppercase tracking-widest mb-1.5 block">Outlook Integration</span>
+                <h2 className="text-xl font-bold font-display text-brand-text tracking-tight">Academic Calendar</h2>
+              </div>
               <button
                 onClick={handleRefreshCalendar}
                 disabled={calendarRefreshing}
-                className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-2 py-1 text-[11px] font-semibold text-brand-text hover:bg-zinc-50 disabled:opacity-50"
+                className="group flex items-center gap-1.5 text-[10px] font-bold font-mono uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors bg-white px-3 py-1.5 rounded-full border border-[#E3DFD5] shadow-sm"
               >
-                <RefreshCw className={`w-3 h-3 ${calendarRefreshing ? "animate-spin" : ""}`} />
-                Refresh
+                <RefreshCw className={`w-3 h-3 ${calendarRefreshing ? "animate-spin text-brand-primary" : "group-hover:text-brand-primary"}`} />
+                <span>Sync</span>
               </button>
             </div>
-          </div>
-          {calendarError ? (
-            <div className="py-8 text-center space-y-2">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 mx-auto">
-                <Calendar className="w-6 h-6" />
-              </div>
-              <p className="text-sm font-bold text-brand-text font-display">Calendar temporarily unavailable</p>
-              <p className="text-xs text-brand-muted">{calendarError}</p>
-              {calendarErrorCode === "GRAPH_CONSENT_REQUIRED" && (
-                <button
-                  onClick={handleReconnectM365}
-                  className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-brand-m365 px-4 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition mt-2"
-                >
-                  Connect your M365 Calendar
-                </button>
-              )}
-            </div>
-          ) : events.length > 0 ? (
-            <div className="space-y-4 animate-fade-in">
-              <div className="flex items-center justify-between">
-                <button
-                  onClick={() =>
-                    setCalendarMonth(
-                      (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)
-                    )
-                  }
-                  className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-2 py-1 text-xs font-semibold text-brand-text hover:bg-zinc-50"
-                >
-                  <ChevronLeft className="w-3 h-3" />
-                  Prev
-                </button>
-                <p className="text-sm font-bold text-brand-text font-display">
-                  {calendarMonth.toLocaleDateString([], { month: "long", year: "numeric" })}
-                </p>
-                <button
-                  onClick={() =>
-                    setCalendarMonth(
-                      (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1)
-                    )
-                  }
-                  className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-2 py-1 text-xs font-semibold text-brand-text hover:bg-zinc-50"
-                >
-                  Next
-                  <ChevronRight className="w-3 h-3" />
-                </button>
-              </div>
 
-              <div className="grid grid-cols-7 gap-1 text-[10px] font-semibold text-brand-muted">
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                  <div key={day} className="px-2 py-1 text-center">{day}</div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-7 gap-1">
-                {gridDays.map((day) => {
-                  const key = toDateKey(day);
-                  const inMonth = day >= monthStart && day <= monthEnd;
-                  const isSelected = selectedDateKey === key;
-                  const count = (eventsByDate[key] || []).length;
-                  const isToday = key === toDateKey(new Date());
-
-                  return (
+            <div className="flex-1 rounded-[1.5rem] bg-white p-6 shadow-sm border border-[#E3DFD5] relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary-light/20 rounded-full blur-[60px] -mr-32 -mt-32 pointer-events-none"></div>
+              
+              {calendarError ? (
+                <div className="py-12 text-center relative z-10">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-[1.25rem] bg-amber-50 text-amber-500 mx-auto mb-4 rotate-3 border border-amber-100">
+                    <Calendar className="w-8 h-8 -rotate-3" />
+                  </div>
+                  <p className="text-lg font-bold text-brand-text font-display mb-2">Calendar Unavailable</p>
+                  <p className="text-sm text-brand-muted max-w-xs mx-auto leading-relaxed">{calendarError}</p>
+                  {calendarErrorCode === "GRAPH_CONSENT_REQUIRED" && (
                     <button
-                      key={key}
-                      onClick={() => setSelectedDateKey(key)}
-                      className={`relative rounded-lg border px-2 py-2 text-left transition min-h-[64px] ${
-                        isSelected
-                          ? "border-brand-primary bg-brand-primary-light/20"
-                          : "border-zinc-100 hover:border-zinc-200 hover:bg-zinc-50"
-                      } ${!inMonth ? "opacity-45" : ""}`}
+                      onClick={handleReconnectM365}
+                      className="mt-6 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand-m365 px-5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-all"
                     >
-                      <span className={`text-[11px] font-semibold ${isToday ? "text-brand-primary" : "text-brand-text"}`}>
-                        {day.getDate()}
-                      </span>
-                      {count > 0 && (
-                        <span className="absolute bottom-1 right-1 rounded-full bg-brand-m365 px-1.5 py-0.5 text-[9px] font-bold text-white">
-                          {count}
-                        </span>
-                      )}
+                      Authorize M365 Connection
                     </button>
-                  );
-                })}
-              </div>
+                  )}
+                </div>
+              ) : events.length > 0 ? (
+                <div className="space-y-6 relative z-10 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-brand-text font-display">
+                      {calendarMonth.toLocaleDateString([], { month: "long", year: "numeric" })}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E3DFD5] bg-white text-brand-text hover:border-brand-primary hover:text-brand-primary hover:bg-zinc-50 transition-all"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E3DFD5] bg-white text-brand-text hover:border-brand-primary hover:text-brand-primary hover:bg-zinc-50 transition-all"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="rounded-lg border border-zinc-100 bg-zinc-50/60 p-3 space-y-2">
-                <p className="text-xs font-bold text-brand-text font-display">
-                  {new Date(selectedDateKey).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-                </p>
-                {selectedDateEvents.length === 0 ? (
-                  <p className="text-xs text-brand-muted">No events for this date.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {selectedDateEvents.map((evt) => {
-                      const startDate = new Date(evt.start);
-                      const formatTime = evt.isAllDay
-                        ? "All-day"
-                        : startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-                      const isDeadline =
-                        evt.title.toLowerCase().includes("deadline") ||
-                        evt.title.toLowerCase().includes("renewal");
-                      const borderClass = isDeadline ? "border-brand-warning" : "border-brand-primary";
+                  <div className="grid grid-cols-7 gap-y-2 gap-x-1">
+                    {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+                      <div key={day} className="text-center font-mono text-[9px] uppercase tracking-[0.1em] text-brand-muted pb-2 border-b border-[#E3DFD5]/50">
+                        {day}
+                      </div>
+                    ))}
+                    {gridDays.map((day) => {
+                      const key = toDateKey(day);
+                      const inMonth = day >= monthStart && day <= monthEnd;
+                      const isSelected = selectedDateKey === key;
+                      const count = (eventsByDate[key] || []).length;
+                      const isToday = key === toDateKey(new Date());
 
                       return (
-                        <div
-                          key={evt.id}
-                          className={`py-1 pl-3 border-l-4 ${borderClass} flex items-start justify-between gap-3 transition-all duration-300`}
+                        <button
+                          key={key}
+                          onClick={() => setSelectedDateKey(key)}
+                          className={`relative flex flex-col items-center justify-center h-10 sm:h-12 w-full rounded-xl transition-all duration-200 ${
+                            isSelected
+                              ? "bg-brand-primary text-white shadow-sm z-10"
+                              : "hover:bg-zinc-50 text-brand-text"
+                          } ${!inMonth && !isSelected ? "opacity-30" : ""}`}
                         >
-                          <div className="space-y-1">
-                            <p className="text-sm font-semibold text-brand-text font-display">{evt.title}</p>
-                            <p className="text-xs text-brand-muted flex items-center gap-1.5">
-                              <Clock className="w-3 h-3 inline" /> {formatTime}
-                            </p>
-                          </div>
-                          <span className="rounded bg-teal-50 px-2 py-0.5 text-[9px] font-bold text-brand-primary shrink-0 uppercase tracking-wider">
-                            {evt.source}
+                          <span className={`text-sm font-semibold ${isToday && !isSelected ? "text-brand-primary" : ""}`}>
+                            {day.getDate()}
                           </span>
-                        </div>
+                          {count > 0 && (
+                            <span className={`absolute bottom-1 w-1 h-1 rounded-full ${isSelected ? "bg-white" : "bg-brand-m365"}`}></span>
+                          )}
+                        </button>
                       );
                     })}
                   </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="py-8 text-center space-y-2">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-m365/10 text-brand-m365 mx-auto">
-                <Calendar className="w-6 h-6" />
-              </div>
-              <p className="text-sm font-bold text-brand-text font-display">No upcoming events</p>
-              <p className="text-xs text-brand-muted">No Outlook Calendar events found in the next 14 days.</p>
-            </div>
-          )}
-        </section>
 
-        {/* Active Support Tickets */}
-        <section className="lg:col-span-5 rounded-xl bg-white p-6 border border-zinc-200 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
-            <h2 className="text-lg font-bold font-display text-brand-text">Active Tickets</h2>
-            <span className="text-xs font-semibold bg-brand-primary-light text-brand-primary rounded-full px-2.5 py-0.5">
-              {tickets.length} Total
-            </span>
-          </div>
+                  <div className="pt-6 border-t border-[#E3DFD5] mt-6">
+                    <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-brand-muted mb-4">
+                      {new Date(selectedDateKey).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
+                    </p>
+                    {selectedDateEvents.length === 0 ? (
+                      <p className="text-brand-muted italic text-sm font-display">No scheduled activities for this date.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {selectedDateEvents.map((evt) => {
+                          const startDate = new Date(evt.start);
+                          const formatTime = evt.isAllDay ? "All-day" : startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                          const isDeadline = evt.title.toLowerCase().includes("deadline") || evt.title.toLowerCase().includes("renewal");
 
-          {tickets.length > 0 ? (
-            <div className="space-y-3">
-              {tickets
-                .slice((ticketPage - 1) * TICKETS_PER_PAGE, ticketPage * TICKETS_PER_PAGE)
-                .map((ticket) => (
-                  <div
-                    key={ticket.id}
-                    className="rounded-xl border border-zinc-100 p-4 hover:border-zinc-200 transition flex items-center justify-between"
-                  >
-                    <div className="space-y-1">
-                      <p className="text-xs text-brand-muted font-mono">{ticket.ticket_id}</p>
-                      <p className="text-sm font-bold font-display text-brand-text">Support Chat Session</p>
-                      <p className="text-[10px] text-brand-muted">
-                        Opened on {new Date(ticket.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                          ticket.status === "Open"
-                            ? "bg-green-100 text-green-700"
-                            : ticket.status === "Pending Agent"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-zinc-100 text-zinc-600"
-                        }`}
-                      >
-                        {ticket.status}
-                      </span>
-                      <Link
-                        href={`/student/chat?ticketId=${ticket.id}`}
-                        className="text-xs font-semibold text-brand-primary hover:underline font-display"
-                      >
-                        Open ➔
-                      </Link>
-                    </div>
+                          return (
+                            <div key={evt.id} className="group relative flex gap-4 items-start p-3 rounded-xl hover:bg-zinc-50 border border-transparent hover:border-[#E3DFD5] transition-all">
+                              <div className="flex flex-col items-center mt-1">
+                                <div className={`w-2.5 h-2.5 rounded-full ${isDeadline ? "bg-brand-warning" : "bg-brand-primary"} ring-2 ring-white shadow-sm z-10`}></div>
+                                <div className="w-[1.5px] h-full bg-[#E3DFD5] absolute top-6 bottom-0 group-last:hidden"></div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex justify-between items-start mb-1 gap-3">
+                                  <h4 className="text-sm font-bold text-brand-text font-display leading-tight truncate">{evt.title}</h4>
+                                  <span className="shrink-0 rounded-full bg-white border border-[#E3DFD5] px-2 py-0.5 text-[9px] font-bold text-brand-muted uppercase tracking-widest shadow-sm">
+                                    {evt.source}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-brand-muted flex items-center gap-1.5 font-sans font-medium">
+                                  <Clock className="w-3 h-3 opacity-50" /> {formatTime}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                ))}
+                </div>
+              ) : (
+                <div className="py-12 text-center relative z-10">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-[1.25rem] bg-brand-m365/5 border border-brand-m365/10 mx-auto mb-4">
+                    <Calendar className="w-8 h-8 text-brand-m365 opacity-60" />
+                  </div>
+                  <p className="text-lg font-bold text-brand-text font-display mb-1">Schedule Clear</p>
+                  <p className="text-sm text-brand-muted">No Outlook Calendar events found in the next 14 days.</p>
+                </div>
+              )}
+            </div>
+          </section>
 
-              {/* Pagination Controls */}
-              {tickets.length > TICKETS_PER_PAGE && (
-                <div className="flex items-center justify-between border-t border-zinc-100 pt-3">
+          {/* Active Tickets Section */}
+          <section className="lg:col-span-5 flex flex-col">
+            <div className="flex items-end justify-between mb-4">
+              <div>
+                <span className="font-mono text-[10px] text-brand-muted uppercase tracking-widest mb-1.5 block">Resolution History</span>
+                <h2 className="text-xl font-bold font-display text-brand-text tracking-tight">Active Tickets</h2>
+              </div>
+              <span className="flex items-center justify-center h-7 px-3 rounded-full bg-brand-primary-light/40 text-brand-primary font-bold text-[10px] border border-brand-primary/20 font-mono tracking-widest uppercase">
+                {tickets.length} Active
+              </span>
+            </div>
+
+            <div className="flex-1 space-y-4">
+              {tickets.length > 0 ? (
+                <>
+                  {tickets
+                    .slice((ticketPage - 1) * TICKETS_PER_PAGE, ticketPage * TICKETS_PER_PAGE)
+                    .map((ticket) => (
+                      <div
+                        key={ticket.id}
+                        className="group flex flex-col rounded-[1.25rem] bg-white p-5 shadow-sm border border-[#E3DFD5] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 relative overflow-hidden"
+                      >
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-zinc-50 rounded-full blur-xl -mr-10 -mt-10 pointer-events-none"></div>
+                        <div className="flex items-start justify-between mb-4 relative z-10">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${ticket.status === "Open" ? "bg-brand-success animate-pulse" : ticket.status === "Pending Agent" ? "bg-amber-500" : "bg-zinc-300"}`}></div>
+                            <span className="text-[10px] font-mono text-brand-muted uppercase tracking-[0.1em]">{ticket.ticket_id}</span>
+                          </div>
+                          <span
+                            className={`rounded-full px-2.5 py-0.5 text-[9px] font-bold tracking-widest uppercase border ${
+                              ticket.status === "Open"
+                                ? "bg-green-50 border-green-200 text-green-700"
+                                : ticket.status === "Pending Agent"
+                                ? "bg-amber-50 border-amber-200 text-amber-700"
+                                : "bg-zinc-50 border-zinc-200 text-zinc-600"
+                            }`}
+                          >
+                            {ticket.status}
+                          </span>
+                        </div>
+                        <h3 className="text-base font-bold font-display text-brand-text mb-4 relative z-10 leading-tight">Support Consultation</h3>
+                        
+                        <div className="mt-auto flex items-center justify-between pt-4 border-t border-[#E3DFD5]/70 relative z-10">
+                          <span className="text-[10px] text-brand-muted font-medium font-sans">
+                            Opened {new Date(ticket.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                          <Link
+                            href={`/student/chat?ticketId=${ticket.id}`}
+                            className="flex items-center gap-1 text-xs font-bold text-brand-primary hover:text-teal-900 transition-colors uppercase tracking-widest font-mono"
+                          >
+                            Resume <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+
+                  {/* Pagination Controls */}
+                  {tickets.length > TICKETS_PER_PAGE && (
+                    <div className="flex items-center justify-between pt-4 px-2">
+                      <button
+                        onClick={() => setTicketPage((p) => Math.max(p - 1, 1))}
+                        disabled={ticketPage === 1}
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E3DFD5] bg-white text-brand-text hover:border-brand-primary hover:text-brand-primary disabled:opacity-30 transition-colors shadow-sm"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <span className="text-[10px] font-mono tracking-[0.2em] text-brand-muted uppercase">
+                        {ticketPage} / {Math.ceil(tickets.length / TICKETS_PER_PAGE)}
+                      </span>
+                      <button
+                        onClick={() => setTicketPage((p) => Math.min(p + 1, Math.ceil(tickets.length / TICKETS_PER_PAGE)))}
+                        disabled={ticketPage === Math.ceil(tickets.length / TICKETS_PER_PAGE)}
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E3DFD5] bg-white text-brand-text hover:border-brand-primary hover:text-brand-primary disabled:opacity-30 transition-colors shadow-sm"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-48 rounded-[1.5rem] bg-brand-primary-light/5 border border-brand-primary/10 border-dashed">
+                  <MessageCircle className="w-8 h-8 text-brand-primary/20 mb-3" />
+                  <p className="text-sm text-brand-text font-display font-bold mb-1">No Active Inquiries</p>
+                  <p className="text-xs text-brand-muted mb-4 font-sans">Need assistance? Start a new consultation.</p>
                   <button
-                    onClick={() => setTicketPage((p) => Math.max(p - 1, 1))}
-                    disabled={ticketPage === 1}
-                    className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-brand-text hover:bg-zinc-50 disabled:opacity-50 transition"
+                    onClick={handleStartNewChat}
+                    disabled={creatingTicket}
+                    className="flex h-9 items-center justify-center rounded-xl bg-white border border-[#E3DFD5] px-5 text-xs font-bold text-brand-primary hover:border-brand-primary shadow-sm hover:shadow transition-all hover:-translate-y-0.5"
                   >
-                    Previous
-                  </button>
-                  <span className="text-xs text-brand-muted">
-                    Page {ticketPage} of {Math.ceil(tickets.length / TICKETS_PER_PAGE)}
-                  </span>
-                  <button
-                    onClick={() => setTicketPage((p) => Math.min(p + 1, Math.ceil(tickets.length / TICKETS_PER_PAGE)))}
-                    disabled={ticketPage === Math.ceil(tickets.length / TICKETS_PER_PAGE)}
-                    className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-brand-text hover:bg-zinc-50 disabled:opacity-50 transition"
-                  >
-                    Next
+                    Create Ticket
                   </button>
                 </div>
               )}
             </div>
-          ) : (
-            <div className="text-center py-10 space-y-3">
-              <p className="text-sm text-brand-muted">You have no active tickets at this time.</p>
-              <button
-                onClick={handleStartNewChat}
-                disabled={creatingTicket}
-                className="inline-flex h-9 items-center justify-center rounded-lg bg-brand-primary px-4 text-xs font-semibold text-white hover:bg-teal-700 transition"
-              >
-                Create Ticket
-              </button>
-            </div>
-          )}
-        </section>
+          </section>
+        </div>
       </div>
     </main>
   );

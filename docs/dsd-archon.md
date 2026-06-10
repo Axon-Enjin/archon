@@ -5,21 +5,23 @@
 **Version:** 0.2
 **Owner:** Regalia Council (Thranduil)
 **Status:** Draft
-**Last reconciled:** 2026-06-08 — reconciled landing page UI layout, alignment coordinates, and style standardizations
+**Last reconciled:** 2026-06-10 — reconciled font and color primary choices to remove boxiness and match user preferences
 **PRD:** [prd-archon.md](prd-archon.md)
 
 ---
 
 ## 1. Design Philosophy & Intent
 
-Archon's UI follows a **"Warm & Approachable"** aesthetic. The design intent is to actively reduce the acute anxiety and feeling of abandonment that students experience when navigating university bureaucracies. The UI must feel like a calm, capable, and empathetic assistant — not a rigid, intimidating institutional form. The Microsoft 365 integration surfaces (Calendar panel, Teams notification previews) should feel native and seamless — students should perceive Archon as a natural extension of their M365 environment, not a foreign application.
+Archon's UI balances official authority with an **"Organic & Soft Archival"** aesthetic. To avoid both the generic, hyper-bubbly "AI slop" and the overly rigid, brutalist "boxy" feel, Archon blends the high-quality, tactile feel of archival university documents with soft geometries and a deep, calming Sage green.
+
+The design inspires trust through its organic, tactile nature, combining official typesetting with gentle arcs and warm, earthy tones.
 
 **Core Principles:**
-1. **Calming, not clinical:** Avoid the harsh whites, generic blues, and sharp corners typical of legacy university portals. Use warm off-whites, soft gradients, and rounded elements.
-2. **Clarity over density:** Students are often panicked when accessing the app (e.g., discovering an enrollment hold). Information must be spaced generously, with clear hierarchy and progressive disclosure.
-3. **Conversational primacy:** The chat interface is the primary mechanism of interaction. It should feel as fluid and natural as their primary messaging apps (Messenger, WhatsApp), not like a sterile enterprise support widget.
-4. **Transparent state:** The AI should always clearly communicate what it is doing (e.g., "Querying the Registrar...", "Fetching your calendar...", "Sending your Teams notification...").
-5. **M365 visual coherence:** Components that surface M365 data (Calendar panel, Teams notification status badges) should use Fluent UI-inspired visual language — familiar to Microsoft 365 users — while remaining within Archon's warm color palette.
+1. **Organic Authority:** Use refined, softly-rounded typography that is legible and friendly but unmistakably high-quality. The aesthetic should feel like a premium, modern university prospectus printed on thick matte paper.
+2. **Soft Structural Flow:** Avoid both stark `0px` harshness and floating blobs. Use gentle padding and naturally rounded containers (`16px` to `24px` radius) that guide the eye comfortably without aggressive borders.
+3. **Earthy, Archival Colors:** Retain the warm archival paper background, but use a deep, grounding Sage Green as the primary anchor, supported by rich graphite ink and soft highlights.
+4. **Transparent State & Fluid Motion:** AI progress should appear as organic, flowing transitions rather than stark mechanical terminals.
+5. **M365 Integration as Institutional Modules:** Microsoft 365 surfaces integrate organically into the warm palette, maintaining distinct Microsoft identity but blending via natural, soft bounding boxes.
 
 ---
 
@@ -27,37 +29,35 @@ Archon's UI follows a **"Warm & Approachable"** aesthetic. The design intent is 
 
 ### 2.1 Colors
 
-The palette avoids the sterile "enterprise blue" in favor of a warmer, more modern spectrum. The primary brand color is a calming sage green/teal, conveying resolution and forward momentum.
+The palette embraces an earthy, calming spectrum, anchored by a deep Sage instead of harsh dark blues or stark blacks.
 
 | Token | Hex | Usage |
 |-------|-----|-------|
-| `--color-primary-500` | `#0D9488` (Teal) | Primary actions, active states, AI avatar background |
-| `--color-primary-100` | `#CCFBF1` | Subtle backgrounds, AI message bubbles |
-| `--color-surface-base`| `#FAFAF9` (Warm White) | App background (reduces eye strain compared to `#FFFFFF`) |
-| `--color-surface-card`| `#FFFFFF` | Elevated cards, user message bubbles |
-| `--color-text-primary`| `#1C1917` (Warm Black) | Headings, primary body text |
-| `--color-text-muted` | `#78716C` | Timestamps, secondary text, input placeholders |
-| `--color-error-500` | `#E11D48` (Rose) | Critical alerts, holds, errors |
-| `--color-warning-500` | `#F59E0B` (Amber) | Approaching deadlines, pending status |
-| `--color-success-500` | `#10B981` (Emerald) | Resolved tickets, lifted holds, successful actions |
-| `--color-m365-blue` | `#0078D4` | M365 integration badges, Teams icon accents, Entra ID badge |
+| `--color-surface-base`| `#FAFAF9` (Warm Off-White) | Main app background, warm, matte paper feel |
+| `--color-surface-card`| `#FFFFFF` (Stark White) | Only for elevated focal elements, softened by radius |
+| `--color-text-primary`| `#2C332F` (Deep Forest Ink) | All primary typography, softer than pure black |
+| `--color-text-muted` | `#6B706D` (Moss Graphite) | Metadata, timestamps, logs |
+| `--color-primary-500` | `#0D9488` (Sage/Teal) | Primary actions, focal accents, AI naming |
+| `--color-accent-red`  | `#D64933` (Warm Vermillion) | Critical actions, alerts, holds, errors |
+| `--color-success-500` | `#3A7D5C` (Leaf Green) | Resolved tickets, success states |
+| `--color-m365-blue` | `#0078D4` | Microsoft 365 badge and button accents |
 
 ### 2.2 Typography
 
-Typography relies on two modern, friendly sans-serif typefaces to reinforce the approachable aesthetic.
+Typography rejects brutalist sharp corners in favor of elegant, softly-geometric and humanist typefaces.
 
-| Role | Font Family | Weight | Size (Base) | Line Height | Usage |
-|------|-------------|--------|-------------|-------------|-------|
-| **Display/Headings** | Outfit | SemiBold (600) | H1: 2rem, H2: 1.5rem, H3: 1.25rem | 1.2 | Screen titles, prominent status numbers, empty state headers |
-| **Body/UI** | Plus Jakarta Sans | Regular (400), Medium (500) | Base: 1rem (16px), Small: 0.875rem | 1.5 | Chat messages, button labels, descriptions, metadata |
-| **Monospace** | System Mono | Regular (400) | 0.875rem | 1.5 | Reference numbers (e.g., ticket IDs) |
+| Role | Font Family | Weight | Usage |
+|------|-------------|--------|-------|
+| **Display/Headings** | Outfit | Medium (500) | Screen titles, primary branding, empty states |
+| **Body/UI** | Plus Jakarta Sans | Regular (400), Medium (500) | Main UI text, transcript content, buttons |
+| **Monospace/Data** | JetBrains Mono | Regular (400) | Prompts, tool states, IDs, timestamps |
 
 ### 2.3 Spacing & Layout
 
-- **Base unit:** 4px (0.25rem)
-- **Border Radius:** Generous. `--radius-md` = 12px (cards, buttons). `--radius-lg` = 20px (chat bubbles). `--radius-full` = 9999px (avatars, pills).
-- **Shadows:** Soft and diffused. Avoid harsh drop shadows. Use slight elevation for cards (`box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05)`).
-- **Max Width (Web):** 768px for the core chat interface (keeps line lengths readable and maintains the conversational feel). Agent dashboard and Admin Analytics utilize full width (1280px+).
+- **Base unit:** 4px (0.25rem).
+- **Border Radius:** Soft and organic. `--radius-md` = 16px, `--radius-lg` = 24px, `--radius-full` = 9999px.
+- **Borders:** Minimal borders; prefer soft background differentiation or very light 1px borders colored subtly (`#E3DFD5`).
+- **Shadows:** Natural, diffused elevation (`box-shadow: 0 10px 25px -5px rgba(44, 51, 47, 0.05)`).
 
 ---
 
@@ -67,31 +67,26 @@ Typography relies on two modern, friendly sans-serif typefaces to reinforce the 
 
 | State | Visual | Notes |
 |-------|--------|-------|
-| **Primary** | Solid Teal (`#0D9488`), White text, 12px radius | For the primary action on a screen (e.g., "Submit Appeal") |
-| **Secondary** | Outline (Teal border), Transparent bg, Teal text | Alternative actions |
-| **Ghost/Tertiary** | No border, Teal text, subtle gray bg on hover | "Cancel", minor actions |
-| **Disabled** | `#E7E5E4` bg, `#A8A29E` text | Must remain readable (contrast > 3:1) |
-| **Loading** | Same as Primary, but text is replaced by a subtle pulsing spinner | Button width should not change during loading |
-| **M365 Connect** | `#0078D4` bg (M365 Blue), White Microsoft logo icon + text | Used specifically for "Connect Microsoft 365" / Entra ID login actions |
+| **Primary** | Solid Sage/Teal (`#0D9488`), White text, 9999px radius (Pill) | For the primary action. Approachable but grounded. |
+| **Secondary** | Sage Border (`1px solid`), Sage text, 9999px radius | Alternative actions. |
+| **Danger** | Solid Warm Vermillion (`#D64933`), White text, 9999px radius | For destructive actions or appeals. |
+| **Ghost/Tertiary** | No border, subtle Sage background on hover | Soft textual links. |
+| **Loading** | Soft rotating organic spinner | Replaces rigid processing text. |
 
-### 3.2 Chat Interface
+### 3.2 Chat / Transcript Interface
 
-- **AI Messages:** Left-aligned. Avatar (Archon logo or friendly bot icon). Background: `--color-primary-100`. Text: `--color-text-primary`. Corners: 20px radius, with the bottom-left corner slightly sharper (4px) to indicate the speaker.
-- **User Messages:** Right-aligned. No avatar needed. Background: `--color-surface-card` (White) with a very subtle border/shadow. Text: `--color-text-primary`. Corners: 20px radius, bottom-right sharper (4px).
-- **Typing Indicator:** 3 bouncing dots (warm gray) inside an AI message bubble.
-- **System/Action Cards:** Full-width cards embedded in the chat stream (e.g., an "Enrollment Hold" card). These should have a distinct border color based on status (e.g., Red for active hold, Green for resolved) and clear typography.
-- **AI State Disclosure:** When the AI is calling a tool, a subtle inline status appears beneath the typing indicator: e.g., `🔍 Querying Registrar...` / `📅 Fetching your calendar...` / `💬 Sending Teams notification...`. This fulfills Design Principle 4 (Transparent state).
+- **Layout:** Softly rounded, distinct modules rather than one harsh column. Continuous flow but with natural padding (`24px` radius cards).
+- **AI Speaker:** Left-aligned rounded card. Background: Very light Sage (`#E8EFEA`).
+- **User Speaker:** Right-aligned rounded card. Background: White. Slight diffused shadow.
+- **Tool / Thought State:** Inline, softly pulsating text in JetBrains Mono.
+- **System/Action Cards:** Full-width rounded cards (`24px` radius) with organic spacing.
 
 ### 3.3 M365 Calendar Panel (PRD-F11)
 
-The Calendar panel appears on the Home Dashboard as a card below the Active Tickets section.
-
-- **Header:** "Your Week" with a small Microsoft 365 badge (M365 Blue `#0078D4` background, white "M" icon) indicating the data source.
-- **Event items:** Each event shows: colored left-border (Teal for academic, Amber for deadlines), event title in Body/Medium weight, date and time in Body/Regular muted.
-- **Empty state:** "No events this week — your week looks clear. ✓" in muted text with a soft check icon.
-- **Loading state:** 3 skeleton event items with a subtle pulse animation.
-- **Error / No consent state:** A muted panel with a Teams/Calendar icon and text: "Connect your Microsoft 365 Calendar" + a "Connect" button (M365 Blue style).
-- **Maximum items displayed:** 5 events. A "View all in Calendar" link opens the student's Outlook calendar in a new tab.
+- **Header:** "Weekly Schedule" in Display font.
+- **Event items:** Rectangular list items with `16px` radius and a soft sage left-indicator.
+- **Empty state:** "No events scheduled."
+- **Loading state:** Fully rounded (`9999px`) fluid skeleton sweeps.
 
 ### 3.4 Notification Status Badge (PRD-F11)
 
