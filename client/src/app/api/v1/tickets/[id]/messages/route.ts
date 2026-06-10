@@ -14,7 +14,7 @@ import {
   wrapConversationTurnForModel,
 } from "@/lib/ai-guardrails";
 import { getUniversityAdapter } from "@/lib/adapters";
-import type { AdapterContext, FinancialStatus, StatusAggregate } from "@/lib/adapters/types";
+import type { AdapterContext, FinancialDisbursement, FinancialStatus, StatusAggregate } from "@/lib/adapters/types";
 
 type UserLanguage = "en" | "fil" | "ceb";
 type CalendarState =
@@ -146,6 +146,40 @@ function formatBalanceResponse(financialData: FinancialStatus, language: UserLan
     `Itemized Charges:\n${itemizedCharges}\n\n` +
     `Pending Financial Aid:\n${pendingAidSummary}\n\n` +
     `Once pending aid is posted, your projected net balance is ${pesoFormatter.format(financialData.net_balance)}.`;
+}
+
+function formatHoldLiftResponse(
+  disbursement: FinancialDisbursement | undefined,
+  language: UserLanguage
+): string {
+  const source = disbursement?.source || "your pending financial aid";
+  const amount = disbursement ? pesoFormatter.format(disbursement.amount) : "your pending aid";
+  const eta = disbursement?.expected_release || "a few business days";
+
+  if (language === "fil") {
+    return (
+      `Na-check ko ang Financial Aid records mo. Nakikita ko ang pending ${source} mo na ${amount} ` +
+      `(inaasahang ma-release sa ${eta}). Dahil dito, nag-request na ako sa Bursar at Registrar na ` +
+      `pansamantalang i-lift ang iyong **Financial Hold**.\n\nSuccessful ang lift! Cleared na ito sa ` +
+      `susunod na 14 araw para makapag-enroll ka. Makikita mo ito sa Student Dashboard mo. ` +
+      `May iba pa ba akong maitutulong?`
+    );
+  }
+  if (language === "ceb") {
+    return (
+      `Na-check nako imong Financial Aid records. Nakita nako ang pending ${source} nimo nga ${amount} ` +
+      `(gilauman nga ma-release sa ${eta}). Tungod ani, naka-request nako sa Bursar ug Registrar nga ` +
+      `temporaryong i-lift ang imong **Financial Hold**.\n\nSuccessful ang lift! Cleared na ni sa sunod ` +
+      `14 ka adlaw aron maka-enroll ka. Makita nimo ni sa imong Student Dashboard. Naa pa ba koy matabang?`
+    );
+  }
+  return (
+    `Checking your Financial Aid records... I can see your pending ${source} of ${amount} ` +
+    `(expected to post in ${eta}). Because of this, I have requested the Bursar and Registrar to ` +
+    `temporarily lift your **Financial Hold**.\n\nThe lift was successful! This hold is cleared for the ` +
+    `next 14 days so you can enroll. You can see this reflected on your Student Dashboard. ` +
+    `Is there anything else I can help you with?`
+  );
 }
 
 function extractMessageText(content: string): string {
@@ -774,13 +808,8 @@ export async function POST(
         await adapter.requestHoldLift(adapterContext, "hold-financial");
         holds = await adapter.getHolds(adapterContext);
 
-        if (userLanguage === "fil") {
-          aiContent = "Na-check ko ang Financial Aid records mo. Nakikita ko ang pending CHED UniFAST grant mo na ₱15,000. Dahil dito, nag-request na ako sa Bursar at Registrar na i-temporarily lift ang **Financial Hold** mo.\n\nSuccessful ang lift! Cleared na ito sa next 14 days para makapag-enroll ka. Makikita mo ito sa Student Dashboard mo. May iba pa ba akong maitutulong?";
-        } else if (userLanguage === "ceb") {
-          aiContent = "Na-check nako imong Financial Aid records. Nakita nako ang pending CHED UniFAST grant nimo nga ₱15,000. Tungod ani, naka-request nako sa Bursar ug Registrar nga i-temporarily lift ang imong **Financial Hold**.\n\nSuccessful ang lift! Cleared na ni sa sunod 14 ka adlaw aron maka-enroll ka. Makita nimo ni sa imong Student Dashboard. Naa pa ba koy matabang?";
-        } else {
-          aiContent = "Checking your Financial Aid records... I can see your pending CHED UniFAST grant of ₱15,000. Because of this, I have requested the Bursar and Registrar to temporarily lift your **Financial Hold**.\n\nThe lift was successful! This hold is cleared for the next 14 days so you can enroll. You can see this reflected on your Student Dashboard. Is there anything else I can help you with?";
-        }
+        const liftDisbursement = statusAggregate.aid.pending_disbursements[0];
+        aiContent = formatHoldLiftResponse(liftDisbursement, userLanguage);
       } else if (activeFinancialHold && !canAutoLiftFinancial) {
         nextAiAttempts = 0;
         await escalateToHuman();
