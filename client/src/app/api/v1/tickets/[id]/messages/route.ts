@@ -16,6 +16,7 @@ import {
 } from "@/lib/ai-guardrails";
 import { getUniversityAdapter } from "@/lib/adapters";
 import type { AdapterContext, FinancialDisbursement, FinancialStatus, StatusAggregate } from "@/lib/adapters/types";
+import { recordAnalyticsEvent } from "@/lib/analytics-events";
 
 type UserLanguage = "en" | "fil" | "ceb";
 type CalendarState =
@@ -749,6 +750,14 @@ export async function POST(
         );
         await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
 
+        recordAnalyticsEvent({
+          type: "staff_resolved",
+          institutionId: authUser.institution_id,
+          ticketId: conversationId,
+          studentId: conversation.student_id,
+          metadata: { agent_id: authUser.entra_oid },
+        });
+
         const existingHandoff = await cosmosDbService.getHandoffByTicketId(conversationId, authUser.institution_id);
         if (existingHandoff) {
           await cosmosDbService.upsertHandoff({
@@ -953,6 +962,14 @@ export async function POST(
         resolved_at: undefined,
       };
       await cosmosDbService.upsertHandoff(handoffDoc);
+
+      recordAnalyticsEvent({
+        type: "escalated",
+        institutionId: authUser.institution_id,
+        ticketId: conversationId,
+        studentId: authUser.entra_oid,
+        metadata: { active_holds: activeHoldsCount },
+      });
 
       await enqueueTeamsNotification({
         institutionId: authUser.institution_id,

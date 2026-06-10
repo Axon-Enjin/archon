@@ -42,6 +42,12 @@ interface TicketItem {
   id: string;
   ticket_id: string;
   status: "Open" | "Pending Agent" | "Resolved";
+  satisfaction?: {
+    rating: "positive" | "negative";
+    score: number;
+    comment?: string;
+    submitted_at: string;
+  };
 }
 
 function formatCalendarEventRange(event: CalendarEventPayload): string {
@@ -122,6 +128,7 @@ function StudentChatContent() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [ticketDetails, setTicketDetails] = useState<TicketItem | null>(null);
+  const [csatSubmitting, setCsatSubmitting] = useState(false);
 
   const [streamedMessages, setStreamedMessages] = useState<Record<string, string>>({});
   const [activeStreamingId, setActiveStreamingId] = useState<string | null>(null);
@@ -313,6 +320,26 @@ function StudentChatContent() {
       callbackUrl: ticketId ? `/student/chat?ticketId=${ticketId}` : "/student",
       prompt: "consent",
     });
+  };
+
+  const handleSubmitCsat = async (rating: "positive" | "negative") => {
+    if (!ticketId || csatSubmitting || ticketDetails?.satisfaction) return;
+    setCsatSubmitting(true);
+    try {
+      const res = await fetch(`/api/v1/tickets/${ticketId}/satisfaction`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTicketDetails((prev) => (prev ? { ...prev, satisfaction: data.data } : prev));
+      }
+    } catch (err) {
+      console.error("Failed to submit satisfaction:", err);
+    } finally {
+      setCsatSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -603,6 +630,38 @@ function StudentChatContent() {
             >
               🚨 Talk to support
             </button>
+          </div>
+        )}
+
+        {ticketDetails?.status === "Resolved" && (
+          <div className="mb-4 rounded-2xl border border-[#E3DFD5] bg-white px-5 py-4 shadow-sm">
+            {ticketDetails.satisfaction ? (
+              <p className="text-center text-sm font-semibold text-brand-text">
+                {ticketDetails.satisfaction.rating === "positive" ? "🎉" : "🙏"} Thanks for your feedback!
+              </p>
+            ) : (
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-sm font-semibold text-brand-text">Was this resolution helpful?</p>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={csatSubmitting}
+                    onClick={() => void handleSubmitCsat("positive")}
+                    className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-5 py-2 text-xs font-bold text-emerald-700 transition-all hover:-translate-y-0.5 hover:border-emerald-400 disabled:opacity-50"
+                  >
+                    👍 Yes, it helped
+                  </button>
+                  <button
+                    type="button"
+                    disabled={csatSubmitting}
+                    onClick={() => void handleSubmitCsat("negative")}
+                    className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-5 py-2 text-xs font-bold text-red-700 transition-all hover:-translate-y-0.5 hover:border-red-400 disabled:opacity-50"
+                  >
+                    👎 Not really
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

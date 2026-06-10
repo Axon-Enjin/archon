@@ -19,6 +19,13 @@ export interface ConversationDoc extends BaseCosmosDocument {
   assignee_id?: string; // ID of the human agent
   ai_resolution_attempts?: number; // failed autonomous attempts before escalation
   created_at: string;
+  /** Post-resolution CSAT (PRD §5.5 `satisfaction_submitted`). */
+  satisfaction?: {
+    rating: "positive" | "negative";
+    score: number; // 1 (negative) or 5 (positive), for averaging
+    comment?: string;
+    submitted_at: string;
+  };
 }
 
 export interface MessageDoc extends BaseCosmosDocument {
