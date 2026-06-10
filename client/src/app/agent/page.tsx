@@ -76,6 +76,18 @@ export default function AgentDashboard() {
     }
   }
 
+  async function refreshQueueSilently() {
+    try {
+      const res = await fetch("/api/v1/tickets?type=queue");
+      const data = await res.json();
+      if (data.success) {
+        setQueue(data.data);
+      }
+    } catch (err) {
+      console.warn("Silent queue refresh failed:", err);
+    }
+  }
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/signin");
@@ -94,7 +106,29 @@ export default function AgentDashboard() {
       const initialTimer = setTimeout(() => {
         void fetchQueue();
       }, 0);
-      return () => clearTimeout(initialTimer);
+
+      // Live queue updates (PRD-F5): poll for new escalations so the queue
+      // reflects handoffs without a manual refresh. Visibility-aware to avoid
+      // background churn.
+      const runSilentRefresh = () => {
+        if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+          return;
+        }
+        void refreshQueueSilently();
+      };
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === "visible") {
+          runSilentRefresh();
+        }
+      };
+      const interval = setInterval(runSilentRefresh, 8000);
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+
+      return () => {
+        clearTimeout(initialTimer);
+        clearInterval(interval);
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      };
     }
   }, [session, status, router]);
 

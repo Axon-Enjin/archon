@@ -14,6 +14,8 @@ export type AnalyticsEventType =
   | "escalated"
   | "staff_resolved"
   | "notification_enqueued"
+  | "notification_delivered"
+  | "notification_delivery_failed"
   | "satisfaction_submitted";
 
 export interface AnalyticsEvent {

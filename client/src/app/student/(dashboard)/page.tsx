@@ -40,12 +40,40 @@ interface TicketItem {
   created_at: string;
 }
 
+interface FinancialSummary {
+  balance_due: number;
+  currency: string;
+  payment_deadline: string;
+  scholarship_renewal_deadline: string;
+  scholarship_renewal_submitted?: boolean;
+  scholarship_renewal_status?: "not_started" | "in_progress" | "submitted";
+}
+
+interface UpcomingDeadline {
+  key: string;
+  label: string;
+  date: Date;
+  tone: "critical" | "warning" | "info";
+}
+
 function toDateKey(dateInput: string | Date): string {
   const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return "Due now";
+  const totalSeconds = Math.floor(ms / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  return `${minutes}m ${seconds}s`;
 }
 
 export default function StudentDashboard() {
@@ -56,6 +84,8 @@ export default function StudentDashboard() {
   const [holds, setHolds] = useState<HoldItem[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [tickets, setTickets] = useState<TicketItem[]>([]);
+  const [financial, setFinancial] = useState<FinancialSummary | null>(null);
+  const [now, setNow] = useState<Date>(() => new Date());
   const [ticketPage, setTicketPage] = useState(1);
   const TICKETS_PER_PAGE = 3;
   const [loading, setLoading] = useState(true);
@@ -112,6 +142,14 @@ export default function StudentDashboard() {
         setCalendarErrorCode(calendarData.errorCode || null);
       }
       if (ticketsData.success) setTickets(ticketsData.data);
+
+      try {
+        const financialRes = await fetch(`/api/v1/student/${studentOid}/financial`);
+        const financialData = await financialRes.json();
+        if (financialData.success) setFinancial(financialData.data);
+      } catch (financialErr) {
+        console.warn("Failed to load financial summary", financialErr);
+      }
     } catch (err) {
       console.error("Error fetching student dashboard data:", err);
     } finally {
@@ -124,16 +162,19 @@ export default function StudentDashboard() {
 
   async function fetchDashboardDataSilently(studentOid: string) {
     try {
-      const [holdsRes, ticketsRes] = await Promise.all([
+      const [holdsRes, ticketsRes, financialRes] = await Promise.all([
         fetch(`/api/v1/student/${studentOid}/holds`),
         fetch(`/api/v1/tickets?studentId=${studentOid}`),
+        fetch(`/api/v1/student/${studentOid}/financial`),
       ]);
-      const [holdsData, ticketsData] = await Promise.all([
+      const [holdsData, ticketsData, financialData] = await Promise.all([
         holdsRes.json(),
         ticketsRes.json(),
+        financialRes.json(),
       ]);
       if (holdsData.success) setHolds(holdsData.data);
       if (ticketsData.success) setTickets(ticketsData.data);
+      if (financialData.success) setFinancial(financialData.data);
     } catch (err) {
       console.warn("Silent sync failed", err);
     }
@@ -183,6 +224,12 @@ export default function StudentDashboard() {
       };
     }
   }, [session, status, router, hasLoadedOnce]);
+
+  // Live-ticking clock so deadline countdowns update in real time (PRD-F5).
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleStartNewChat = async () => {
     if (!session?.user) return;
@@ -247,6 +294,34 @@ export default function StudentDashboard() {
   }
 
   const activeHolds = holds.filter((h) => h.status !== "Resolved");
+  const recentlyResolvedHolds = holds.filter((h) => h.status === "Resolved");
+
+  const upcomingDeadlines: UpcomingDeadline[] = [];
+  if (financial) {
+    const scholarshipSubmitted =
+      financial.scholarship_renewal_submitted === true ||
+      financial.scholarship_renewal_status === "submitted";
+    if (financial.payment_deadline && (financial.balance_due ?? 0) > 0) {
+      upcomingDeadlines.push({
+        key: "payment",
+        label: "Tuition payment due",
+        date: new Date(financial.payment_deadline),
+        tone: "critical",
+      });
+    }
+    if (financial.scholarship_renewal_deadline && !scholarshipSubmitted) {
+      upcomingDeadlines.push({
+        key: "scholarship",
+        label: "Scholarship renewal due",
+        date: new Date(financial.scholarship_renewal_deadline),
+        tone: "warning",
+      });
+    }
+  }
+  const futureDeadlines = upcomingDeadlines
+    .filter((d) => !Number.isNaN(d.date.getTime()) && d.date.getTime() > now.getTime() - 24 * 60 * 60 * 1000)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+
   const eventsByDate = events.reduce<Record<string, CalendarEvent[]>>((acc, evt) => {
     const key = toDateKey(evt.start);
     acc[key] = acc[key] || [];
@@ -294,6 +369,74 @@ export default function StudentDashboard() {
           </button>
         </div>
 
+        {/* Deadline Countdown (PRD-F5) */}
+        {futureDeadlines.length > 0 && (
+          <section className="mb-10">
+            <div className="flex items-center gap-2 mb-4 pl-1">
+              <Clock className="w-5 h-5 text-brand-primary" />
+              <h2 className="text-xl font-bold font-display text-brand-text tracking-tight">
+                Countdown
+              </h2>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 pl-1">
+              {futureDeadlines.slice(0, 2).map((deadline) => {
+                const remaining = deadline.date.getTime() - now.getTime();
+                const isPast = remaining <= 0;
+                const days = Math.ceil(remaining / (1000 * 60 * 60 * 24));
+                const tone =
+                  isPast || days <= 3
+                    ? "critical"
+                    : deadline.tone === "warning" || days <= 7
+                      ? "warning"
+                      : "info";
+                const toneStyles =
+                  tone === "critical"
+                    ? "border-red-100 bg-red-50/40 text-brand-error"
+                    : tone === "warning"
+                      ? "border-amber-100 bg-amber-50/40 text-amber-600"
+                      : "border-brand-primary/15 bg-brand-primary-light/20 text-brand-primary";
+                return (
+                  <div
+                    key={deadline.key}
+                    className={`relative overflow-hidden rounded-[1.25rem] border bg-white p-5 shadow-sm transition-all duration-300 ${toneStyles.split(" ").slice(0, 2).join(" ")}`}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-[10px] font-mono uppercase tracking-widest text-brand-muted mb-1">
+                          {deadline.label}
+                        </p>
+                        <p
+                          className={`font-display text-2xl font-extrabold tabular-nums tracking-tight ${toneStyles.split(" ").slice(2).join(" ")} ${tone === "critical" ? "animate-pulse" : ""}`}
+                        >
+                          {formatCountdown(remaining)}
+                        </p>
+                        <p className="text-xs text-brand-muted mt-1">
+                          {deadline.date.toLocaleDateString([], {
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </p>
+                      </div>
+                      <div
+                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+                          tone === "critical"
+                            ? "bg-red-100 text-brand-error"
+                            : tone === "warning"
+                              ? "bg-amber-100 text-amber-600"
+                              : "bg-brand-primary/10 text-brand-primary"
+                        }`}
+                      >
+                        <Clock className="h-6 w-6" />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* Holds Alerts */}
         {activeHolds.length > 0 ? (
           <section className="mb-12 relative">
@@ -314,7 +457,17 @@ export default function StudentDashboard() {
                         <span className="rounded-full bg-red-50 border border-red-100 px-2 py-0.5 text-[10px] font-bold tracking-widest text-brand-error uppercase font-mono">
                           {hold.type}
                         </span>
-                        <span className="text-[10px] text-brand-muted font-mono bg-zinc-50 border border-zinc-100 px-2 py-0.5 rounded-full uppercase tracking-wider">{hold.status}</span>
+                        {hold.status === "Lifting" ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-600 uppercase tracking-wider font-mono">
+                            <RefreshCw className="h-3 w-3 animate-spin" />
+                            Lifting
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-50 border border-zinc-100 px-2 py-0.5 text-[10px] text-brand-muted uppercase tracking-wider font-mono">
+                            <span className="h-1.5 w-1.5 rounded-full bg-brand-error animate-pulse" />
+                            {hold.status}
+                          </span>
+                        )}
                       </div>
                       <h3 className="text-lg font-bold text-brand-text mb-2 font-display leading-tight">{hold.reason}</h3>
                       <p className="text-xs text-brand-muted leading-relaxed">
@@ -352,6 +505,25 @@ export default function StudentDashboard() {
             <div>
               <p className="text-lg font-bold text-brand-success font-display tracking-tight">Clear Account Status</p>
               <p className="text-brand-muted font-sans text-xs mt-1">You have no active holds. You are cleared to enroll and register for classes.</p>
+            </div>
+          </section>
+        )}
+
+        {/* Recently cleared holds — the visible "Resolved" end-state (PRD-F5) */}
+        {recentlyResolvedHolds.length > 0 && (
+          <section className="mb-12 -mt-6">
+            <div className="flex flex-wrap gap-2 pl-1">
+              {recentlyResolvedHolds.map((hold) => (
+                <span
+                  key={hold.id}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-brand-success/20 bg-green-50/60 px-3 py-1 text-[11px] font-semibold text-brand-success font-mono uppercase tracking-wider animate-fade-in"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {hold.type} hold cleared
+                </span>
+              ))}
             </div>
           </section>
         )}
