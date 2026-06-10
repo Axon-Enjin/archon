@@ -35,6 +35,8 @@ export const ALLOWED_AI_TOOL_CALLS = [
   "GetCalendarEvents",
   "CheckStudentHolds",
   "CheckTuitionBalance",
+  "GetCourseSchedule",
+  "GetTransactionHistory",
   "EscalateToHuman",
   "queryPolicies",
   "requestHoldLift",

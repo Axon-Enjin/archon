@@ -302,6 +302,10 @@ function StudentChatContent() {
         return "💵 Checking your CHED UniFAST grant status...";
       case "GetCalendarEvents":
         return "📅 Fetching your Outlook Calendar events...";
+      case "GetCourseSchedule":
+        return "📚 Pulling up your class schedule...";
+      case "GetTransactionHistory":
+        return "🧾 Reviewing your recent account activity...";
       case "AttemptAutonomousResolution":
         return "🧠 Running autonomous resolution attempt...";
       case "requestHoldLift":

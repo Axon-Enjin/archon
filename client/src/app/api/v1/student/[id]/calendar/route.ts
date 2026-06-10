@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, verifyStudentAccess, unauthorizedResponse, forbiddenResponse } from "@/lib/auth-helper";
 import { cosmosDbService } from "@/lib/db/cosmos";
 import { isM365Enabled } from "@/lib/feature-flags";
-import { generateCalendarEvents } from "@/lib/adapters/mock-data-generator";
+import { generateCalendarEvents, generateCalendarEventsOverride, isStudentArchetype } from "@/lib/adapters/mock-data-generator";
+import type { StudentArchetype } from "@/lib/adapters/mock-data-generator";
 
 interface CalendarEvent {
   id: string;
@@ -232,7 +233,16 @@ export async function GET(
 
   const cacheKey = `calendar:${studentOid}`;
   const forceRefresh = request.nextUrl.searchParams.get("refresh") === "1";
-  if (!forceRefresh) {
+
+  // Dev-only scenario override (non-production): ?seed=/?scenario= force a
+  // deterministic calendar and bypass the cache.
+  const devSeed =
+    process.env.NODE_ENV !== "production" ? request.nextUrl.searchParams.get("seed") : null;
+  const devScenario =
+    process.env.NODE_ENV !== "production" ? request.nextUrl.searchParams.get("scenario") : null;
+  const devOverride = Boolean(devSeed || devScenario);
+
+  if (!forceRefresh && !devOverride) {
     const cachedEvents = await cosmosDbService.getCacheData<CalendarEvent[]>(cacheKey, authUser.institution_id);
     if (cachedEvents) {
       return NextResponse.json({
@@ -246,8 +256,15 @@ export async function GET(
   // (deadlines, disbursements, SAP appeal) so the panel is dynamic and coherent
   // with their holds and finances instead of requiring a real Graph token.
   if (cosmosDbService.getConnectionMode() === "mock") {
-    const generated = generateCalendarEvents(studentOid) as CalendarEvent[];
-    await cosmosDbService.setCacheData(cacheKey, generated, authUser.institution_id, 900);
+    const generated = devOverride
+      ? (generateCalendarEventsOverride(
+          devSeed || studentOid,
+          isStudentArchetype(devScenario || "") ? (devScenario as StudentArchetype) : undefined
+        ) as CalendarEvent[])
+      : (generateCalendarEvents(studentOid) as CalendarEvent[]);
+    if (!devOverride) {
+      await cosmosDbService.setCacheData(cacheKey, generated, authUser.institution_id, 900);
+    }
     return NextResponse.json({
       success: true,
       data: generated,

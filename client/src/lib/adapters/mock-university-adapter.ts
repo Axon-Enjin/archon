@@ -1,12 +1,19 @@
 import { cosmosDbService } from "@/lib/db/cosmos";
-import { generateStudentScenario } from "@/lib/adapters/mock-data-generator";
+import {
+  generateScenarioOverride,
+  generateStudentScenario,
+  isStudentArchetype,
+  type StudentScenario,
+} from "@/lib/adapters/mock-data-generator";
 import type {
   AdapterContext,
+  CourseScheduleItem,
   FinancialStatus,
   HoldItem,
   IUniversityAdapter,
   StatusAggregate,
   StudentProfile,
+  TransactionItem,
 } from "@/lib/adapters/types";
 
 interface AcademicSnapshot {
@@ -24,7 +31,27 @@ function normalizeGwa(gwa: string | number | undefined): string {
 }
 
 export class MockUniversityAdapter implements IUniversityAdapter {
+  /**
+   * Dev-only scenario override (non-production). When the context carries a
+   * `devSeed` or `devArchetype`, return a freshly generated scenario that
+   * bypasses the per-student cache so demos can force a specific profile
+   * without polluting a real student's cached data.
+   */
+  private overrideScenario(context: AdapterContext): StudentScenario | null {
+    if (process.env.NODE_ENV === "production") return null;
+    if (!context.devSeed && !context.devArchetype) return null;
+    const seed = context.devSeed || context.studentOid;
+    const archetype =
+      context.devArchetype && isStudentArchetype(context.devArchetype)
+        ? context.devArchetype
+        : undefined;
+    return generateScenarioOverride(seed, archetype);
+  }
+
   private async getAcademicSnapshot(context: AdapterContext): Promise<AcademicSnapshot> {
+    const override = this.overrideScenario(context);
+    if (override) return override.academic;
+
     const cacheKey = `academic:${context.studentOid}`;
     let academic = await cosmosDbService.getCacheData<AcademicSnapshot>(cacheKey, context.institutionId);
 
@@ -37,6 +64,9 @@ export class MockUniversityAdapter implements IUniversityAdapter {
   }
 
   async getHolds(context: AdapterContext): Promise<HoldItem[]> {
+    const override = this.overrideScenario(context);
+    if (override) return override.holds;
+
     const cacheKey = `holds:${context.studentOid}`;
     let holds = await cosmosDbService.getCacheData<HoldItem[]>(cacheKey, context.institutionId);
 
@@ -49,6 +79,9 @@ export class MockUniversityAdapter implements IUniversityAdapter {
   }
 
   async getFinancialStatus(context: AdapterContext): Promise<FinancialStatus> {
+    const override = this.overrideScenario(context);
+    if (override) return override.financial;
+
     const cacheKey = `financial:${context.studentOid}`;
     let financial = await cosmosDbService.getCacheData<FinancialStatus>(cacheKey, context.institutionId);
 
@@ -58,6 +91,36 @@ export class MockUniversityAdapter implements IUniversityAdapter {
     }
 
     return financial;
+  }
+
+  async getCourseSchedule(context: AdapterContext): Promise<CourseScheduleItem[]> {
+    const override = this.overrideScenario(context);
+    if (override) return override.courses;
+
+    const cacheKey = `courses:${context.studentOid}`;
+    let courses = await cosmosDbService.getCacheData<CourseScheduleItem[]>(cacheKey, context.institutionId);
+
+    if (!courses) {
+      courses = generateStudentScenario(context.studentOid).courses;
+      await cosmosDbService.setCacheData(cacheKey, courses, context.institutionId);
+    }
+
+    return courses;
+  }
+
+  async getTransactionHistory(context: AdapterContext): Promise<TransactionItem[]> {
+    const override = this.overrideScenario(context);
+    if (override) return override.transactions;
+
+    const cacheKey = `transactions:${context.studentOid}`;
+    let transactions = await cosmosDbService.getCacheData<TransactionItem[]>(cacheKey, context.institutionId);
+
+    if (!transactions) {
+      transactions = generateStudentScenario(context.studentOid).transactions;
+      await cosmosDbService.setCacheData(cacheKey, transactions, context.institutionId);
+    }
+
+    return transactions;
   }
 
   async getStudentProfile(context: AdapterContext): Promise<StudentProfile> {
@@ -92,7 +155,11 @@ export class MockUniversityAdapter implements IUniversityAdapter {
       reason: reason || holds[index].reason,
     };
 
-    await cosmosDbService.setCacheData(cacheKey, holds, context.institutionId);
+    // Under a dev override the holds are generated fresh (not the real student's
+    // cache), so don't persist them back into the real cache key.
+    if (!this.overrideScenario(context)) {
+      await cosmosDbService.setCacheData(cacheKey, holds, context.institutionId);
+    }
     return true;
   }
 

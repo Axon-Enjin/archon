@@ -48,6 +48,18 @@ export const ARCHON_TOOLS: FoundryTool[] = [
     parameters: NO_ARGS_SCHEMA,
   },
   {
+    name: "get_course_schedule",
+    description:
+      "Get the authenticated student's enrolled courses this term: subject code, title, units, section, room, meeting days/times, and instructor. Use for questions about classes, schedule, units, or rooms.",
+    parameters: NO_ARGS_SCHEMA,
+  },
+  {
+    name: "get_transaction_history",
+    description:
+      "Get the authenticated student's recent account activity (past payments, tuition charges, scholarship disbursements/credits, previously lifted holds). Use for questions like 'what happened last month?' or 'show my payment history'.",
+    parameters: NO_ARGS_SCHEMA,
+  },
+  {
     name: "request_hold_lift",
     description:
       "Request a temporary lift of the student's financial hold. Only succeeds when pending financial aid covers the outstanding balance; otherwise it escalates to a human agent. Use only after confirming the student wants the hold lifted.",
@@ -104,6 +116,8 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   check_student_holds: "CheckStudentHolds",
   get_account_diagnosis: "CheckStudentHolds",
   get_calendar_events: "GetCalendarEvents",
+  get_course_schedule: "GetCourseSchedule",
+  get_transaction_history: "GetTransactionHistory",
   request_hold_lift: "requestHoldLift",
   query_policies: "queryPolicies",
   escalate_to_human: "EscalateToHuman",

@@ -15,7 +15,8 @@ import {
   wrapConversationTurnForModel,
 } from "@/lib/ai-guardrails";
 import { getUniversityAdapter } from "@/lib/adapters";
-import type { AdapterContext, FinancialDisbursement, FinancialStatus, StatusAggregate } from "@/lib/adapters/types";
+import type { AdapterContext, CourseScheduleItem, FinancialDisbursement, FinancialStatus, StatusAggregate, TransactionItem } from "@/lib/adapters/types";
+import { localizeHoldReason, localizeHoldResolution } from "@/lib/adapters/mock-localization";
 import { recordAnalyticsEvent } from "@/lib/analytics-events";
 
 type UserLanguage = "en" | "fil" | "ceb";
@@ -337,6 +338,86 @@ function formatHoldLiftResponse(
   );
 }
 
+function formatCourseSchedule(courses: CourseScheduleItem[], language: UserLanguage): string {
+  if (courses.length === 0) {
+    return language === "fil"
+      ? "Wala akong makitang naka-enroll na subjects sa term na ito."
+      : language === "ceb"
+      ? "Wala koy nakita nga naka-enroll nga subjects niini nga term."
+      : "I couldn't find any enrolled subjects for this term.";
+  }
+
+  const totalUnits = courses.reduce((sum, course) => sum + course.units, 0);
+  const header =
+    language === "fil"
+      ? `Narito ang iyong class schedule ngayong term (${courses.length} subjects, ${totalUnits} units):`
+      : language === "ceb"
+      ? `Ania ang imong class schedule karong term (${courses.length} subjects, ${totalUnits} units):`
+      : `Here is your class schedule this term (${courses.length} subjects, ${totalUnits} units):`;
+
+  const lines = courses
+    .map(
+      (course) =>
+        `- **${course.code}** — ${course.title} (${course.units} units)\n` +
+        `  ${course.days} ${course.start_time}–${course.end_time} · ${course.room} · ${course.section} · ${course.instructor}`
+    )
+    .join("\n");
+
+  return `${header}\n\n${lines}`;
+}
+
+const TRANSACTION_LABELS: Record<TransactionItem["type"], { en: string; fil: string; ceb: string }> = {
+  payment: { en: "Payment", fil: "Bayad", ceb: "Bayad" },
+  charge: { en: "Charge", fil: "Singil", ceb: "Singil" },
+  disbursement: { en: "Disbursement", fil: "Disbursement", ceb: "Disbursement" },
+  scholarship_credit: { en: "Scholarship Credit", fil: "Scholarship Credit", ceb: "Scholarship Credit" },
+  hold_lifted: { en: "Hold Lifted", fil: "Na-lift na Hold", ceb: "Na-lift nga Hold" },
+};
+
+function formatTransactionHistory(transactions: TransactionItem[], language: UserLanguage): string {
+  if (transactions.length === 0) {
+    return language === "fil"
+      ? "Wala akong makitang account activity kamakailan."
+      : language === "ceb"
+      ? "Wala koy nakita nga account activity bag-o lang."
+      : "I couldn't find any recent account activity.";
+  }
+
+  const header =
+    language === "fil"
+      ? "Narito ang kamakailang account activity mo:"
+      : language === "ceb"
+      ? "Ania ang imong bag-o nga account activity:"
+      : "Here is your recent account activity:";
+
+  const lang: "en" | "fil" | "ceb" = language === "fil" ? "fil" : language === "ceb" ? "ceb" : "en";
+  const lines = transactions
+    .slice(0, 8)
+    .map((txn) => {
+      const label = TRANSACTION_LABELS[txn.type][lang];
+      const amount = txn.amount > 0 ? ` — ${pesoFormatter.format(txn.amount)}` : "";
+      const date = dateFormatter.format(new Date(txn.date));
+      return `- ${date} · **${label}**${amount}\n  ${txn.description}`;
+    })
+    .join("\n");
+
+  return `${header}\n\n${lines}`;
+}
+
+/** Schedule / class intent (PRD-F1). Course-specific so it wins over the M365 calendar intent. */
+function isScheduleIntent(content: string): boolean {
+  return /\b(class schedule|my classes|class list|course load|subjects?|enrolled subjects|how many units|my units|mga klase|anong klase|asignatura|listahan ng klase)\b/i.test(
+    content
+  );
+}
+
+/** Account-history intent (PRD-F2). */
+function isHistoryIntent(content: string): boolean {
+  return /\b(history|transactions?|last month|previous payments?|payment history|past payments?|what happened|nabayaran ko na|kasaysayan|nakaraang bayad)\b/i.test(
+    content
+  );
+}
+
 /**
  * Autonomous resolution policy (PRD-F3 / US-04): Archon makes at most
  * MAX_AI_ATTEMPTS substantive attempts before escalating to a human agent.
@@ -354,6 +435,8 @@ const RESOLVING_TOOL_CALLS = new Set<string>([
   "CheckFinancialAidStatus",
   "CheckStudentHolds",
   "GetCalendarEvents",
+  "GetCourseSchedule",
+  "GetTransactionHistory",
   "queryPolicies",
   "requestHoldLift",
 ]);
@@ -882,7 +965,11 @@ export async function POST(
 
       return respondAssistant(request, assistantMsg);
     }
-    if (isCalendarScheduleIntent(normalizedContent)) {
+    if (
+      isCalendarScheduleIntent(normalizedContent) &&
+      !isScheduleIntent(normalizedContent) &&
+      !isHistoryIntent(normalizedContent)
+    ) {
       await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
       const calendarPayload = await fetchCalendarPayloadForChat(request, authUser, userLanguage);
       const assistantMsg = await createAssistantMessage(authUser.institution_id, conversationId, calendarPayload);
@@ -892,6 +979,16 @@ export async function POST(
     const currentAiAttempts = conversation?.ai_resolution_attempts || 0;
     let nextAiAttempts = currentAiAttempts;
     const adapter = getUniversityAdapter(authUser.institution_id);
+    // Dev-only scenario override (non-production): ?seed= forces a deterministic
+    // profile, ?scenario= forces an archetype. Ignored in production.
+    const devSeed =
+      process.env.NODE_ENV !== "production"
+        ? request.nextUrl.searchParams.get("seed") || undefined
+        : undefined;
+    const devArchetype =
+      process.env.NODE_ENV !== "production"
+        ? request.nextUrl.searchParams.get("scenario") || undefined
+        : undefined;
     const adapterContext: AdapterContext = {
       institutionId: authUser.institution_id,
       studentOid: authUser.entra_oid,
@@ -899,6 +996,8 @@ export async function POST(
       year: authUser.year,
       name: authUser.name,
       email: authUser.email,
+      devSeed,
+      devArchetype,
     };
 
     // 2. Fetch active holds/billing to make the AI responses data-driven
@@ -1053,6 +1152,14 @@ export async function POST(
               events: calendarPayload.calendarEvents ?? [],
             });
           }
+          case "get_course_schedule": {
+            const courses = await adapter.getCourseSchedule(adapterContext);
+            return JSON.stringify({ courses, total_units: courses.reduce((s, c) => s + c.units, 0) });
+          }
+          case "get_transaction_history": {
+            const transactions = await adapter.getTransactionHistory(adapterContext);
+            return JSON.stringify({ transactions });
+          }
           case "request_hold_lift": {
             if (!activeFinancialHold) {
               return JSON.stringify({ success: false, reason: "no_active_financial_hold" });
@@ -1201,6 +1308,18 @@ export async function POST(
         authUser.name || "",
         canAutoLiftFinancial
       );
+    } else if (isScheduleIntent(normalizedContent)) {
+      // Per-student course schedule (PRD-F1).
+      toolCalls.push("GetCourseSchedule");
+      nextAiAttempts = 0;
+      const courses = await adapter.getCourseSchedule(adapterContext);
+      aiContent = formatCourseSchedule(courses, userLanguage);
+    } else if (isHistoryIntent(normalizedContent)) {
+      // Account transaction / event history (PRD-F2).
+      toolCalls.push("GetTransactionHistory");
+      nextAiAttempts = 0;
+      const transactions = await adapter.getTransactionHistory(adapterContext);
+      aiContent = formatTransactionHistory(transactions, userLanguage);
     } else if (
       normalizedContent.includes("balance") ||
       normalizedContent.includes("owe") ||
@@ -1246,7 +1365,7 @@ export async function POST(
         }
       } else {
         const holdLines = holds
-          .map((h, i: number) => `${i + 1}. **${h.type} Hold** (${h.status}): ${h.reason}\n   *Resolution:* ${h.resolution_steps}`)
+          .map((h, i: number) => `${i + 1}. **${h.type} Hold** (${h.status}): ${localizeHoldReason(h, userLanguage)}\n   *Resolution:* ${localizeHoldResolution(h, userLanguage)}`)
           .join("\n\n");
         if (userLanguage === "fil") {
           aiContent =
