@@ -1,4 +1,5 @@
 import { cosmosDbService } from "@/lib/db/cosmos";
+import { generateStudentScenario } from "@/lib/adapters/mock-data-generator";
 import type {
   AdapterContext,
   FinancialStatus,
@@ -16,56 +17,6 @@ interface AcademicSnapshot {
   scholarship?: string;
 }
 
-function getDefaultHolds(): HoldItem[] {
-  return [
-    {
-      id: "hold-financial",
-      type: "Financial",
-      reason: "Pending tuition balance of PHP 12,500.00",
-      status: "Active",
-      resolution_steps:
-        "Pay the remaining balance at the Bursar counter, or submit your CHED UniFAST clearance.",
-    },
-    {
-      id: "hold-academic",
-      type: "Academic",
-      reason: "Satisfactory Academic Progress (SAP) GPA deficiency (GWA is 2.65, required is 2.50)",
-      status: "Active",
-      resolution_steps: "Submit an SAP Appeal narrative and study plan to the Academic Advisory Panel.",
-    },
-  ];
-}
-
-function getDefaultFinancialStatus(studentOid: string): FinancialStatus {
-  return {
-    student_id: studentOid,
-    currency: "PHP",
-    total_charges: 24500,
-    payments_made: 12000,
-    balance_due: 12500,
-    pending_financial_aid: 15000,
-    net_balance: -2500,
-    status: "Hold Active",
-    payment_deadline: "2026-06-30",
-    scholarship_renewal_deadline: "2026-07-15",
-    scholarship_renewal_status: "not_started",
-    scholarship_renewal_submitted: false,
-    itemized_charges: [
-      { item: "Tuition Fee (18 units)", amount: 18000 },
-      { item: "Laboratory Fees (IT Lab)", amount: 3500 },
-      { item: "Miscellaneous & Registration", amount: 3000 },
-    ],
-    pending_disbursements: [
-      {
-        source: "CHED UniFAST Grant",
-        amount: 15000,
-        status: "Pending Verification",
-        expected_release: "3 business days",
-      },
-    ],
-  };
-}
-
 function normalizeGwa(gwa: string | number | undefined): string {
   if (typeof gwa === "number") return gwa.toFixed(2);
   if (typeof gwa === "string" && gwa.trim()) return gwa;
@@ -73,16 +24,24 @@ function normalizeGwa(gwa: string | number | undefined): string {
 }
 
 export class MockUniversityAdapter implements IUniversityAdapter {
-  private async getAcademicSnapshot(context: AdapterContext): Promise<AcademicSnapshot | null> {
-    return cosmosDbService.getCacheData<AcademicSnapshot>(`academic:${context.studentOid}`, context.institutionId);
+  private async getAcademicSnapshot(context: AdapterContext): Promise<AcademicSnapshot> {
+    const cacheKey = `academic:${context.studentOid}`;
+    let academic = await cosmosDbService.getCacheData<AcademicSnapshot>(cacheKey, context.institutionId);
+
+    if (!academic) {
+      academic = generateStudentScenario(context.studentOid).academic;
+      await cosmosDbService.setCacheData(cacheKey, academic, context.institutionId);
+    }
+
+    return academic;
   }
 
   async getHolds(context: AdapterContext): Promise<HoldItem[]> {
     const cacheKey = `holds:${context.studentOid}`;
     let holds = await cosmosDbService.getCacheData<HoldItem[]>(cacheKey, context.institutionId);
 
-    if (!holds || holds.length === 0) {
-      holds = getDefaultHolds();
+    if (!holds) {
+      holds = generateStudentScenario(context.studentOid).holds;
       await cosmosDbService.setCacheData(cacheKey, holds, context.institutionId);
     }
 
@@ -94,7 +53,7 @@ export class MockUniversityAdapter implements IUniversityAdapter {
     let financial = await cosmosDbService.getCacheData<FinancialStatus>(cacheKey, context.institutionId);
 
     if (!financial) {
-      financial = getDefaultFinancialStatus(context.studentOid);
+      financial = generateStudentScenario(context.studentOid).financial;
       await cosmosDbService.setCacheData(cacheKey, financial, context.institutionId);
     }
 

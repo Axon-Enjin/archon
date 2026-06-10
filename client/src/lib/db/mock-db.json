@@ -224,29 +224,6 @@
       "ttl": 300
     },
     {
-      "id": "holds:student-mara-oid",
-      "institution_id": "inst-up",
-      "cache_key": "holds:student-mara-oid",
-      "data": [
-        {
-          "id": "hold-financial",
-          "type": "Financial",
-          "reason": "Pending tuition balance of ₱12,500.00",
-          "status": "Active",
-          "resolution_steps": "Pay the remaining balance at the Bursar counter, or submit your CHED UniFAST clearance."
-        },
-        {
-          "id": "hold-academic",
-          "type": "Academic",
-          "reason": "Satisfactory Academic Progress (SAP) GPA deficiency (GWA is 2.65, required is 2.50)",
-          "status": "Active",
-          "resolution_steps": "Submit an SAP Appeal narrative and study plan to the Academic Advisory Panel."
-        }
-      ],
-      "fetched_at": 1780836963283,
-      "ttl": 300
-    },
-    {
       "id": "calendar:QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
       "institution_id": "inst-up",
       "cache_key": "calendar:QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
@@ -285,29 +262,6 @@
         }
       ],
       "fetched_at": 1780840333313,
-      "ttl": 300
-    },
-    {
-      "id": "holds:QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
-      "institution_id": "inst-up",
-      "cache_key": "holds:QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
-      "data": [
-        {
-          "id": "hold-financial",
-          "type": "Financial",
-          "reason": "Pending tuition balance of ₱12,500.00",
-          "status": "Active",
-          "resolution_steps": "Pay the remaining balance at the Bursar counter, or submit your CHED UniFAST clearance."
-        },
-        {
-          "id": "hold-academic",
-          "type": "Academic",
-          "reason": "Satisfactory Academic Progress (SAP) GPA deficiency (GWA is 2.65, required is 2.50)",
-          "status": "Active",
-          "resolution_steps": "Submit an SAP Appeal narrative and study plan to the Academic Advisory Panel."
-        }
-      ],
-      "fetched_at": 1780840333522,
       "ttl": 300
     }
   ]
