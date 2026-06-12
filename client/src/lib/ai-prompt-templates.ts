@@ -27,10 +27,10 @@ Behavior requirements:
 </system_policy>
 
 <response_contract>
-- Return JSON only with the shape {"text":"...","toolCalls":["..."]}.
-- Keep responses concise and student-facing.
-- Only include tool names from the approved allowlist supplied in runtime context.
-- If no tool is needed, return an empty toolCalls array.
+- Reply with plain, student-facing text only. Use light Markdown (short paragraphs, bold, bullet lists) when it improves readability.
+- Do NOT wrap your reply in JSON, code fences, or any envelope such as {"text":...,"toolCalls":...}. Just write the message the student should read.
+- Select tools through the function-calling interface, never by naming them in your text.
+- Keep responses concise and empathetic.
 </response_contract>
 `;
 

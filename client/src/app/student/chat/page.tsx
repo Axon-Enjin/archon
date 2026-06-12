@@ -141,6 +141,23 @@ function StudentChatContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Defensive unwrap: if the model wrapped its answer in our
+  // {"text":"...","toolCalls":[...]} envelope, surface the inner text instead
+  // of raw JSON. Plain-text replies pass through untouched.
+  const unwrapEnvelopeText = (text: string): string => {
+    const trimmed = text.trim();
+    if (!trimmed.startsWith("{") || !trimmed.includes('"text"')) return text;
+    try {
+      const inner = JSON.parse(trimmed) as { text?: unknown; toolCalls?: unknown };
+      if (inner && typeof inner.text === "string" && "toolCalls" in inner) {
+        return inner.text;
+      }
+    } catch {
+      // Not our envelope; leave as-is.
+    }
+    return text;
+  };
+
   const parseMessageContent = (content: string): {
     text: string;
     toolCalls: string[];
@@ -158,7 +175,7 @@ function StudentChatContent() {
       };
       if (parsed && typeof parsed === "object" && typeof parsed.text === "string") {
         return {
-          text: parsed.text,
+          text: unwrapEnvelopeText(parsed.text),
           toolCalls: parsed.toolCalls || [],
           calendarEvents: Array.isArray(parsed.calendarEvents) ? parsed.calendarEvents : [],
           calendarState: parsed.calendarState,

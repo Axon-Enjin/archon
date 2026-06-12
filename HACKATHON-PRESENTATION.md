@@ -134,9 +134,15 @@ Archon is an **autonomous, agentic AI service desk** that resolves student inqui
 
 🖱️ Click the **X** (or the date again) to close the popover.
 
+🖱️ **Switch to a browser tab with the real Outlook web calendar** (Rhandie's actual `sales@axonenjin.com` Outlook).
+
+🎙️ *"And to be clear — this isn't a mock-up. Here's the same student's real Outlook calendar, in Microsoft 365. The grant disbursement, the tuition deadline, the class schedule — these are genuine calendar events, and Archon reads them through Graph and re-surfaces them right inside the student experience. Same source of truth, two views."*
+
+🖱️ Switch back to the Archon dashboard.
+
 🎙️ *"So Rhandie opens this on his phone, sees the hold, and naturally panics. Instead of lining up at three offices — he just asks."*
 
-### 3:30 — The agentic moment *(Chat — the heart of the demo)* — 2.5 min
+### 4:00 — The agentic moment *(Chat — the heart of the demo)* — 2.5 min
 🖱️ Click **"Initiate Consultation"** (the new-chat button). Chat opens.
 
 🎙️ *"He opens the assistant and asks in his own language — Filipino."*
@@ -166,9 +172,18 @@ Archon is an **autonomous, agentic AI service desk** that resolves student inqui
 
 🎙️ *(while it processes)* *"Here I'm asking for something that needs real human judgment — a fee waiver. Watch what it does."*
 
-🎙️ *(when it escalates)* *"It doesn't guess, and it doesn't fake authority. It escalates to a human — and the ticket flips to 'Pending Agent.' But here's the magic: it doesn't dump a cold ticket on the staff. Let me show you what the agent actually receives."*
+🎙️ *(when it escalates)* *"It doesn't guess, and it doesn't fake authority. It escalates to a human — and the ticket flips to 'Pending Agent.' But here's the magic: the staff don't have to be sitting in a portal waiting. The handoff comes to them, right where they already work — Microsoft Teams."*
 
-🖱️ Sign out → log in as **Mock Agent (Jay)** → **Agent Dashboard** → open Rhandie's ticket.
+🖱️ **Switch to Microsoft Teams** (admin/support side) and show the Archon bot message:
+
+> **Ticket escalated to support queue**
+> A student has requested for a support staff member. Please open the Archon support queue and continue this ticket.
+> **Ticket ID:** ARC-T-1029
+> **[ Open Archon Support Queue ]**
+
+🎙️ *"This is the Archon bot posting straight into the support team's Teams channel through Power Automate. The agent gets pinged with the ticket ID and a one-click button to jump right into the queue — no inbox-digging, no separate dashboard to remember to check. The work finds the human."*
+
+🖱️ Click **Open Archon Support Queue** (or sign out → log in as **Mock Agent (Jay)**) → **Agent Dashboard** → open Rhandie's ticket.
 
 🎙️ *"This is Jay's view — a Tier-1 support agent. Look at this handoff packet. Archon has already written up who Rhandie is, the full diagnosis, every system it checked, every action it took, its confidence level, and a recommended reply — drafted and ready. Jay reads this in fifteen seconds instead of fifteen minutes. And Rhandie never has to repeat his story. That's the seamless human handoff."*
 
@@ -176,7 +191,13 @@ Archon is an **autonomous, agentic AI service desk** that resolves student inqui
 
 🎙️ *"One click, resolved. The AI handled the routine 70%, and it made the human dramatically faster on the 30% that genuinely needs a person."*
 
-### 8:00 — The business case *(Admin dashboard)* — 1.5 min
+🖱️ **Switch to Rhandie's Outlook inbox** and open the resolution email from the Archon bot:
+
+> **Your support ticket ARC-T-1006 has been marked as resolved by Mavuika. If you still need help, you can open a new ticket from your student dashboard.**
+
+🎙️ *"And the moment the agent resolves it, the student gets closure — automatically. This email is sent by Power Automate the instant the ticket is marked resolved. Rhandie doesn't have to log back in to check a status; the confirmation comes to his Outlook, with a clear next step if he still needs help. Every touchpoint — Teams for the staff, Outlook for the student — lives inside the Microsoft 365 they already use every day."*
+
+### 8:30 — The business case *(Admin dashboard)* — 1.5 min
 🎙️ *"Students love it, agents love it — but the people who sign the check are administrators. So we built for them too."*
 
 🖱️ Sign out → log in as **Mock Admin (Dr. Reyes)** → **Admin → Analytics**.
@@ -187,12 +208,12 @@ Archon is an **autonomous, agentic AI service desk** that resolves student inqui
 
 🎙️ *"And every number here traces back to a measurable target we committed to — these aren't vanity metrics, they're the business case."*
 
-### 9:30 — How it works *(architecture — show the slide or §2)* — 1 min
+### 10:00 — How it works *(architecture — show the slide or §2)* — 1 min
 🖱️ Show the architecture diagram / slide.
 
 🎙️ *"Quickly, under the hood — because this is buildable today, not science fiction. The brain is Azure AI Foundry running GPT-4o, which orchestrates the agent and its tools. The memory is Azure Cosmos DB — it stores tickets, conversations, and policy embeddings for retrieval. The bridge to the university's messy legacy systems is our adapter layer — it standardizes old SOAP, PHP, and SQL APIs into one clean interface the AI can safely query. And the whole experience lives inside Microsoft 365 — Entra ID for identity, Microsoft Graph for Calendar, Teams, and Outlook. Universities in this program already run all of this. Archon doesn't ask them to adopt a new tool — it activates the infrastructure they already pay for."*
 
-### 10:30 — Close *(face the audience)* — 30 sec
+### 11:00 — Close *(face the audience)* — 30 sec
 🎙️ *"So that's Archon. We took a student who was one timing gap away from losing his semester, and resolved it in five minutes — autonomously, safely, in his own language. We make routine tickets disappear, we make human agents faster, and we cut cost per ticket by nearly 80%. We're not here to digitize the university org chart. We're here to make sure students never have to see it again. Thank you — we'd love your questions."*
 
 ---
@@ -203,18 +224,21 @@ Archon is an **autonomous, agentic AI service desk** that resolves student inqui
 |---|---|---|---|
 | 0:00 | Hook | — | "experience deficit… ₱5,800 per ticket" |
 | 1:00 | What Archon is | Continue with Microsoft / Mock Student | "autonomous AI agent, not a chatbot" |
-| 2:00 | Dashboard tour | Pin a calendar date, then close it | "live data… real Outlook calendar" |
-| 3:30 | Agentic chat | Initiate Consultation | **Bakit ako may hold sa enrollment?** |
+| 2:00 | Dashboard tour | Pin a calendar date → switch to real Outlook calendar | "live data… same source of truth, two views" |
+| 4:00 | Agentic chat | Initiate Consultation | **Bakit ako may hold sa enrollment?** |
 | ~5:00 | Auto-lift | back to dashboard | **Oo po, sige.** → "lifted autonomously" |
-| 6:00 | Guardrails + handoff | Ask a fee-waiver Q → switch to Jay | "it escalates… story already packaged" |
-| 8:00 | Business case | Switch to Reyes → Analytics | "₱5,800 → ₱1,220, 79%" |
-| 9:30 | Architecture | Show architecture slide | "Foundry, Cosmos, adapters, M365" |
-| 10:30 | Close | — | "never have to see the org chart" |
+| 6:00 | Guardrails + escalation | Ask a fee-waiver Q | "it escalates… needs human judgment" |
+| ~6:45 | Teams handoff | Switch to Teams (Archon bot card, ARC-T-1029) | "the work finds the human" |
+| ~7:15 | Agent packet | Open Queue / switch to Jay → ticket | "reads it in 15 seconds, not 15 minutes" |
+| ~8:00 | Approve + Outlook email | Approve & Send → Rhandie's Outlook (ARC-T-1006) | "closure, automatically, via Power Automate" |
+| 8:30 | Business case | Switch to Reyes → Analytics | "₱5,800 → ₱1,220, 79%" |
+| 10:00 | Architecture | Show architecture slide | "Foundry, Cosmos, adapters, M365" |
+| 11:00 | Close | — | "never have to see the org chart" |
 
 **Personas:** `rhandie` (Student, BS IT — hero), `jay` (Agent), `reyes` (Admin).
 **Safety nets:** keep a screen recording as backup (live AI needs Foundry + Wi-Fi); the auto-lift works on Rhandie's default account with **no dev flags**.
 
-**If you're running long,** trim the architecture beat (9:30) and the optional admin filter — the chat auto-lift and handoff are the non-negotiable core. **If you're running short,** add the SAP appeal bonus below or take more questions.
+**If you're running long,** trim the architecture beat (10:00) and the optional admin filter — the chat auto-lift, the Teams handoff, and the Outlook resolution email are the non-negotiable core. **If you're running short,** add the SAP appeal bonus below or take more questions.
 
 > **Bonus (optional, +1–2 min) — the SAP appeal path:** Archon also guides students through a **Satisfactory Academic Progress (SAP) appeal wizard** when a student has an academic hold. To demo without disturbing Rhandie's account, append `?scenario=sap_warning` to the chat URL (a non-production dev override) and ask about academic standing — Archon explains SAP in plain language and surfaces a **"Launch SAP Appeal Wizard"** action that walks through eligibility → documents → a guided narrative template → review. Good line: *"It guides the student through the appeal — it gives them the structure and the prompts, but it never writes the personal narrative for them."* *(Chat-only; see §9.)*
 

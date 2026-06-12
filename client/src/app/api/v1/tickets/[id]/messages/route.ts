@@ -465,6 +465,26 @@ function extractMessageText(content: string): string {
   return content;
 }
 
+/**
+ * Defensive unwrap: despite the response contract, the model occasionally wraps
+ * its final answer in our `{"text":"...","toolCalls":[...]}` envelope. Storing
+ * that verbatim would surface raw JSON to the student, so detect that exact
+ * shape and return the inner text. Plain-text replies pass through untouched.
+ */
+function unwrapModelEnvelope(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("{") || !trimmed.includes("\"text\"")) return text;
+  try {
+    const parsed = JSON.parse(trimmed) as { text?: unknown; toolCalls?: unknown };
+    if (parsed && typeof parsed.text === "string" && "toolCalls" in parsed) {
+      return parsed.text;
+    }
+  } catch {
+    // Not our envelope; leave as-is.
+  }
+  return text;
+}
+
 function parseCsv(value: string | undefined): string[] {
   return (value || "")
     .split(",")
@@ -1239,7 +1259,7 @@ export async function POST(
           toolCalls: displayToolCalls,
         });
         let finalToolCalls = outputDecision ? [] : displayToolCalls;
-        let finalText = outputDecision ? buildRefusalPayload(outputDecision.reason).text : toolResult.text;
+        let finalText = outputDecision ? buildRefusalPayload(outputDecision.reason).text : unwrapModelEnvelope(toolResult.text);
 
         if (foundryEscalated && !finalToolCalls.includes("EscalateToHuman")) {
           finalToolCalls = [...finalToolCalls, "EscalateToHuman"];
