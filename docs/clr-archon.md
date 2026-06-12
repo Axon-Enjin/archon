@@ -5,7 +5,7 @@
 **Version:** 0.2
 **Owner:** Regalia Council (Alaric)
 **Status:** Draft
-**Last reconciled:** 2026-06-08 — reconciled zero-PII transient claims and Graph API scopes
+**Last reconciled:** 2026-06-12 — verified PII controls, TTL policies, and CSAT data compliance against implementation
 **PRD:** [prd-archon.md](prd-archon.md)
 **SDD:** [sdd-archon.md](sdd-archon.md)
 

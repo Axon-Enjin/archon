@@ -5,7 +5,7 @@
 **Version:** 0.2
 **Owner:** Regalia Council
 **Status:** Draft
-**Last reconciled:** 2026-06-08 — reconciled landing page layout, animations, and flows
+**Last reconciled:** 2026-06-12 — verified all PRD-F# features against implementation; no structural changes
 **BRD:** [brd-archon.md](brd-archon.md)
 
 ---

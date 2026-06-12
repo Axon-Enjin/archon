@@ -1,3 +1,8 @@
+# Archon — Client Application
+
+> **Next.js 16 full-stack monolith** — React UI + API Routes + University Adapters + Cosmos DB data layer + Graph API proxy.
+> See the [full documentation suite](../docs/index.md) and the [Cosmos DB Integration Guide](../docs/cosmos-db-integration-guide.md) for architecture details.
+
 This client is a Next.js app for Archon and uses `next-auth` with Microsoft Entra ID (Azure AD OIDC).
 
 ## Getting Started

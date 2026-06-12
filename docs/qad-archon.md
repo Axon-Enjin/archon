@@ -5,7 +5,7 @@
 **Version:** 0.2
 **Owner:** Regalia Council (Rogue)
 **Status:** Draft
-**Last reconciled:** 2026-06-08 — reconciled dynamic student API test boundaries
+**Last reconciled:** 2026-06-12 — added test scenarios for streaming, SAP Wizard, CSAT, Power Automate callbacks, AI confidence scoring, and mock data
 **PRD:** [prd-archon.md](prd-archon.md)
 **SDD:** [sdd-archon.md](sdd-archon.md)
 
@@ -41,6 +41,11 @@ Archon requires a hybrid testing approach:
 | `US-04` | Seamless Escalation | Student issue requires human | AI attempts resolution and fails / User says "talk to human" | Archon generates JSON HandoffPacket, stores to Cosmos DB, routes session to Agent Dashboard, sends Teams adaptive card to assigned agent. |
 | `US-08` | M365 Calendar Panel | Student authenticated with `Calendars.Read` granted | Loads Home Dashboard | Calendar panel renders with correct events from Graph API. Events match raw Graph calendarView response. |
 | `US-03` | Teams Deadline Reminder | Student has CHED deadline in 14 days | Daily scheduler runs | Student receives Teams adaptive card with correct deadline, documents, and deep link. `m365_notification_sent` event logged to Application Insights. |
+| `PRD-F1` | Streaming Chat Response | Student sends any inquiry | AI begins processing | Response streams via SSE within 3 seconds. Partial tokens render progressively in chat UI. Full response completes within 15 seconds. |
+| `PRD-F9` | SAP Appeal Wizard | Student's SAP status is "Suspended" | Archon detects SAP issue in chat | Wizard launches with pre-filled student data. Steps: eligibility check → document checklist → narrative template → review & submit. |
+| `PRD-F1` | CSAT Submission | Ticket is resolved (auto or human) | Post-resolution prompt appears | Student submits 1–5 rating + optional feedback. Event `satisfaction_submitted` logged. Rating stored in Cosmos DB. |
+| `PRD-F5` | Power Automate Callback | Power Automate sends delivery confirmation | Webhook `POST /api/v1/notify/callback` fires | Callback updates notification record in Cosmos DB with delivery status. Retry failures logged. |
+| `PRD-F4` | AI Confidence Scoring | AI generates a resolution or handoff | Resolution or escalation payload created | Payload includes `ai_confidence_score` (0.0–1.0). Score influences escalation decision. Handoff packets include the score for agent triage. |
 
 ---
 
@@ -58,6 +63,9 @@ Archon requires a hybrid testing approach:
 | `PRD-F11` | Admin Consent Not Granted | `Calendars.Read` scope not in tenant admin consent | Calendar panel shows "Connect your M365 Calendar" prompt. Teams/Outlook notifications fall back to in-app only. No error thrown to student. |
 | `PRD-F11` | Teams Notification Fails | Graph API `TeamsActivity.Send` returns 500 | Notification is retried 3× with exponential backoff. After 3 failures, logged to Application Insights as `m365_notification_failed`. Escalation still completes via in-app queue. |
 | `SDD-§3` | Cosmos DB TTL Violation | Calendar event cached beyond 15-minute TTL | Cosmos DB TTL auto-expires the document. Next request fetches fresh data from Graph API. Validated by querying Cosmos DB 16 minutes after insert — document must be absent. |
+| `PRD-F1` | SSE Connection Drop | Client loses network during streaming response | Stream reconnects gracefully. Partial response preserved. Client shows "Reconnecting..." state. No duplicate messages on reconnect. |
+| `PRD-F9` | SAP Wizard Abandonment | Student closes browser mid-wizard at Step 2 | Progress saved. On return, wizard resumes at last completed step. No data loss. |
+| `PRD-F2` | Mock Data Determinism | Same student archetype seeded twice | Mock data generator produces identical scenarios for the same seed. Different archetypes produce distinct, realistic data. |
 
 ---
 

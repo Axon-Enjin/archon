@@ -5,7 +5,7 @@
 **Version:** 0.2
 **Owner:** Regalia Council (Zilch)
 **Status:** Draft
-**Last reconciled:** N/A
+**Last reconciled:** 2026-06-12 — initial reconciliation; positioning and metrics verified against BRD
 **PRD:** [prd-archon.md](prd-archon.md)
 
 ---

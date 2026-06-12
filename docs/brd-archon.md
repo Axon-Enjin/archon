@@ -5,7 +5,7 @@
 **Version:** 0.2
 **Owner:** Regalia Council
 **Status:** Draft
-**Last reconciled:** N/A — not yet reconciled with reality
+**Last reconciled:** 2026-06-12 — initial reconciliation; metrics and structure verified against implementation
 
 ---
 

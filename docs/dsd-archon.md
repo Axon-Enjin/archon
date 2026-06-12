@@ -5,7 +5,7 @@
 **Version:** 0.2
 **Owner:** Regalia Council (Thranduil)
 **Status:** Draft
-**Last reconciled:** 2026-06-10 — reconciled font and color primary choices to remove boxiness and match user preferences
+**Last reconciled:** 2026-06-12 — synced color tokens to match globals.css implementation, added warning token
 **PRD:** [prd-archon.md](prd-archon.md)
 
 ---
@@ -35,11 +35,12 @@ The palette embraces an earthy, calming spectrum, anchored by a deep Sage instea
 |-------|-----|-------|
 | `--color-surface-base`| `#FAFAF9` (Warm Off-White) | Main app background, warm, matte paper feel |
 | `--color-surface-card`| `#FFFFFF` (Stark White) | Only for elevated focal elements, softened by radius |
-| `--color-text-primary`| `#2C332F` (Deep Forest Ink) | All primary typography, softer than pure black |
-| `--color-text-muted` | `#6B706D` (Moss Graphite) | Metadata, timestamps, logs |
+| `--color-text-primary`| `#111110` (Ink Black) | All primary typography, deep and grounded |
+| `--color-text-muted` | `#6B6A65` (Graphite) | Metadata, timestamps, logs |
 | `--color-primary-500` | `#0D9488` (Sage/Teal) | Primary actions, focal accents, AI naming |
-| `--color-accent-red`  | `#D64933` (Warm Vermillion) | Critical actions, alerts, holds, errors |
-| `--color-success-500` | `#3A7D5C` (Leaf Green) | Resolved tickets, success states |
+| `--color-accent-red`  | `#E63946` (Vermillion) | Critical actions, alerts, holds, errors |
+| `--color-warning-500` | `#F59E0B` (Amber) | Warning states, approaching deadlines |
+| `--color-success-500` | `#056644` (Forest Green) | Resolved tickets, success states |
 | `--color-m365-blue` | `#0078D4` | Microsoft 365 badge and button accents |
 
 ### 2.2 Typography

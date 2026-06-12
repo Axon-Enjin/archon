@@ -5,7 +5,7 @@
 **Version:** 0.2
 **Owner:** Regalia Council (Alaric)
 **Status:** Draft
-**Last reconciled:** 2026-06-08 — reconciled dependencies and Next.js fullstack routes
+**Last reconciled:** 2026-06-12 — reconciled Next.js 16.x version, repo layout, and added framer-motion/lucide-react
 **PRD:** [prd-archon.md](prd-archon.md)
 **SDD:** [sdd-archon.md](sdd-archon.md)
 **SAD:** [sad-archon.md](sad-archon.md)
@@ -51,11 +51,13 @@ The documentation suite is the source of truth. Read in this order before writin
 
 | Layer | Technology | Pinned version | Convention verified |
 |-------|------------|----------------|---------------------|
-| Client Framework | Next.js (React) | 14.x | 2026-06-07 |
+| Client Framework | Next.js (React) | 16.x | 2026-06-12 |
 | Client Auth | NextAuth.js (Auth.js) | 4.x | 2026-06-07 |
 | Styling Framework | Tailwind CSS | 4.x | 2026-06-07 |
-| Backend Language | TypeScript | 5.4.x | 2026-06-07 |
-| Backend Framework | Next.js API Routes (Server Actions) | 14.x | 2026-06-07 |
+| Animation | Framer Motion | 12.x | 2026-06-12 |
+| Icon Library | Lucide React | 1.x | 2026-06-12 |
+| Backend Language | TypeScript | 5.x | 2026-06-12 |
+| Backend Framework | Next.js API Routes (Server Actions) | 16.x | 2026-06-12 |
 | Backend Auth | `jsonwebtoken` (or similar JWT validator) | 9.x | 2026-06-07 |
 | Database | Azure Cosmos DB for NoSQL SDK | `@azure/cosmos` 4.x | 2026-06-07 |
 | AI Platform | Azure AI Foundry SDK | `@azure/ai-projects` 1.x | 2026-06-07 |
@@ -82,14 +84,12 @@ The documentation suite is the source of truth. Read in this order before writin
 ## 3. Repo Layout
 
 ```
-/client          — Next.js web application.
-/src/app/api     — Next.js API Routes, Cosmos DB data layer, University Adapters, Graph API proxy.
-/scheduler       — Power Automate Cloud Flow definitions (JSON/ZIP exports).
+/client          — Next.js full-stack application (React UI + API Routes + Adapters + Graph API proxy).
+/client/src/app/api  — Next.js API Routes: Cosmos DB data layer, University Adapters, Graph API proxy.
 /docs            — FMD documentation suite.
-/infra           — Terraform infrastructure-as-code (Azure resources).
 ```
 
-> Note: `/copilot-studio/` directory has been removed. There is no Copilot Studio in this project.
+> Note: `/copilot-studio/`, `/gateway/`, `/scheduler/`, and `/infra/` directories have been removed. The entire application is a single Next.js monolith deployed on Vercel.
 
 ---
 

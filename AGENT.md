@@ -116,16 +116,13 @@ Before committing code or concluding a session, you must perform this health che
 When executing development tasks, adhere to the guidelines in [docs/build-archon.md](docs/build-archon.md):
 
 ### Repository Layout:
-- [client/](client) — Next.js React web application.
-- [gateway/](gateway) — Node.js Express server, Cosmos DB integrations, University Adapters, and Graph API proxies.
-- [scheduler/](scheduler) — Power Automate Cloud Flow JSON definitions.
-- [docs/](docs) — Canonical FMD suite.
-- [infra/](infra) — Terraform infrastructure scripts.
+- [client/](client) — Next.js full-stack application (React UI + API Routes + University Adapters + Graph API proxy + Cosmos DB data layer).
+- [docs/](docs) — Canonical FMD documentation suite.
 
 ### Golden-Path Implementations:
 - **University Adapters:** Must implement the unified `IUniversityAdapter` TypeScript interface as defined in [docs/build-archon.md §4.1](docs/build-archon.md#L97).
 - **Cosmos DB Point Reads:** Always prioritize point reads (`container.item(id, partitionKey).read()`) over queries (`container.items.query(...)`) for single documents to minimize Request Unit (RU) costs.
-- **Graph API Calls:** Always use the Graph SDK proxy routes within the `gateway/` layer, validating authentication via Entra ID OIDC scopes. Do not call Graph APIs directly from the Next.js frontend client.
+- **Graph API Calls:** Always use the Graph SDK proxy routes within the Next.js API Routes (`client/src/app/api/`), validating authentication via Entra ID OIDC scopes. Do not call Graph APIs directly from the Next.js frontend client components.
 
 ---
 
@@ -142,4 +139,4 @@ If an automated build or test suite execution encounters a critical regression (
 ---
 
 > [!NOTE]
-> This orchestrator file was compiled and synchronized with the Regalia Council specifications on June 7, 2026. Maintain documentation comments and links when updating this file.
+> This orchestrator file was compiled and synchronized with the Regalia Council specifications on June 12, 2026. Maintain documentation comments and links when updating this file.

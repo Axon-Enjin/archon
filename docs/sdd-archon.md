@@ -5,7 +5,7 @@
 **Version:** 0.2
 **Owner:** Regalia Council (Alaric)
 **Status:** Draft
-**Last reconciled:** 2026-06-08 — reconciled NextAuth session RBAC and Cosmos DB integration
+**Last reconciled:** 2026-06-12 — reconciled KeyVault removal, subgraph nesting fix, and full codebase alignment
 **PRD:** [prd-archon.md](prd-archon.md)
 **DSD:** [dsd-archon.md](dsd-archon.md)
 
@@ -34,26 +34,25 @@ flowchart TD
         Graph["Microsoft Graph API\n(Calendar · Teams · Outlook)"]
     end
 
-        subgraph Next.js Monolith
-            Client["Next.js Web Client (React UI)"]
-            Dashboard["React Agent/Admin Dashboard"]
-            NextAPI["Next.js API Routes\n+ JWT Token Validation\n+ University Adapters\n+ Graph API Proxy"]
-        end
-
-        subgraph AI Layer — Azure AI Foundry
-            FoundryAgent["AI Foundry Agent Service\n(Orchestration + Tool Calling)"]
-            GPT4o["GPT-4o\n(Complex Reasoning + RAG)"]
-            Phi4["Phi-4\n(Intent Routing / FAQ)"]
-            FoundryTrace["AI Foundry Tracing\n& Evaluation"]
-        end
-
-        subgraph Data Layer — Azure Cosmos DB
-            CosmosNoSQL[("Cosmos DB for NoSQL\n(Tickets · Conversations · Handoffs · Users)")]
-            CosmosVector[("Cosmos DB Vector Search\n(Policy Embeddings for RAG)")]
-        end
-
-        Redis[("Azure Cache for Redis\n(WebSocket Session State)")]
+    subgraph Next.js Monolith
+        Client["Next.js Web Client (React UI)"]
+        Dashboard["React Agent/Admin Dashboard"]
+        NextAPI["Next.js API Routes\n+ JWT Token Validation\n+ University Adapters\n+ Graph API Proxy"]
     end
+
+    subgraph AI Layer — Azure AI Foundry
+        FoundryAgent["AI Foundry Agent Service\n(Orchestration + Tool Calling)"]
+        GPT4o["GPT-4o\n(Complex Reasoning + RAG)"]
+        Phi4["Phi-4\n(Intent Routing / FAQ)"]
+        FoundryTrace["AI Foundry Tracing\n& Evaluation"]
+    end
+
+    subgraph Data Layer — Azure Cosmos DB
+        CosmosNoSQL[("Cosmos DB for NoSQL\n(Tickets · Conversations · Handoffs · Users)")]
+        CosmosVector[("Cosmos DB Vector Search\n(Policy Embeddings for RAG)")]
+    end
+
+    Redis[("Azure Cache for Redis\n(WebSocket Session State)")]
 
     %% External University Systems
     subgraph University Systems
@@ -76,7 +75,6 @@ flowchart TD
     NextAPI --> FoundryAgent
     NextAPI --> CosmosNoSQL
     NextAPI --> Redis
-    NextAPI --> KeyVault
     NextAPI -->|Graph API calls| Graph
 
     FoundryAgent <--> GPT4o

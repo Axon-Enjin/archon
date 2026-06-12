@@ -5,7 +5,7 @@
 **Version:** 0.2
 **Owner:** Regalia Council (Alaric)
 **Status:** Draft
-**Last reconciled:** 2026-06-08 — reconciled Graph API retry intervals and error logs
+**Last reconciled:** 2026-06-12 — added monitoring for streaming SSE, Power Automate callbacks, CSAT rates, and AI confidence scoring
 **PRD:** [prd-archon.md](prd-archon.md)
 **SDD:** [sdd-archon.md](sdd-archon.md)
 
@@ -28,12 +28,19 @@ Archon operations revolve around **Azure Monitor + Application Insights**, integ
 - **Content Filter Blocks:** Rate of prompts blocked by Azure AI Foundry's safety filters (indicates potential abuse or adversarial use).
 - **AI Foundry Eval Scores:** Daily batch results from AI Foundry evaluation suite (factuality, tone, language detection). Tracked as custom Application Insights events.
 - **Phi-4 Deflection Rate:** Percentage of queries resolved by Phi-4 without GPT-4o invocation (target: 40–60%). Tracks cost optimization effectiveness.
+- **AI Confidence Score Distribution:** Histogram of `ai_confidence_score` values (0.0–1.0) across resolutions. Low-confidence clusters (≤0.5) indicate knowledge gaps requiring RAG content updates.
 
 ### 1.3 M365 Integration Health (Microsoft Graph)
 - **Graph API Throttle Rate:** Frequency of 429 responses from Microsoft Graph (Calendar, Teams, Outlook endpoints).
 - **Notification Delivery Success Rate:** Percentage of Teams adaptive cards and Outlook emails successfully delivered per daily scheduler run.
 - **Calendar Panel Load Success Rate:** Percentage of Home Dashboard loads where the M365 Calendar panel rendered successfully (vs. fell back to graceful error state).
 - **Pending Notification Queue Depth:** Number of notifications in the retry queue (Teams/Outlook send failures awaiting retry).
+- **Power Automate Callback Success Rate:** Percentage of Power Automate delivery callbacks (`POST /api/v1/notify/callback`) returning 200. Failed callbacks indicate delivery confirmation gaps.
+
+### 1.4 Student Experience Health
+- **Streaming SSE Connection Stability:** Percentage of chat sessions completing streaming delivery without SSE disconnects. Target: >98%. Disconnects tracked as `sse_disconnect` events.
+- **CSAT Response Rate:** Percentage of resolved tickets where student submits satisfaction feedback. Target: >25%. Tracked via `satisfaction_submitted` event count / `ticket_resolved` event count.
+- **CSAT Score Average:** Rolling 7-day average of student satisfaction scores (1–5). Target: ≥4.0. Tracked via custom Application Insights metric.
 
 ---
 
