@@ -4,7 +4,7 @@ import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { MessageCircle, AlertOctagon, Calendar, Clock, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { MessageCircle, AlertOctagon, Calendar, Clock, ChevronLeft, ChevronRight, RefreshCw, X } from "lucide-react";
 
 interface StudentProfile {
   student_id: string;
@@ -99,6 +99,8 @@ export default function StudentDashboard() {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [selectedDateKey, setSelectedDateKey] = useState(() => toDateKey(new Date()));
+  const [hoveredDateKey, setHoveredDateKey] = useState<string | null>(null);
+  const [pinnedDateKey, setPinnedDateKey] = useState<string | null>(null);
 
   async function fetchDashboardData(
     studentOid: string,
@@ -231,6 +233,26 @@ export default function StudentDashboard() {
     return () => clearInterval(timer);
   }, []);
 
+  // Dismiss a pinned calendar popover on Escape or an outside click.
+  useEffect(() => {
+    if (!pinnedDateKey) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPinnedDateKey(null);
+    };
+    const onPointerDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && !target.closest("[data-calendar-day]")) {
+        setPinnedDateKey(null);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("mousedown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("mousedown", onPointerDown);
+    };
+  }, [pinnedDateKey]);
+
   const handleStartNewChat = async () => {
     if (!session?.user) return;
     try {
@@ -328,10 +350,6 @@ export default function StudentDashboard() {
     acc[key].push(evt);
     return acc;
   }, {});
-
-  const selectedDateEvents = (eventsByDate[selectedDateKey] || []).sort(
-    (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
-  );
 
   const monthStart = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
   const monthEnd = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0);
@@ -535,7 +553,7 @@ export default function StudentDashboard() {
             <div className="flex flex-row items-end justify-between mb-4 gap-4">
               <div>
                 <span className="font-mono text-[10px] text-brand-m365 uppercase tracking-widest mb-1.5 block">Outlook Integration</span>
-                <h2 className="text-xl font-bold font-display text-brand-text tracking-tight">Academic Calendar</h2>
+                <h2 className="text-xl font-bold font-display text-brand-text tracking-tight">Outlook Calendar</h2>
               </div>
               <button
                 onClick={handleRefreshCalendar}
@@ -547,8 +565,10 @@ export default function StudentDashboard() {
               </button>
             </div>
 
-            <div className="flex-1 rounded-[1.5rem] bg-white p-6 shadow-sm border border-[#E3DFD5] relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary-light/20 rounded-full blur-[60px] -mr-32 -mt-32 pointer-events-none"></div>
+            <div className="flex-1 rounded-[1.5rem] bg-white p-6 shadow-sm border border-[#E3DFD5] relative overflow-visible">
+              <div className="absolute inset-0 overflow-hidden rounded-[1.5rem] pointer-events-none">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary-light/20 rounded-full blur-[60px] -mr-32 -mt-32"></div>
+              </div>
               
               {calendarError ? (
                 <div className="py-12 text-center relative z-10">
@@ -598,66 +618,109 @@ export default function StudentDashboard() {
                       const key = toDateKey(day);
                       const inMonth = day >= monthStart && day <= monthEnd;
                       const isSelected = selectedDateKey === key;
-                      const count = (eventsByDate[key] || []).length;
+                      const dayEvents = (eventsByDate[key] || [])
+                        .slice()
+                        .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+                      const count = dayEvents.length;
                       const isToday = key === toDateKey(new Date());
+                      const isPinned = pinnedDateKey === key;
+                      const showPopover = count > 0 && (isPinned || (hoveredDateKey === key && !pinnedDateKey));
 
                       return (
-                        <button
+                        <div
                           key={key}
-                          onClick={() => setSelectedDateKey(key)}
-                          className={`relative flex flex-col items-center justify-center h-10 sm:h-12 w-full rounded-xl transition-all duration-200 ${
-                            isSelected
-                              ? "bg-brand-primary text-white shadow-sm z-10"
-                              : "hover:bg-zinc-50 text-brand-text"
-                          } ${!inMonth && !isSelected ? "opacity-30" : ""}`}
+                          data-calendar-day
+                          className="relative"
+                          onMouseEnter={() => setHoveredDateKey(key)}
+                          onMouseLeave={() => setHoveredDateKey((prev) => (prev === key ? null : prev))}
                         >
-                          <span className={`text-sm font-semibold ${isToday && !isSelected ? "text-brand-primary" : ""}`}>
-                            {day.getDate()}
-                          </span>
-                          {count > 0 && (
-                            <span className={`absolute bottom-1 w-1 h-1 rounded-full ${isSelected ? "bg-white" : "bg-brand-m365"}`}></span>
+                          <button
+                            onClick={() => {
+                              setSelectedDateKey(key);
+                              if (count > 0) {
+                                setPinnedDateKey((prev) => (prev === key ? null : key));
+                              } else {
+                                setPinnedDateKey(null);
+                              }
+                            }}
+                            onFocus={() => setHoveredDateKey(key)}
+                            onBlur={() => setHoveredDateKey((prev) => (prev === key ? null : prev))}
+                            className={`relative flex flex-col items-center justify-center h-10 sm:h-12 w-full rounded-xl transition-all duration-200 ${
+                              isSelected
+                                ? "bg-brand-primary text-white shadow-sm z-10"
+                                : "hover:bg-zinc-50 text-brand-text"
+                            } ${!inMonth && !isSelected ? "opacity-30" : ""}`}
+                          >
+                            <span className={`text-sm font-semibold ${isToday && !isSelected ? "text-brand-primary" : ""}`}>
+                              {day.getDate()}
+                            </span>
+                            {count > 0 && (
+                              <span className={`absolute bottom-1 w-1 h-1 rounded-full ${isSelected ? "bg-white" : "bg-brand-m365"}`}></span>
+                            )}
+                          </button>
+
+                          {/* Hover (peek) / click (pinned) popover with the day's events (PRD-F11 / US-08) */}
+                          {showPopover && (
+                            <div
+                              className={`absolute bottom-full left-1/2 z-30 mb-2 w-64 -translate-x-1/2 animate-fade-in ${
+                                isPinned ? "pointer-events-auto" : "pointer-events-none"
+                              }`}
+                            >
+                              <div className="rounded-2xl bg-white shadow-xl border border-[#E3DFD5] overflow-hidden">
+                                <div className="flex items-start justify-between gap-2 px-4 pt-3 pb-2 border-b border-[#E3DFD5] bg-zinc-50/60">
+                                  <div>
+                                    <p className="text-[10px] font-mono uppercase tracking-widest text-brand-m365">Outlook</p>
+                                    <p className="text-xs font-bold text-brand-text font-display">
+                                      {day.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
+                                    </p>
+                                  </div>
+                                  {isPinned && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setPinnedDateKey(null);
+                                      }}
+                                      aria-label="Close"
+                                      className="shrink-0 -mr-1 -mt-0.5 flex h-6 w-6 items-center justify-center rounded-full text-brand-muted hover:text-brand-text hover:bg-zinc-100 transition-colors"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="px-4 py-3 space-y-2.5 max-h-56 overflow-y-auto overscroll-contain">
+                                  {dayEvents.map((evt) => {
+                                    const startDate = new Date(evt.start);
+                                    const endDate = new Date(evt.end);
+                                    const formatTime = evt.isAllDay
+                                      ? "All-day"
+                                      : `${startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – ${endDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+                                    const isDeadline = evt.title.toLowerCase().includes("deadline") || evt.title.toLowerCase().includes("renewal");
+                                    return (
+                                      <div key={evt.id} className="flex gap-2.5 items-start text-left">
+                                        <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${isDeadline ? "bg-brand-warning" : "bg-brand-primary"} ring-2 ring-white`}></div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-xs font-bold text-brand-text font-display leading-snug">{evt.title}</p>
+                                          <p className="text-[11px] text-brand-muted flex items-center gap-1 font-medium mt-0.5">
+                                            <Clock className="w-3 h-3 opacity-50" /> {formatTime}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                              {/* caret */}
+                              <div className="absolute top-full left-1/2 -mt-1 h-2.5 w-2.5 -translate-x-1/2 rotate-45 border-b border-r border-[#E3DFD5] bg-white"></div>
+                            </div>
                           )}
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
 
-                  <div className="pt-6 border-t border-[#E3DFD5] mt-6">
-                    <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-brand-muted mb-4">
-                      {new Date(selectedDateKey).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
-                    </p>
-                    {selectedDateEvents.length === 0 ? (
-                      <p className="text-brand-muted italic text-sm font-display">No scheduled activities for this date.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {selectedDateEvents.map((evt) => {
-                          const startDate = new Date(evt.start);
-                          const formatTime = evt.isAllDay ? "All-day" : startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-                          const isDeadline = evt.title.toLowerCase().includes("deadline") || evt.title.toLowerCase().includes("renewal");
-
-                          return (
-                            <div key={evt.id} className="group relative flex gap-4 items-start p-3 rounded-xl hover:bg-zinc-50 border border-transparent hover:border-[#E3DFD5] transition-all">
-                              <div className="flex flex-col items-center mt-1">
-                                <div className={`w-2.5 h-2.5 rounded-full ${isDeadline ? "bg-brand-warning" : "bg-brand-primary"} ring-2 ring-white shadow-sm z-10`}></div>
-                                <div className="w-[1.5px] h-full bg-[#E3DFD5] absolute top-6 bottom-0 group-last:hidden"></div>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-start mb-1 gap-3">
-                                  <h4 className="text-sm font-bold text-brand-text font-display leading-tight truncate">{evt.title}</h4>
-                                  <span className="shrink-0 rounded-full bg-white border border-[#E3DFD5] px-2 py-0.5 text-[9px] font-bold text-brand-muted uppercase tracking-widest shadow-sm">
-                                    {evt.source}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-brand-muted flex items-center gap-1.5 font-sans font-medium">
-                                  <Clock className="w-3 h-3 opacity-50" /> {formatTime}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+                  <p className="pt-4 text-center text-[10px] font-mono uppercase tracking-widest text-brand-muted">
+                    Hover to peek · click a date to keep it open
+                  </p>
                 </div>
               ) : (
                 <div className="py-12 text-center relative z-10">

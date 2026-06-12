@@ -1,9 +1,9 @@
 {
   "users": [
     {
-      "id": "user-mara",
+      "id": "user-rhandie",
       "institution_id": "inst-up",
-      "entra_oid": "student-mara-oid",
+      "entra_oid": "student-rhandie-78-oid",
       "role": "Student",
       "preferences": {
         "language": "fil"
@@ -33,50 +33,18 @@
       "id": "ticket-001",
       "institution_id": "inst-up",
       "ticket_id": "ARC-T-1001",
-      "student_id": "student-mara-oid",
+      "student_id": "student-rhandie-78-oid",
       "status": "Open",
-      "created_at": "2026-06-07T09:23:10.480Z"
+      "created_at": "2026-06-12T01:30:00.000Z"
     },
     {
       "id": "ticket-002",
       "institution_id": "inst-up",
       "ticket_id": "ARC-T-1002",
-      "student_id": "student-mara-oid",
+      "student_id": "student-rhandie-78-oid",
       "status": "Resolved",
       "assignee_id": "agent-jay-oid",
-      "created_at": "2026-06-04T11:23:10.484Z"
-    },
-    {
-      "id": "ticket-1780834115522",
-      "institution_id": "inst-up",
-      "ticket_id": "ARC-T-1003",
-      "student_id": "student-mara-oid",
-      "status": "Open",
-      "created_at": "2026-06-07T12:08:35.522Z"
-    },
-    {
-      "id": "ticket-1780839181597",
-      "institution_id": "inst-up",
-      "ticket_id": "ARC-T-1001",
-      "student_id": "QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
-      "status": "Open",
-      "created_at": "2026-06-07T13:33:01.597Z"
-    },
-    {
-      "id": "ticket-1780839687951",
-      "institution_id": "inst-up",
-      "ticket_id": "ARC-T-1002",
-      "student_id": "QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
-      "status": "Open",
-      "created_at": "2026-06-07T13:41:27.951Z"
-    },
-    {
-      "id": "ticket-1780839688008",
-      "institution_id": "inst-up",
-      "ticket_id": "ARC-T-1003",
-      "student_id": "QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
-      "status": "Open",
-      "created_at": "2026-06-07T13:41:28.008Z"
+      "created_at": "2026-06-09T03:15:00.000Z"
     }
   ],
   "messages": [
@@ -85,8 +53,8 @@
       "institution_id": "inst-up",
       "conversation_id": "ticket-001",
       "role": "user",
-      "content_scrubbed": "How much is my remaining balance for this semester?",
-      "ts": "2026-06-07T09:23:10.484Z"
+      "content_scrubbed": "Magkano po ba ang utang ko para sa semester na ito?",
+      "ts": "2026-06-12T01:30:00.000Z"
     },
     {
       "id": "msg-2",
@@ -94,55 +62,47 @@
       "conversation_id": "ticket-001",
       "role": "assistant",
       "content_scrubbed": "Sinisiyasat ko po ang Bursar system. Hintayin lamang po ng ilang segundo...",
-      "ts": "2026-06-07T09:23:20.485Z"
+      "ts": "2026-06-12T01:30:10.000Z"
     },
     {
-      "id": "msg-1780834115588",
+      "id": "msg-3",
       "institution_id": "inst-up",
-      "conversation_id": "ticket-1780834115522",
+      "conversation_id": "ticket-002",
       "role": "assistant",
       "content_scrubbed": "Hello! I am Archon, your AI Service Desk Assistant. How can I help you today with your holds, balances, or scholarships?",
-      "ts": "2026-06-07T12:08:35.588Z"
+      "ts": "2026-06-09T03:15:00.000Z"
     },
     {
-      "id": "msg-1780834136882-user",
+      "id": "msg-4",
       "institution_id": "inst-up",
-      "conversation_id": "ticket-1780834115522",
+      "conversation_id": "ticket-002",
       "role": "user",
       "content_scrubbed": "Bakit ako may hold sa enrollment?",
-      "ts": "2026-06-07T12:08:56.882Z"
+      "ts": "2026-06-09T03:15:20.000Z"
     },
     {
-      "id": "msg-1780834136888-assistant",
+      "id": "msg-5",
       "institution_id": "inst-up",
-      "conversation_id": "ticket-1780834115522",
+      "conversation_id": "ticket-002",
       "role": "assistant",
-      "content_scrubbed": "{\"text\":\"Nahanap ko po na mayroon kang **1** na aktibong hold sa iyong account:\\n\\n1. **Academic Hold** (Active): Satisfactory Academic Progress (SAP) GPA deficiency (GWA is 2.80, required is 2.50)\\n   *Lunas:* Magsumite po ng SAP Appeal narrative at study plan sa Academic Advisory Panel.\\n\\nWala po kayong financial hold — fully paid na po ang inyong tuition ngayong semester. Gusto mo po bang tulungan kitang simulan ang SAP Appeal para ma-clear ang hold na ito?\",\"toolCalls\":[\"CheckStudentHolds\"]}",
-      "ts": "2026-06-07T12:08:57.888Z"
+      "content_scrubbed": "{\"text\":\"Nahanap ko po na mayroon kang **1** na aktibong hold sa iyong account:\\n\\n1. **Financial Hold** (Active): Pending tuition balance of ₱20,235.00\\n   *Lunas:* Bayaran ang natitirang balanse sa Bursar, o hintayin ang inaasahang scholarship disbursement.\\n\\nNakita ko po na may **Private Foundation Grant** kayong ₱22,000.00 na naka-iskedyul nang i-release (Approved — Scheduled, ~5 business days). Dahil saklaw nito ang inyong balanse, maaari ko po itong pansamantalang i-lift para makapag-enroll na kayo habang hinihintay ang disbursement. Gusto mo po bang gawin natin ito?\",\"toolCalls\":[\"CheckStudentHolds\",\"CheckFinancialAid\"]}",
+      "ts": "2026-06-09T03:15:21.000Z"
     },
     {
-      "id": "msg-1780839181598",
+      "id": "msg-6",
       "institution_id": "inst-up",
-      "conversation_id": "ticket-1780839181597",
-      "role": "assistant",
-      "content_scrubbed": "Hello! I am Archon, your AI Service Desk Assistant. How can I help you today with your holds, balances, or scholarships?",
-      "ts": "2026-06-07T13:33:01.598Z"
+      "conversation_id": "ticket-002",
+      "role": "user",
+      "content_scrubbed": "Oo po, sige.",
+      "ts": "2026-06-09T03:16:05.000Z"
     },
     {
-      "id": "msg-1780839687952",
+      "id": "msg-7",
       "institution_id": "inst-up",
-      "conversation_id": "ticket-1780839687951",
+      "conversation_id": "ticket-002",
       "role": "assistant",
-      "content_scrubbed": "Hello! I am Archon, your AI Service Desk Assistant. How can I help you today with your holds, balances, or scholarships?",
-      "ts": "2026-06-07T13:41:27.952Z"
-    },
-    {
-      "id": "msg-1780839688008",
-      "institution_id": "inst-up",
-      "conversation_id": "ticket-1780839688008",
-      "role": "assistant",
-      "content_scrubbed": "Hello! I am Archon, your AI Service Desk Assistant. How can I help you today with your holds, balances, or scholarships?",
-      "ts": "2026-06-07T13:41:28.008Z"
+      "content_scrubbed": "{\"text\":\"Tapos na po! Pansamantala ko nang **na-lift** ang inyong Financial Hold habang pino-proseso ang Private Foundation Grant disbursement. Maaari na po kayong mag-enroll ngayon.\\n\\n**Reference No.:** ARC-LIFT-2026-0612\\n\\nMagpapadala po ako ng kumpirmasyon sa inyong Outlook at Teams. May iba pa po ba akong maitutulong?\",\"toolCalls\":[\"RequestHoldLift\"]}",
+      "ts": "2026-06-09T03:16:07.000Z"
     }
   ],
   "handoffs": [],
@@ -181,88 +141,7 @@
       ]
     }
   ],
-  "cacheUniversityData": [
-    {
-      "id": "calendar:student-mara-oid",
-      "institution_id": "inst-up",
-      "cache_key": "calendar:student-mara-oid",
-      "data": [
-        {
-          "id": "evt-midterm-bio288",
-          "title": "Midterm Exam: BIO 288 (Molecular Biology)",
-          "start": "2026-06-09T01:00:00.000Z",
-          "end": "2026-06-09T03:00:00.000Z",
-          "isAllDay": false,
-          "source": "M365"
-        },
-        {
-          "id": "evt-appeal-deadline",
-          "title": "SAP Academic Appeal Submission Deadline",
-          "start": "2026-06-11T09:00:00.000Z",
-          "end": "2026-06-11T10:00:00.000Z",
-          "isAllDay": false,
-          "source": "M365"
-        },
-        {
-          "id": "evt-dost-renewal",
-          "title": "DOST-SEI Scholarship Renewal Portal Opens",
-          "start": "2026-06-14T00:00:00.000Z",
-          "end": "2026-06-14T09:00:00.000Z",
-          "isAllDay": false,
-          "source": "M365"
-        },
-        {
-          "id": "evt-enrollment-hold-check",
-          "title": "Registrar Enrollment Hold Review Date",
-          "start": "2026-06-17T02:00:00.000Z",
-          "end": "2026-06-17T04:00:00.000Z",
-          "isAllDay": false,
-          "source": "M365"
-        }
-      ],
-      "fetched_at": 1780837570222,
-      "ttl": 300
-    },
-    {
-      "id": "calendar:QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
-      "institution_id": "inst-up",
-      "cache_key": "calendar:QqbcL33NICfrNUFNcYfCKgbIhZNdAA7uucwQdRxtK4U",
-      "data": [
-        {
-          "id": "evt-midterm-bio288",
-          "title": "Midterm Exam: BIO 288 (Molecular Biology)",
-          "start": "2026-06-09T01:00:00.000Z",
-          "end": "2026-06-09T03:00:00.000Z",
-          "isAllDay": false,
-          "source": "M365"
-        },
-        {
-          "id": "evt-appeal-deadline",
-          "title": "SAP Academic Appeal Submission Deadline",
-          "start": "2026-06-11T09:00:00.000Z",
-          "end": "2026-06-11T10:00:00.000Z",
-          "isAllDay": false,
-          "source": "M365"
-        },
-        {
-          "id": "evt-dost-renewal",
-          "title": "DOST-SEI Scholarship Renewal Portal Opens",
-          "start": "2026-06-14T00:00:00.000Z",
-          "end": "2026-06-14T09:00:00.000Z",
-          "isAllDay": false,
-          "source": "M365"
-        },
-        {
-          "id": "evt-enrollment-hold-check",
-          "title": "Registrar Enrollment Hold Review Date",
-          "start": "2026-06-17T02:00:00.000Z",
-          "end": "2026-06-17T04:00:00.000Z",
-          "isAllDay": false,
-          "source": "M365"
-        }
-      ],
-      "fetched_at": 1780840333313,
-      "ttl": 300
-    }
-  ]
+  "cacheUniversityData": [],
+  "notifications": [],
+  "notificationJobs": []
 }

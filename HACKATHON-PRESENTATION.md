@@ -56,90 +56,129 @@ Archon is an **autonomous, agentic AI service desk** that resolves student inqui
 
 ---
 
-## 3. Showcase Persona — "Mara Lim"
+## 3. Showcase Persona — "Rhandie Sales"
 
-> This persona is **faithful to the live demo account**. Logging in as the mock **Student** (`mara`) deterministically generates exactly the data below, so what you say on stage matches what's on screen.
+> This persona is **faithful to the live demo account**. Logging in as the mock **Student** (`rhandie`) deterministically generates exactly the data below, so what you say on stage matches what's on screen — including the marquee **autonomous hold-lift**.
 
-**Mara Lim** — *the anxious scholar fighting to stay enrolled.*
+**Rhandie Sales** — *the working scholar one delayed disbursement away from being dropped.*
 
 | Field | Value |
 |---|---|
-| **Name** | Mara Lim |
-| **Login** | Mock Student → `mara` (or Microsoft Entra ID SSO) |
-| **Email** | mara@archon.edu.ph |
+| **Name** | Rhandie Sales |
+| **Login** | Mock Student → `rhandie` (or Microsoft Entra ID SSO) |
+| **Email** | rhandie@archon.edu.ph |
 | **Institution** | University Partner (UP), tenant `inst-up` |
-| **Program** | BS Biology — 4th Year |
+| **Program** | BS Information Technology — 2nd Year |
 | **Enrolled load** | 15 units this term |
-| **GWA** | 2.80 (Philippine scale; 2.50 is the SAP threshold) |
-| **Academic standing** | **SAP Probation** — below the required GWA |
-| **Scholarship** | **DOST-SEI Scholarship** |
-| **Tuition status** | **Paid** — ₱20,930.00 fully settled (Tuition ₱15,930 + Lab ₱1,900 + Misc ₱3,100) |
-| **Active hold** | **1 × Academic Hold** — SAP GPA deficiency (GWA 2.80, required 2.50) |
+| **GWA** | 1.46 (Philippine scale; 2.50 is the SAP threshold) |
+| **Academic standing** | **Good Standing** |
+| **Scholarship** | **Private Foundation Grant** |
+| **Tuition status** | **Hold Active — Aid Pending**: ₱20,235.00 balance (Tuition ₱14,835 + Lab ₱3,300 + Misc ₱2,100) |
+| **Pending aid** | **₱22,000.00** Private Foundation Grant — *Approved, Scheduled* (~5 business days) |
+| **Active hold** | **1 × Financial Hold** — auto-liftable, because pending aid (₱22,000) covers the balance (₱20,235) |
 | **Preferred language** | Filipino |
 
-**Her current courses (shown in chat schedule lookups):**
-- BIO 242 — Ecology (TTh 09:00–10:30, AVR 312, Prof. E. Cruz)
-- BIO 407 — Cell Biology (Sat 07:30–09:00, CL 567, Prof. E. Santos)
-- BIO 288 — Molecular Biology (MWF 07:30–09:00, Lab 496, Prof. A. Garcia)
-- GE 336 — Understanding the Self (MWF 09:00–10:30, Prof. E. Mendoza)
-- GE 111 — Science, Technology & Society (Sat 09:00–10:30, Prof. J. Ramos)
+**His current courses (shown in chat schedule lookups):**
+- IT 177 — Networking 2 (Sat 16:00–17:30, Lab 267, Prof. M. Mendoza)
+- IT 102 — Information Assurance & Security (Sat 10:30–12:00, CL 338, Prof. A. Bautista)
+- IT 219 — Systems Integration (Sat 09:00–10:30, AVR 579, Prof. J. Torres)
+- GE 357 — Understanding the Self (Sat 14:30–16:00, AVR 299, Prof. A. Reyes)
+- GE 152 — Science, Technology & Society (TTh 14:30–16:00, Rm 152, Prof. L. Villanueva)
 
-**Her upcoming M365 calendar (Home Dashboard panel):** SAP Academic Appeal Submission Deadline, CHED UniFAST renewal window, Registrar enrollment-hold review date.
+**His upcoming M365 calendar (Home Dashboard panel):** auto-generated from his scenario — tuition payment deadline, Private Foundation Grant disbursement date, and this week's IT class meetings.
 
-**Her story (the emotional hook):**
-> Mara is a graduating Biology scholar. One bad semester pushed her GWA to 2.80 — just under the 2.50 SAP line — so her account now has an **academic hold** that blocks enrollment. Her DOST scholarship is at risk. The appeal deadline is days away. She doesn't know what "SAP" means, which office to visit, or what to write in an appeal. Last year this meant a week of office-hopping. With Archon, it's five minutes on her phone — in Filipino.
+**His story (the emotional hook):**
+> Rhandie is a 2nd-year IT student and a strong one — a 1.46 GWA. His Private Foundation Grant is approved and scheduled to disburse in about five business days, but the money hasn't posted yet. Meanwhile there's a ₱20,235 balance on his account and an **enrollment hold** that blocks him from registering *now*. The grant will cover it — but the hold doesn't know that. Last year this meant a week of bouncing between the Bursar and Financial Aid while the registration window closed. With Archon, the agent sees that the pending grant covers the balance and **temporarily lifts the hold itself** — in five minutes, in Filipino, on his phone.
 
 > **Supporting cast (already in the app):**
-> - **Jay Mendoza** — Mock **Agent** (`jay`): Tier-1 support staff who receives Mara's escalation with a full context packet.
+> - **Jay Mendoza** — Mock **Agent** (`jay`): Tier-1 support staff who receives Rhandie's escalation with a full context packet (used when a case needs human judgment).
 > - **Dr. Elena Reyes** — Mock **Admin** (`reyes`): VP for Student Affairs who watches cost-per-ticket and deflection on the analytics dashboard.
 
 ---
 
-## 4. The Pitch Script (≈3 minutes)
+## 4. Demo Script — Your Lines + What to Click (≈3 minutes)
 
-**[0:00 — Hook]**
-> "Imagine you're a graduating scholar. One bad semester drops your GPA just below the line, and suddenly there's a hold on your account, your scholarship is at risk, and the appeal deadline is in three days. Today, that means a week of bouncing between the Registrar, the Bursar, and Financial Aid — repeating your story to everyone. This is the higher-education *experience deficit*, and it costs universities up to **₱5,800 per ticket**."
+> Each beat has **🎙️ your lines** (say out loud) and **🖱️ what to click**.
+> **Before you start (off-stage):** dev server running (`cd client && nvm use && npm run dev`), browser on the **Sign In** page, logged out. Have your Entra account (sales@axonenjin.com) or mock `rhandie` ready, and pre-type the two Filipino prompts somewhere you can paste from.
 
-**[0:30 — The shift]**
-> "Meet Archon. Not a chatbot that points to FAQs — an **autonomous AI agent** that reads live university data across departments, diagnoses the real problem, and either fixes it or hands it to a human with the full story already written down."
+### 0:00 — Hook *(no clicking, face the audience)*
+🎙️ *"Imagine you're a working scholar. Your grant is approved — the money is coming — but it hasn't landed yet. Meanwhile there's a hold on your account that blocks you from enrolling, and the registration window is closing. Today, that means a week of bouncing between the Bursar and Financial Aid, repeating your story to everyone. This is the higher-education experience deficit — and it costs universities up to ₱5,800 per ticket."*
 
-**[0:50 — Who we help]**
-> "This is Mara, a 4th-year Biology scholar on a DOST grant. She has an academic hold she doesn't understand. Watch."
+### 0:25 — The shift
+🎙️ *"Meet Archon. Not a chatbot that points you to FAQs — an autonomous AI agent that reads live university data across departments, diagnoses the real problem, and either fixes it or hands it to a human with the full story already written down."*
 
-**[1:00–2:30 — Live demo]** → run the walkthrough in [§5](#5-live-demo-walkthrough).
+🖱️ Click **"Continue with Microsoft"** (or the **Mock Student** button). Land on the **Home Dashboard**.
 
-**[2:30 — The payoff]**
-> "Mara went from panic to a filed appeal in five minutes, in Filipino, on her phone. The university just deflected a Tier-1 ticket, and when human judgment *was* needed, the agent got a pre-digested context packet instead of a cold call. We take cost-per-ticket from ₱5,800 to about **₱1,220 — a 79% reduction** — while raising satisfaction."
+### 0:45 — Meet Rhandie *(Home Dashboard tour)*
+🎙️ *"This is Rhandie — a 2nd-year IT student on a Private Foundation Grant. Everything you see is pulled live."*
 
-**[2:50 — Close]**
-> "Archon runs natively on the Microsoft 365 and Azure stack universities already own — Entra ID, Azure AI Foundry, Cosmos DB, and Microsoft Graph. No new tool for students to adopt. We're not digitizing the org chart. We're making students never have to see it. Thank you."
+🖱️ Point at each element as you say it:
+- **Profile chip:** *"BS Information Technology, 2nd year, good standing."*
+- **Financial Hold card:** *"He's got an enrollment hold — a ₱20,235 balance."*
+- **Countdown cards:** *"His tuition is due July 4, and his grant renewal is July 2 — Archon is already counting down."*
+- **Outlook Calendar:** *"And this is his real Outlook calendar, synced through Microsoft Graph."*
+
+🖱️ **Click a calendar date with events** (e.g., the disbursement or a class day) to pin the popover open.
+
+🎙️ *"Hover to peek, click to keep it open — his classes, his grant disbursement date, all in one place."*
+
+🖱️ Click the **X** (or the date again) to close the popover.
+
+### 1:15 — The agentic moment *(Chat)*
+🖱️ Click **"Initiate Consultation"** (the new-chat button). Chat opens.
+
+🎙️ *"Let's ask Archon what's going on — in Filipino."*
+
+🖱️ Type / paste:
+> **Bakit ako may hold sa enrollment?**
+
+🎙️ *(while it runs)* *"Watch the tool calls. It's not guessing — it's querying the Registrar, the Bursar, and Financial Aid at once."*
+
+🎙️ *(when it answers)* *"There it is: it found the financial hold, but it also noticed his Private Foundation Grant — ₱22,000, approved and scheduled — covers the balance. So it's offering to lift the hold itself."*
+
+🖱️ Type / paste:
+> **Oo po, sige.**
+
+🎙️ *(when it confirms — THE punchline)* *"And that's the moment. Archon just lifted the enrollment hold autonomously — no staff member touched it — and gave him a reference number. He can enroll right now. Five minutes, in Filipino, on his phone."*
+
+🖱️ *(optional)* Go **back to the dashboard** to show the hold status has changed.
+
+### 2:00 — When humans are needed *(Handoff)*
+🎙️ *"But Archon knows its limits. When something needs real human judgment, it escalates — with the whole story already packaged."*
+
+🖱️ In chat, ask something requiring a human (e.g., a billing dispute / a change it won't auto-approve). The ticket flips to **Pending Agent**.
+
+🖱️ Sign out → log in as **Mock Agent (Jay)** → **Agent Dashboard** → open Rhandie's ticket.
+
+🎙️ *"This is what the agent sees: who Rhandie is, the diagnosis, every system Archon checked, the actions it took, and a recommended reply — ready to send. Jay never asks Rhandie to repeat his story."*
+
+🖱️ Click **Approve & Send**.
+
+### 2:30 — The business case *(Admin)*
+🖱️ Sign out → log in as **Mock Admin (Dr. Reyes)** → **Admin → Analytics**.
+
+🎙️ *"And for leadership: cost-per-ticket, deflection rate, handle time. We take cost-per-ticket from ₱5,800 to about ₱1,220 — a 79% reduction — while raising satisfaction."*
+
+### 2:50 — Close *(face the audience)*
+🎙️ *"Archon runs natively on the Microsoft stack universities already own — Entra ID, Azure AI Foundry, Cosmos DB, and Microsoft Graph. No new tool for students to adopt. We're not digitizing the org chart — we're making students never have to see it. Thank you."*
 
 ---
 
-## 5. Live Demo Walkthrough
+## 5. Quick Reference Card
 
-**Setup:** `cd client && nvm use && npm run dev`, open the app, go to **Sign In**.
+| Beat | You click | You say / type |
+|---|---|---|
+| Sign in | Continue with Microsoft / Mock Student | "autonomous AI agent…" |
+| Dashboard | Pin a calendar date, then close it | "Live data… real Outlook calendar" |
+| Chat | Initiate Consultation | **Bakit ako may hold sa enrollment?** |
+| Auto-lift | — | **Oo po, sige.** → "lifted autonomously" |
+| Handoff | Ask a human-judgment question → switch to Jay | "the whole story already packaged" |
+| Admin | Switch to Reyes → Analytics | "₱5,800 → ₱1,220, 79%" |
 
-### Act 1 — The student (login: `mara`)
-1. **Sign in → "Mock Student" (Mara Lim).** Land on the **Home Dashboard**.
-   - Point out: her profile (BS Biology, 4th Year, GWA 2.80, **SAP Probation**, DOST-SEI), the **Academic Hold** card, the **paid** balance, and the **M365 Calendar** panel with the SAP appeal deadline counting down.
-2. **Open Chat.** Type in **Filipino**: *"Bakit ako may hold sa enrollment?"*
-   - Narrate the agentic loop: Archon calls `check_student_holds` / `get_account_diagnosis`, queries across Registrar + Academic Advising, and replies in Filipino: it has an **Academic Hold** from a SAP GPA deficiency, explained in plain language with resolution steps.
-3. **Ask:** *"Paano ko ito maa-appeal?"*
-   - Archon explains SAP, checks eligibility, and surfaces a **"Launch SAP Appeal Wizard"** action button.
-4. **Click the wizard** → walk the guided steps (eligibility → documents → narrative template with prompts → review/submit). Emphasize: it *guides*, it doesn't write the narrative for her.
-5. **Show escalation:** ask something needing human judgment (or request a change the AI won't auto-approve). Archon triggers **`EscalateToHuman`** and the ticket flips to **Pending Agent**.
+**Personas:** `rhandie` (Student, BS IT — hero), `jay` (Agent), `reyes` (Admin).
+**Safety nets:** keep a screen recording as backup (live AI needs Foundry + Wi-Fi); the auto-lift works on Rhandie's default account with **no dev flags**.
 
-### Act 2 — The agent (login: `jay`)
-6. **Sign out → "Mock Agent" (Jay Mendoza)** → **Agent Dashboard**.
-   - Open Mara's escalated ticket. Show the **handoff packet**: student profile, diagnosis, *systems queried*, *AI actions taken*, AI confidence, and a **recommended resolution** pre-filled in the reply box.
-   - Key line: *"Jay never asks Mara to repeat her story — the AI already wrote it down."* Approve & send.
-
-### Act 3 — The leader (login: `reyes`)
-7. **Sign out → "Mock Admin" (Dr. Elena Reyes)** → **Admin → Analytics**.
-   - Show cost-per-ticket trend, deflection rate, average handle time, and the M365 notification action rate — mapped to BRD-M1…M7. Close on the 79% cost story.
-
-> **Bonus (optional) — the autonomous auto-lift:** Archon can *autonomously lift a financial hold* when pending aid covers the balance (the marquee agentic action). To demo this path on the chat screen, append `?scenario=fa_delayed` to the chat URL (a built-in dev override). The AI will detect a liftable financial hold and, after confirmation, call `request_hold_lift`. *(Note: this override affects the chat only; see §9.)*
+> **Bonus (optional) — the SAP appeal path:** Archon also guides students through a **Satisfactory Academic Progress (SAP) appeal wizard** when a student has an academic hold. To demo that without disturbing Rhandie's account, append `?scenario=sap_warning` to the chat URL (a non-production dev override) and ask about academic standing — Archon explains SAP and surfaces a **"Launch SAP Appeal Wizard"** action. *(Chat-only; see §9.)*
 
 ---
 
@@ -180,15 +219,16 @@ Archon is an **autonomous, agentic AI service desk** that resolves student inqui
 
 **Run before going on stage:**
 - [ ] `cd client && nvm use && npm run dev` boots cleanly; sign-in page loads.
-- [ ] Log in as `mara`, `jay`, `reyes` once each to warm caches.
-- [ ] Confirm the Home Dashboard shows **Mara Lim** (real name now wired in mock auth), SAP Probation, and the academic hold.
+- [ ] Log in as `rhandie`, `jay`, `reyes` once each to warm caches.
+- [ ] Confirm the Home Dashboard shows **Rhandie Sales**, BS Information Technology, **Good Standing**, and the **Financial Hold** (₱20,235 balance, ₱22,000 pending aid).
 - [ ] Pre-type your Filipino prompts so you don't fumble live.
-- [ ] Decide whether you're showing the **academic/SAP** hero path (default `mara`, fully consistent) or the **financial auto-lift** bonus (`?scenario=fa_delayed`, chat-only).
+- [ ] Practice the hero beat: *"Bakit ako may hold sa enrollment?"* → *"Oo po, sige."* → autonomous `request_hold_lift` succeeds.
 
 **Known gaps worth a sentence of honesty (or a quick fix):**
-1. **Calendar is aligned.** The demo calendar and Mara's stale chat-history ticket now reflect **BS Biology / DOST-SEI / SAP** (BIO 288 midterm, DOST-SEI renewal, academic-only hold) — consistent with her generated profile.
-2. **Auto-lift is chat-only via override.** The dashboard profile/holds/financial routes ignore the `?scenario=` dev override, so for a *fully consistent* run, prefer the default `mara` SAP path as your hero and treat the financial auto-lift as a clearly-labeled "here's another path" moment.
-3. **Live AI dependency.** The agentic chat calls Azure AI Foundry — verify the API key/env is set and reachable on demo Wi-Fi, and have a screen recording as a backup.
+1. **Hero path is native (no override).** Rhandie's default account (`student-rhandie-78-oid`) deterministically generates the **financial-aid-delayed** scenario, so the autonomous hold-lift works on the *real* dashboard and chat with no dev flags. The calendar auto-generates from his scenario and stays coherent.
+2. **Database is clean.** `mock-db.json` was reset to just the three demo users (Rhandie/Jay/Reyes) plus two coherent seed tickets; the accumulated junk tickets and stray test OID were removed. The canonical `getSeedData()` in `cosmos.ts` was updated to match, so regeneration stays consistent.
+3. **SAP appeal path is a clearly-labeled bonus.** Showing the SAP wizard requires the non-production `?scenario=sap_warning` chat override (chat-only); don't present it as Rhandie's own data.
+4. **Live AI dependency.** The agentic chat calls Azure AI Foundry — verify the API key/env is set and reachable on demo Wi-Fi, and have a screen recording as a backup.
 
 ---
 
