@@ -7,7 +7,7 @@
 
 ## 0. Is this presentation hackathon-ready?
 
-**Verdict: Yes — with ~30 minutes of demo prep.** The product is genuinely demo-able end-to-end today: real auth, a working agentic chat (Filipino + English), cross-department data orchestration, autonomous diagnosis, human handoff, an agent queue, an admin analytics dashboard, a SAP appeal wizard, and M365 calendar integration. The story maps cleanly to the BRD/PRD. The full demo script ([§4](#4-demo-script--your-lines--what-to-click-1013-minutes)) runs **11–13 minutes** plus Q&A.
+**Verdict: Yes — with ~30 minutes of demo prep.** The product is genuinely demo-able end-to-end today: real auth, a working agentic chat (Filipino + English), cross-department data orchestration, autonomous diagnosis, human handoff, an agent queue, an admin analytics dashboard, a SAP appeal wizard, and M365 calendar integration. The story maps cleanly to the BRD/PRD. The full demo script ([§4](#4-demo-script--your-lines--what-to-click-1012-minutes)) runs **10–12 minutes** plus Q&A.
 
 What makes it strong for judges:
 - A real, runnable full-stack app (Next.js + Azure AI Foundry + Cosmos DB + Microsoft Graph), not slideware.
@@ -96,9 +96,9 @@ Archon is an **autonomous, agentic AI service desk** that resolves student inqui
 
 ---
 
-## 4. Demo Script — Your Lines + What to Click (10–13 minutes)
+## 4. Demo Script — Your Lines + What to Click (10–12 minutes)
 
-> Each beat has **🎙️ your lines** (say out loud) and **🖱️ what to click**. Total runtime ≈ 12 minutes plus Q&A. Pace yourself — pause after each punchline.
+> Each beat has **🎙️ your lines** (say out loud) and **🖱️ what to click**. Total runtime ≈ 11 minutes plus Q&A. Pace yourself — pause after each punchline.
 > **Before you start (off-stage):** dev server running (`cd client && nvm use && npm run dev`), browser on the **Sign In** page, logged out. Have your Entra account (sales@axonenjin.com) or mock `rhandie` ready, and pre-type the Filipino prompts somewhere you can paste from. Have the architecture slide (or [§2](#2-the-solution--archon)) ready to show during the "How it works" beat.
 
 ### 0:00 — Hook *(no clicking, face the audience)* — 1 min
@@ -119,7 +119,7 @@ Archon is an **autonomous, agentic AI service desk** that resolves student inqui
 
 🖱️ Land on the **Home Dashboard**.
 
-### 2:00 — Meet Rhandie *(Home Dashboard tour)* — 2.5 min
+### 2:00 — Meet Rhandie *(Home Dashboard tour)* — 1.5 min
 🎙️ *"This is Rhandie — a 2nd-year BS Information Technology student on a Private Foundation Grant. Everything you're seeing here is pulled live from the university's systems through Archon's data layer — nothing is typed in by hand."*
 
 🖱️ Point at each element as you say it:
