@@ -74,7 +74,7 @@ function SignInContent() {
           {hasCredentials && (
             <>
               <button
-                onClick={() => handleSignIn("mara", "/student")}
+                onClick={() => handleSignIn("rhandie", "/student")}
                 disabled={loading !== null}
                 className="group relative flex w-full justify-between items-center rounded-xl border border-zinc-200 bg-white px-5 py-4 text-left transition hover:border-brand-primary hover:bg-brand-primary-light/10 disabled:opacity-50"
               >
@@ -83,7 +83,7 @@ function SignInContent() {
                   <p className="text-xs text-brand-muted">Development-only fallback account</p>
                 </div>
                 <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-brand-primary group-hover:bg-brand-primary group-hover:text-white">
-                  {loading === "mara" ? "Signing in..." : "Student"}
+                  {loading === "rhandie" ? "Signing in..." : "Student"}
                 </span>
               </button>
 

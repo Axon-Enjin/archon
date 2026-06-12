@@ -40,6 +40,24 @@ const defaultRole: AppRole =
     ? defaultRoleInput
     : "Student";
 
+/**
+ * Demo-only persona pins: map a real Entra account (by email) to a fixed mock
+ * scenario seed so a live SSO login surfaces a consistent, scripted student
+ * profile (e.g. the "Rhandie Sales — BS IT, financial-aid hold" demo) instead
+ * of the random profile generated from the real Microsoft OID. The real
+ * Microsoft Graph calendar still loads via the access token; only the
+ * generated profile/holds/financial scenario is pinned. Remove for production.
+ */
+const DEMO_OID_PINS: Record<string, string> = {
+  "sales@axonenjin.com": "student-rhandie-78-oid",
+};
+
+function getPinnedOid(email: string | undefined | null): string | undefined {
+  if (!email) return undefined;
+  return DEMO_OID_PINS[email.toLowerCase()];
+}
+
+
 function getClaimValues(profile: Record<string, unknown>, claimKey: string): string[] {
   const value = profile[claimKey];
   if (Array.isArray(value)) {
@@ -120,24 +138,24 @@ export const authOptions: NextAuthOptions = {
           CredentialsProvider({
             name: "Mock Development Login",
             credentials: {
-              username: { label: "Username (mara, jay, reyes)", type: "text", placeholder: "mara" },
+              username: { label: "Username (rhandie, jay, reyes)", type: "text", placeholder: "rhandie" },
             },
             async authorize(credentials) {
               const username = credentials?.username?.toLowerCase();
-              if (username === "mara") {
+              if (username === "rhandie") {
                 return {
-                  id: "user-mara",
-                  name: "Mock Student",
-                  email: "mara@archon.edu.ph",
+                  id: "user-rhandie",
+                  name: "Rhandie Sales",
+                  email: "rhandie@archon.edu.ph",
                   role: "Student",
                   institution_id: "inst-up",
-                  entra_oid: "student-mara-oid",
+                  entra_oid: "student-rhandie-78-oid",
                 };
               }
               if (username === "jay") {
                 return {
                   id: "user-jay",
-                  name: "Mock Agent",
+                  name: "Jay Mendoza",
                   email: "jay@archon.edu.ph",
                   role: "Agent",
                   institution_id: "inst-up",
@@ -147,7 +165,7 @@ export const authOptions: NextAuthOptions = {
               if (username === "reyes") {
                 return {
                   id: "user-reyes",
-                  name: "Mock Admin",
+                  name: "Dr. Elena Reyes",
                   email: "reyes@archon.edu.ph",
                   role: "Admin",
                   institution_id: "inst-up",
@@ -194,13 +212,27 @@ export const authOptions: NextAuthOptions = {
           token.institution_id ||
           "unknown-tenant";
 
-        token.id = entraOid;
-        token.entra_oid = entraOid;
+        const entraEmail =
+          (typeof entraProfile?.email === "string" ? entraProfile.email : undefined) ||
+          (typeof entraProfile?.preferred_username === "string" ? entraProfile.preferred_username : undefined) ||
+          (typeof idTokenClaims?.preferred_username === "string" ? idTokenClaims.preferred_username : undefined) ||
+          (typeof idTokenClaims?.email === "string" ? idTokenClaims.email : undefined);
+        const pinnedOid = getPinnedOid(entraEmail);
+
+        token.id = pinnedOid || entraOid;
+        token.entra_oid = pinnedOid || entraOid;
         token.institution_id =
           tenantId;
         token.role = mapEntraRole(roleSource);
         token.major = getFirstClaimValue(roleSource, majorClaimKeys) || token.major;
         token.year = getFirstClaimValue(roleSource, yearClaimKeys) || token.year;
+
+        // When the account is pinned to a demo persona, clear any real-tenant
+        // major/year claims so the pinned scenario's generated values win.
+        if (pinnedOid) {
+          token.major = undefined;
+          token.year = undefined;
+        }
       }
 
       if (user) {
