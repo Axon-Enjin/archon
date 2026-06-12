@@ -162,9 +162,9 @@ class CosmosDBService {
     return {
       users: [
         {
-          id: "user-mara",
+          id: "user-rhandie",
           institution_id: institutionId,
-          entra_oid: "student-mara-oid",
+          entra_oid: "student-rhandie-78-oid",
           role: "Student",
           preferences: { language: "fil" },
         },
@@ -188,7 +188,7 @@ class CosmosDBService {
           id: "ticket-001",
           institution_id: institutionId,
           ticket_id: "ARC-T-1001",
-          student_id: "student-mara-oid",
+          student_id: "student-rhandie-78-oid",
           status: "Open",
           created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
         },
@@ -196,7 +196,7 @@ class CosmosDBService {
           id: "ticket-002",
           institution_id: institutionId,
           ticket_id: "ARC-T-1002",
-          student_id: "student-mara-oid",
+          student_id: "student-rhandie-78-oid",
           status: "Resolved",
           assignee_id: "agent-jay-oid",
           created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
@@ -216,7 +216,7 @@ class CosmosDBService {
           institution_id: institutionId,
           conversation_id: "ticket-001",
           role: "assistant",
-          content_scrubbed: "Checking the Bursar system. Please wait a few seconds...",
+          content_scrubbed: "Sinisiyasat ko po ang Bursar system. Hintayin lamang po ng ilang segundo...",
           ts: new Date(Date.now() - 3600000 * 2 + 10000).toISOString(),
         },
       ],

@@ -12,8 +12,8 @@ export async function GET() {
   try {
     const mode = cosmosDbService.getConnectionMode();
     // Attempt to read data using the Cosmos/Mock service
-    const studentUser = await cosmosDbService.getUser("user-mara", "inst-up");
-    const conversations = await cosmosDbService.getStudentConversations("student-mara-oid", "inst-up");
+    const studentUser = await cosmosDbService.getUser("user-rhandie", "inst-up");
+    const conversations = await cosmosDbService.getStudentConversations("student-rhandie-78-oid", "inst-up");
     const policies = await cosmosDbService.queryPolicies([0.1, -0.2, 0.3], "inst-up");
 
     return NextResponse.json({
