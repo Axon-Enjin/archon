@@ -127,7 +127,7 @@ export const authOptions: NextAuthOptions = {
               if (username === "mara") {
                 return {
                   id: "user-mara",
-                  name: "Mock Student",
+                  name: "Mara Lim",
                   email: "mara@archon.edu.ph",
                   role: "Student",
                   institution_id: "inst-up",
@@ -137,7 +137,7 @@ export const authOptions: NextAuthOptions = {
               if (username === "jay") {
                 return {
                   id: "user-jay",
-                  name: "Mock Agent",
+                  name: "Jay Mendoza",
                   email: "jay@archon.edu.ph",
                   role: "Agent",
                   institution_id: "inst-up",
@@ -147,7 +147,7 @@ export const authOptions: NextAuthOptions = {
               if (username === "reyes") {
                 return {
                   id: "user-reyes",
-                  name: "Mock Admin",
+                  name: "Dr. Elena Reyes",
                   email: "reyes@archon.edu.ph",
                   role: "Admin",
                   institution_id: "inst-up",
