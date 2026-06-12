@@ -1,17 +1,24 @@
-# Archon
-
 <div align="center">
+
+<img src="client/public/web-app-manifest-512x512.png" alt="Archon Logo" width="120" />
+
+# Archon
 
 **Agentic AI-Powered Service Desk for Higher Education.**
 
 An autonomous, agentic AI service desk designed specifically for Philippine universities — eliminating the student experience deficit by bridging fragmented bureaucracy across Registrar, Bursar, and Financial Aid departments.
 
 <p>
-  <img src="https://img.shields.io/badge/Next.js-16.x-black" alt="Next.js Badge" />
+  <img src="https://img.shields.io/badge/Next.js-16-black" alt="Next.js Badge" />
   <img src="https://img.shields.io/badge/Azure-AI%20Foundry-blue" alt="Azure AI Badge" />
   <img src="https://img.shields.io/badge/Database-Cosmos%20DB-cyan" alt="Cosmos DB Badge" />
   <img src="https://img.shields.io/badge/Identity-Microsoft%20Entra-blue" alt="Entra ID Badge" />
+  <img src="https://img.shields.io/badge/M365-Integration-0078D4?logo=microsoft" alt="M365 Integration Badge" />
+  <img src="https://img.shields.io/badge/Microsoft%20Azure-Cloud-0089D6?logo=microsoftazure&logoColor=white" alt="Microsoft Azure Cloud Badge" />
+  <img src="https://img.shields.io/badge/Hackathon-KPMG%20Academic%20Innovation%202026-00338D" alt="KPMG Hackathon Badge" />
 </p>
+
+🏫 *Welcome to Archon — your autonomous academic orchestrator for Filipino university students.*
 
 </div>
 
