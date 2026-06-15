@@ -821,7 +821,7 @@ export async function POST(
 
   try {
     const { id: conversationId } = await params;
-    const { content } = await request.json();
+    const { content, resolve: shouldResolve = false } = await request.json();
     const normalizedContent = String(content || "").toLowerCase();
     const userLanguage = detectLanguage(String(content || ""));
 
@@ -837,88 +837,92 @@ export async function POST(
       };
       await cosmosDbService.createMessage(staffMsg);
 
-      const conversation = await cosmosDbService.getConversation(conversationId, authUser.institution_id);
-      if (conversation) {
-        const resolvedAt = new Date().toISOString();
-        const wrapUpSummary = `Resolved by ${authUser.name || "Support Staff"}: ${String(content).slice(0, 280)}`;
+      // Only resolve the ticket when the operator explicitly closes it.
+      // "Send Message" keeps the ticket open for continued back-and-forth.
+      if (shouldResolve) {
+        const conversation = await cosmosDbService.getConversation(conversationId, authUser.institution_id);
+        if (conversation) {
+          const resolvedAt = new Date().toISOString();
+          const wrapUpSummary = `Resolved by ${authUser.name || "Support Staff"}: ${String(content).slice(0, 280)}`;
 
-        const recipientEmail =
-          conversation.student_email ||
-          (await cosmosDbService.getStudentEmail(conversation.student_id, authUser.institution_id));
-        await cosmosDbService.updateConversationStatus(
-          conversationId,
-          authUser.institution_id,
-          "Resolved",
-          authUser.entra_oid
-        );
-        await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
+          const recipientEmail =
+            conversation.student_email ||
+            (await cosmosDbService.getStudentEmail(conversation.student_id, authUser.institution_id));
+          await cosmosDbService.updateConversationStatus(
+            conversationId,
+            authUser.institution_id,
+            "Resolved",
+            authUser.entra_oid
+          );
+          await cosmosDbService.updateConversationAiAttempts(conversationId, authUser.institution_id, 0);
 
-        recordAnalyticsEvent({
-          type: "staff_resolved",
-          institutionId: authUser.institution_id,
-          ticketId: conversationId,
-          studentId: conversation.student_id,
-          metadata: { agent_id: authUser.entra_oid },
-        });
-
-        const existingHandoff = await cosmosDbService.getHandoffByTicketId(conversationId, authUser.institution_id);
-        if (existingHandoff) {
-          await cosmosDbService.upsertHandoff({
-            ...existingHandoff,
-            handoff_packet: {
-              ...existingHandoff.handoff_packet,
-              resolution_summary: wrapUpSummary,
-              wrap_up_status: "completed",
-            },
-            agent_id: authUser.entra_oid,
-            resolved_at: resolvedAt,
+          recordAnalyticsEvent({
+            type: "staff_resolved",
+            institutionId: authUser.institution_id,
+            ticketId: conversationId,
+            studentId: conversation.student_id,
+            metadata: { agent_id: authUser.entra_oid },
           });
-        } else {
-          await cosmosDbService.upsertHandoff({
-            id: `handoff-${conversationId}`,
-            institution_id: authUser.institution_id,
-            ticket_id: conversationId,
-            handoff_packet: {
-              student_profile: {
-                name: conversation.student_id,
-                student_id: conversation.student_id,
-                major: authUser.major || "Not available",
-                year: authUser.year || "Not available",
+
+          const existingHandoff = await cosmosDbService.getHandoffByTicketId(conversationId, authUser.institution_id);
+          if (existingHandoff) {
+            await cosmosDbService.upsertHandoff({
+              ...existingHandoff,
+              handoff_packet: {
+                ...existingHandoff.handoff_packet,
+                resolution_summary: wrapUpSummary,
+                wrap_up_status: "completed",
               },
-              diagnosis: "Direct staff resolution without prior autonomous handoff packet.",
-              systems_queried: ["Staff Review"],
-              actions_taken: ["Staff resolution posted"],
-              recommended_resolution: "Completed by support staff.",
-              resolution_summary: wrapUpSummary,
-              wrap_up_status: "completed",
-            },
-            agent_id: authUser.entra_oid,
-            resolved_at: resolvedAt,
+              agent_id: authUser.entra_oid,
+              resolved_at: resolvedAt,
+            });
+          } else {
+            await cosmosDbService.upsertHandoff({
+              id: `handoff-${conversationId}`,
+              institution_id: authUser.institution_id,
+              ticket_id: conversationId,
+              handoff_packet: {
+                student_profile: {
+                  name: conversation.student_id,
+                  student_id: conversation.student_id,
+                  major: authUser.major || "Not available",
+                  year: authUser.year || "Not available",
+                },
+                diagnosis: "Direct staff resolution without prior autonomous handoff packet.",
+                systems_queried: ["Staff Review"],
+                actions_taken: ["Staff resolution posted"],
+                recommended_resolution: "Completed by support staff.",
+                resolution_summary: wrapUpSummary,
+                wrap_up_status: "completed",
+              },
+              agent_id: authUser.entra_oid,
+              resolved_at: resolvedAt,
+            });
+          }
+
+          await cosmosDbService.createMessage({
+            id: `msg-${Date.now()}-wrapup`,
+            institution_id: authUser.institution_id,
+            conversation_id: conversationId,
+            role: "system",
+            content_scrubbed: JSON.stringify({
+              text: `Zero-touch wrap-up recorded. ${wrapUpSummary}`,
+              toolCalls: ["ZeroTouchWrapUp"],
+            }),
+            ts: resolvedAt,
+          });
+
+          await enqueueOutlookNotification({
+            institutionId: authUser.institution_id,
+            recipientEntraOid: conversation.student_id,
+            recipientEmail,
+            subject: `Ticket ${conversation.ticket_id} has been resolved`,
+            textBody:
+              `Your support ticket ${conversation.ticket_id} has been marked as resolved by ${authUser.name || "Student Support"}. ` +
+              "If you still need help, you can open a new ticket from your student dashboard.",
+            ticketId: conversationId,
           });
         }
-
-        await cosmosDbService.createMessage({
-          id: `msg-${Date.now()}-wrapup`,
-          institution_id: authUser.institution_id,
-          conversation_id: conversationId,
-          role: "system",
-          content_scrubbed: JSON.stringify({
-            text: `Zero-touch wrap-up recorded. ${wrapUpSummary}`,
-            toolCalls: ["ZeroTouchWrapUp"],
-          }),
-          ts: resolvedAt,
-        });
-
-        await enqueueOutlookNotification({
-          institutionId: authUser.institution_id,
-          recipientEntraOid: conversation.student_id,
-          recipientEmail,
-          subject: `Ticket ${conversation.ticket_id} has been resolved`,
-          textBody:
-            `Your support ticket ${conversation.ticket_id} has been marked as resolved by ${authUser.name || "Student Support"}. ` +
-            "If you still need help, you can open a new ticket from your student dashboard.",
-          ticketId: conversationId,
-        });
       }
 
       return NextResponse.json({ success: true, data: staffMsg });
