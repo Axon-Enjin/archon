@@ -1,8 +1,8 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useRef, useState } from "react";
-import { Inbox, Brain, Check } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Inbox, Brain, Check, CheckCheck } from "lucide-react";
 import MarkdownText from "@/components/MarkdownText";
 
 interface TicketItem {
@@ -62,7 +62,11 @@ export default function AdminQueuePage() {
       const res = await fetch("/api/v1/tickets?type=queue");
       const data = await res.json();
       if (data.success) {
-        setQueue(data.data);
+        setQueue(
+          [...(data.data as TicketItem[])].sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
+        );
       }
     } catch (err) {
       console.error("Error loading admin queue:", err);
@@ -95,11 +99,7 @@ export default function AdminQueuePage() {
       setReplyText("");
 
       try {
-        const msgRes = await fetch(`/api/v1/tickets/${ticket.id}/messages`);
-        const msgData = await msgRes.json();
-        if (msgData.success) {
-          setMessages(msgData.data);
-        }
+        await fetchMessages(ticket.id);
 
         if (ticket.status === "Pending Agent") {
           const handoffRes = await fetch(`/api/v1/tickets/${ticket.id}/handoff`);
@@ -124,11 +124,7 @@ export default function AdminQueuePage() {
     setReplyText("");
 
     try {
-      const msgRes = await fetch(`/api/v1/tickets/${ticket.id}/messages`);
-      const msgData = await msgRes.json();
-      if (msgData.success) {
-        setMessages(msgData.data);
-      }
+      await fetchMessages(ticket.id);
 
       if (ticket.status === "Pending Agent") {
         const handoffRes = await fetch(`/api/v1/tickets/${ticket.id}/handoff`);
@@ -145,9 +141,23 @@ export default function AdminQueuePage() {
     }
   };
 
-  const handleResolveTicket = async (action: "approve" | "reject") => {
-    if (!selectedTicket || !replyText.trim()) return;
+  const fetchMessages = useCallback(async (ticketId: string) => {
+    const msgRes = await fetch(`/api/v1/tickets/${ticketId}/messages`);
+    const msgData = await msgRes.json();
+    if (msgData.success) setMessages(msgData.data);
+  }, []);
 
+  // Poll for new messages every 10 seconds while a ticket is open.
+  useEffect(() => {
+    if (!selectedTicket) return;
+    const interval = setInterval(() => {
+      void fetchMessages(selectedTicket.id);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [selectedTicket, fetchMessages]);
+
+  const handleSendMessage = async () => {
+    if (!selectedTicket || !replyText.trim()) return;
     setResolving(true);
     try {
       await fetch(`/api/v1/tickets/${selectedTicket.id}/messages`, {
@@ -155,24 +165,45 @@ export default function AdminQueuePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: `[Staff Reply - ${session?.user?.name || "Support Admin"}] ${replyText}`,
+          resolve: false,
         }),
       });
+      setReplyText("");
+      await fetchMessages(selectedTicket.id);
+    } catch (err) {
+      console.error("Failed to send message:", err);
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  const handleCloseTicket = async (action: "approve" | "close") => {
+    if (!selectedTicket) return;
+    setResolving(true);
+    try {
+      if (replyText.trim()) {
+        await fetch(`/api/v1/tickets/${selectedTicket.id}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: `[Staff Reply - ${session?.user?.name || "Support Admin"}] ${replyText}`,
+            resolve: true,
+          }),
+        });
+      }
 
       if (action === "approve") {
         await fetch(`/api/v1/student/${selectedTicket.student_id}/holds`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            holdId: "hold-academic",
-            action: "lift",
-          }),
+          body: JSON.stringify({ holdId: "hold-academic", action: "lift" }),
         });
       }
 
       setSelectedTicket(null);
       await fetchQueue();
     } catch (err) {
-      console.error("Failed to resolve ticket:", err);
+      console.error("Failed to close ticket:", err);
     } finally {
       setResolving(false);
     }
@@ -231,7 +262,8 @@ export default function AdminQueuePage() {
                       </div>
                       <p className="text-sm font-semibold text-brand-text font-display">{ticket.student_id}</p>
                       <p className="text-[10px] text-brand-muted">
-                        Created {new Date(ticket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        Created {new Date(ticket.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}{' '}
+                        {new Date(ticket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </button>
                   ))}
@@ -437,18 +469,26 @@ export default function AdminQueuePage() {
                     <div className="space-y-2 pt-4 border-t border-zinc-100 shrink-0">
                       <button
                         disabled={resolving || !replyText.trim()}
-                        onClick={() => handleResolveTicket("approve")}
+                        onClick={handleSendMessage}
+                        className="w-full flex h-11 items-center justify-center gap-2 rounded-xl border border-brand-primary bg-white text-brand-primary font-semibold hover:bg-brand-primary/5 disabled:opacity-50 text-sm transition"
+                      >
+                        {resolving ? "Sending..." : "Send Message"}
+                      </button>
+                      <button
+                        disabled={resolving || !replyText.trim()}
+                        onClick={() => handleCloseTicket("approve")}
                         className="w-full flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-primary text-white font-semibold hover:bg-teal-700 disabled:opacity-50 text-sm shadow-sm transition"
                       >
                         <Check className="w-4 h-4" />
                         {resolving ? "Resolving..." : "Approve & Lift Hold"}
                       </button>
                       <button
-                        disabled={resolving || !replyText.trim()}
-                        onClick={() => handleResolveTicket("reject")}
+                        disabled={resolving}
+                        onClick={() => handleCloseTicket("close")}
                         className="w-full flex h-11 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white text-brand-text font-semibold hover:bg-zinc-50 disabled:opacity-50 text-sm transition"
                       >
-                        Send Message Only
+                        <CheckCheck className="w-4 h-4" />
+                        Mark as Complete
                       </button>
                     </div>
                   </div>
