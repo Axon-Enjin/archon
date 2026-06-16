@@ -522,12 +522,14 @@ class CosmosDBService {
   async getOpenConversations(institutionId: string): Promise<ConversationDoc[]> {
     if (this.isMockMode) {
       const db = this.readMockDB();
-      return db.conversations.filter((c) => c.status !== "Resolved" && c.institution_id === institutionId);
+      return db.conversations
+        .filter((c) => c.status !== "Resolved" && c.institution_id === institutionId)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
 
     const container = await this.getContainer("conversations");
     const querySpec = {
-      query: "SELECT * FROM c WHERE c.status != 'Resolved' ORDER BY c.created_at ASC",
+      query: "SELECT * FROM c WHERE c.status != 'Resolved' ORDER BY c.created_at DESC",
     };
     const { resources } = await container.items
       .query<ConversationDoc>(querySpec, { partitionKey: institutionId })
