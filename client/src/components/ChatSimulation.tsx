@@ -127,11 +127,11 @@ export default function ChatSimulation() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0 }}
-                  className="flex justify-start pl-11"
+                  className="flex justify-start pl-8 sm:pl-11"
                 >
-                  <div className="rounded-lg bg-brand-primary-light/40 border border-brand-primary-light px-3 py-1.5 text-xs text-brand-primary font-semibold flex items-center gap-1.5 shadow-sm">
-                    {item.toolIcon}
-                    <span>{item.text}</span>
+                  <div className="rounded-lg bg-brand-primary-light/40 border border-brand-primary-light px-3 py-1.5 text-xs text-brand-primary font-semibold flex items-center gap-1.5 shadow-sm max-w-[85%]">
+                    <span className="shrink-0">{item.toolIcon}</span>
+                    <span className="break-all">{item.text}</span>
                   </div>
                 </motion.div>
               );
